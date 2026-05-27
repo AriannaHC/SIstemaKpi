@@ -2,7 +2,7 @@ import { useState } from 'react';
 import InputField from './InputField';
 import CheckboxCustom from './CheckboxCustom';
 
-export default function LoginForm() {
+export default function LoginForm({ onLoginSuccess }) {
   const [formData, setFormData] = useState({
     usuario: '',
     contrasena: '',
@@ -15,19 +15,72 @@ export default function LoginForm() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Limpiamos el error en cuanto el usuario empieza a escribir de nuevo
     if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!formData.usuario.trim()) { setError('Por favor, ingrese su usuario o correo.'); return; }
-    if (!formData.contrasena.trim()) { setError('Por favor, ingrese su contraseña.'); return; }
+
+    // --- 1. VALIDACIONES DE SEGURIDAD (Frontend) ---
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!formData.usuario.trim()) { 
+      setError('Por favor, ingrese su correo electrónico.'); 
+      return; 
+    }
+    if (!emailRegex.test(formData.usuario.trim())) {
+      setError('Por favor, ingrese un formato de correo válido.');
+      return;
+    }
+    if (!formData.contrasena) { 
+      setError('Por favor, ingrese su contraseña.'); 
+      return; 
+    }
+    if (formData.contrasena.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
     setIsLoading(true);
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      console.log('Login:', formData);
-    } catch { setError('Error de conexion. Intente nuevamente.'); } finally { setIsLoading(false); }
+      // --- 2. SIMULACIÓN DE PETICIÓN AL BACKEND ---
+      // Aquí en el futuro harás un fetch() o axios.post() a tu base de datos
+      await new Promise((resolve, reject) => {
+        setTimeout(() => {
+          // Simulamos una validación de base de datos
+          if (formData.usuario === 'admin@kpi.com' && formData.contrasena === '123456') {
+            resolve({ token: 'jwt_token_simulado_12345' });
+          } else {
+            reject(new Error('Credenciales incorrectas. Verifique sus datos.'));
+          }
+        }, 1500);
+      });
+
+      // --- 3. MANEJO DE SESIÓN ---
+      const fakeToken = 'jwt_token_simulado_12345';
+      if (formData.mantenerSesion) {
+        // Se queda guardado aunque cierres el navegador
+        localStorage.setItem('kpi_token', fakeToken);
+      } else {
+        // Se borra cuando cierras la pestaña
+        sessionStorage.setItem('kpi_token', fakeToken);
+      }
+
+      console.log('¡Login exitoso! Datos:', formData);
+
+      // --- 4. AVISAR AL SISTEMA DEL ÉXITO (Cambio de pantalla) ---
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
+
+    } catch (err) {
+      setError(err.message || 'Error de conexión. Intente nuevamente.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const userIcon = (
@@ -65,7 +118,7 @@ export default function LoginForm() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <InputField label="Usuario / Correo" id="usuario" name="usuario" placeholder="Ingrese su usuario o correo" value={formData.usuario} onChange={handleChange} icon={userIcon} accentColor="#123498" />
+          <InputField label="Correo Electrónico" id="usuario" name="usuario" placeholder="ejemplo@empresa.com" value={formData.usuario} onChange={handleChange} icon={userIcon} accentColor="#123498" />
           <InputField label="Contraseña" id="contrasena" name="contrasena" placeholder="Ingrese su contraseña" value={formData.contrasena} onChange={handleChange} icon={lockIcon} showToggle showPassword={showPassword} onTogglePassword={() => setShowPassword(!showPassword)} accentColor="#123498" />
           <CheckboxCustom label="Mantener sesión iniciada" checked={formData.mantenerSesion} onChange={(val) => setFormData((prev) => ({ ...prev, mantenerSesion: val }))} accentColor="#F46F0B" />
 
