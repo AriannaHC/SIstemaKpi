@@ -1,109 +1,132 @@
-import React from 'react';
+import { useState } from 'react';
+import LoginPage from './components/componentes/LoginPage';
+import Sidebar from './components/componentes/Sidebar';
+import Header from './components/componentes/Header';
 
-export default function Sidebar({ userRole, currentTab, setCurrentTab }) {
+export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
-  // DEFINICIÓN DE TODAS LAS OPCIONES POSIBLES DEL MENÚ
-  const menuItems = [
-    {
-      id: 'dashboard',
-      title: 'Panel de Control',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
-        </svg>
-      ),
-      rolesPermitidos: ['admin', 'jefe'] // El usuario regular no ve el dashboard global
-    },
-    {
-      id: 'daily',
-      title: 'Ingreso Diario KPIs',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-        </svg>
-      ),
-      rolesPermitidos: ['admin', 'jefe', 'usuario'] // Todos ingresan KPIs
-    },
-    {
-      id: 'reports',
-      title: 'Auditoría y Reportes',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-      rolesPermitidos: ['admin', 'jefe'] // El usuario regular no ve auditorías ni rankings
-    },
-    {
-      id: 'settings',
-      title: 'Configuración General',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      ),
-      rolesPermitidos: ['admin'] // Sección exclusiva del Administrador Maestro
-    }
-  ];
+  // ESTADOS MAESTROS PARA LA LÓGICA DE ROLES
+  const [userRole, setUserRole] = useState('admin'); // 'admin', 'jefe' o 'usuario'
+  const [userName, setUserName] = useState('Carlos Martínez');
+  const [currentTab, setCurrentTab] = useState('dashboard'); // Pestaña inicial por defecto
 
-  // FILTRAR MENÚ: Solo dejamos los ítems que incluyan el rol del usuario actual
-  const menuFiltrado = menuItems.filter(item => item.rolesPermitidos.includes(userRole));
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentTab('dashboard');
+    setUserRole('admin'); // Reset
+  };
+
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
-    <aside className="w-72 bg-[#123498] text-white min-h-screen flex flex-col justify-between shadow-xl select-none">
-      <div>
-        {/* LOGO EMPRESARIAL */}
-        <div className="p-6 border-b border-white/10 flex flex-col items-center gap-2 bg-[#0d2775]">
-          <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-inner">
-            <span className="text-[#123498] font-black text-2xl tracking-tighter">JB</span>
-          </div>
-          <div className="text-center mt-1">
-            <h2 className="font-bold text-sm tracking-wider uppercase">Consultora JB</h2>
-            <p className="text-[10px] text-blue-200/70 font-medium tracking-widest mt-0.5">KPI MANAGEMENT v1.0</p>
-          </div>
-        </div>
+    <div className="flex bg-slate-100 min-h-screen w-full antialiased font-sans">
+      
+      {/* SIDEBAR INTELIGENTE CON CONTROL DE ROL */}
+      <Sidebar 
+        userRole={userRole} 
+        currentTab={currentTab} 
+        setCurrentTab={setCurrentTab} 
+      />
 
-        {/* MENÚ DINÁMICO NAVEGABLE */}
-        <nav className="p-4 mt-4 flex flex-col gap-1.5">
-          <span className="text-[10px] font-bold tracking-wider text-blue-200/50 uppercase px-3 mb-2">
-            Menú de Operaciones
-          </span>
+      <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
+        
+        {/* HEADER CON SELECTOR DINÁMICO DE ROLES DE PRUEBA */}
+        <Header 
+          userName={userName} 
+          currentTab={currentTab} 
+          userRole={userRole}
+          setUserRole={setUserRole}
+          setCurrentTab={setCurrentTab}
+        />
+
+        {/* ESPACIO DE TRABAJO ADAPTATIVO SEGÚN PESTAÑA */}
+        <main className="flex-1 p-8 overflow-y-auto">
           
-          {menuFiltrado.map((item) => {
-            const isActive = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setCurrentTab(item.id)}
-                className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                  isActive
-                    ? 'bg-[#F46F0B] text-white shadow-md shadow-[#F46F0B]/20 scale-[1.02]'
-                    : 'text-blue-100/80 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                {item.icon}
-                <span>{item.title}</span>
-              </button>
-            );
-          })}
-        </nav>
+          {currentTab === 'dashboard' && (
+            <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
+              <span className="text-[10px] bg-blue-50 text-[#123498] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+                Vista de {userRole === 'admin' ? 'Administración Global' : 'Supervisión de Área'}
+              </span>
+              <h3 className="text-xl font-bold text-gray-800 mt-3 mb-2">Módulo 3: Dashboards y Gráficos Históricos</h3>
+              <p className="text-gray-500 text-sm max-w-2xl">
+                {userRole === 'admin' 
+                  ? 'Aquí verás el rendimiento consolidado corporativo de toda la empresa con comparativas de Área vs Área.'
+                  : 'Como Jefe de Área, aquí verás únicamente los KPI globales de tu equipo asignado y comparativa de Trabajador vs Trabajador.'}
+              </p>
+              <div className="mt-6 h-32 bg-slate-50 border border-dashed border-gray-300 rounded-xl flex items-center justify-center text-xs text-gray-400 font-medium">
+                Área reservada para Gráficos Interactivos (Recharts)
+              </div>
+            </div>
+          )}
+
+          {currentTab === 'daily' && (
+            <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
+              <span className="text-[10px] bg-orange-50 text-orange-600 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+                Módulo 2: Operaciones Diarias
+              </span>
+              <h3 className="text-xl font-bold text-gray-800 mt-3 mb-2">Ingreso Diario de KPIs Asignados</h3>
+              <p className="text-gray-500 text-sm max-w-2xl">
+                {userRole === 'usuario'
+                  ? 'Hola Carlos. Completa tus indicadores asignados para el día de hoy. Recuerda que debes llenarlos antes de la hora límite.'
+                  : `Simulación de Formulario: Estás viendo la vista de llenado que usará el Colaborador (${userRole}).`}
+              </p>
+              <div className="mt-6 h-32 bg-slate-50 border border-dashed border-gray-300 rounded-xl flex items-center justify-center text-xs text-gray-400 font-medium">
+                Área reservada para la Tabla de KPIs con Semáforo Visual (Rojo/Verde/Negro)
+              </div>
+            </div>
+          )}
+
+          {currentTab === 'reports' && (
+            <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
+              <span className="text-[10px] bg-purple-50 text-purple-600 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+                Módulo 4: Análisis Gerencial
+              </span>
+              <h3 className="text-xl font-bold text-gray-800 mt-3 mb-2">Auditoría, Tasa de Participación y Descargas</h3>
+              <p className="text-gray-500 text-sm max-w-2xl">
+                {userRole === 'admin'
+                  ? 'Acceso maestro: Generación de Rankings de Cumplimiento (Trabajadores >90% participación vs 0%) y exportación masiva a ExcelJS y jsPDF.'
+                  : 'Vista de Supervisión: Control de constancia del llenado diario de tu equipo y alertas enviadas.'}
+              </p>
+              <div className="mt-6 h-32 bg-slate-50 border border-dashed border-gray-300 rounded-xl flex items-center justify-center text-xs text-gray-400 font-medium">
+                Área reservada para el Panel de Participación e Historial de Auditoría
+              </div>
+            </div>
+          )}
+
+          {currentTab === 'settings' && (
+            <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
+              <span className="text-[10px] bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+                Exclusivo Administrador
+              </span>
+              <h3 className="text-xl font-bold text-gray-800 mt-3 mb-2">Panel Maestro de Configuración Técnica</h3>
+              <p className="text-gray-500 text-sm max-w-2xl">
+                Creación, edición y apagado de KPIs del negocio. Programación de fórmulas de metas, límites de horario de entrega y carga masiva mediante plantillas CSV/Excel.
+              </p>
+              <div className="mt-6 h-32 bg-slate-50 border border-dashed border-gray-300 rounded-xl flex items-center justify-center text-xs text-gray-400 font-medium">
+                Área reservada para el Motor de Fórmulas y Carga Masiva de Archivos
+              </div>
+            </div>
+          )}
+
+          <div className="mt-8 pt-4 border-t border-gray-200/60">
+            <button 
+              onClick={handleLogout} 
+              className="text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg transition-colors duration-200"
+            >
+              Cerrar Sesión (Simulado)
+            </button>
+          </div>
+
+        </main>
       </div>
 
-      {/* DETALLES DEL ROL ACTUAL ABAJO EN EL SIDEBAR */}
-      <div className="p-4 m-4 bg-white/5 rounded-xl border border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <div>
-            <p className="text-[11px] text-blue-200/60 font-medium uppercase tracking-wider">Modo de Acceso</p>
-            <p className="text-xs font-bold capitalize text-white">
-              {userRole === 'admin' && '🎯 Administrador Maestro'}
-              {userRole === 'jefe' && '👔 Jefe de Área'}
-              {userRole === 'usuario' && '👤 Colaborador'}
-            </p>
-          </div>
-        </div>
-      </div>
-    </aside>
+    </div>
   );
 }
