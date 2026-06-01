@@ -1,83 +1,56 @@
 export default function LeftPanel() {
   return (
-    <div
-      className="w-1/2 relative overflow-hidden flex flex-col justify-between"
-      style={{ backgroundColor: '#123498' }}
-    >
+    <section className="hidden lg:flex w-[50%] min-h-screen relative overflow-hidden flex-col justify-between bg-azul text-white">
       <div
-        className="absolute inset-0 opacity-[0.03]"
+        className="absolute inset-0 opacity-[0.08]"
         style={{
-          backgroundImage: "radial-gradient(circle at 20% 30%, #F46F0B 1px, transparent 1px), radial-gradient(circle at 80% 70%, #F46F0B 1px, transparent 1px)",
-          backgroundSize: '60px 60px, 80px 80px',
+          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.7) 1px, transparent 0)',
+          backgroundSize: '28px 28px',
         }}
       />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(18,52,152,0.96)_0%,rgba(18,52,152,0.96)_55%,rgba(9,106,204,0.88)_100%)]" />
+      <div className="absolute left-0 top-0 h-1.5 w-full bg-naranja" />
+      <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full bg-naranja/18 blur-3xl" />
+      <div className="absolute -bottom-40 -left-32 h-[28rem] w-[28rem] rounded-full bg-white/10 blur-3xl" />
 
-      <div
-        className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full opacity-10"
-        style={{ background: 'radial-gradient(circle, #F46F0B 0%, transparent 70%)' }}
-      />
-
-      <div
-        className="absolute -top-24 -right-24 w-80 h-80 rounded-full opacity-5"
-        style={{ background: 'radial-gradient(circle, #FDB907 0%, transparent 70%)' }}
-      />
-
-      <div className="relative z-10 flex flex-col justify-center flex-1 px-12 xl:px-16">
-
-        <div className="mb-12">
+      <div className="relative z-10 px-14 xl:px-20 pt-12">
+        <div className="flex items-center gap-4">
           <img
-  src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRAEeqY-77toOiiJxZao_SQU6vqrOpnMTpV5A&s"
-  alt="Logo"
-  style={{
-    height: '64px',
-    objectFit: 'contain',
-    borderRadius: '12px',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: '8px',
-  }}
-/>
+            src="/Imag/Consultora_JB.png"
+            alt="Consultora JB"
+            className="h-16 w-16 rounded-[18px] bg-white p-2 shadow-xl shadow-black/15 object-contain ring-1 ring-white/50"
+          />
+          <div>
+            <p className="text-xs uppercase tracking-[0.24em] text-white/60 font-black">Consultora JB</p>
+            <h2 className="text-2xl font-black leading-tight tracking-tight">Sistema KPI</h2>
+          </div>
         </div>
-
-        <div className="mb-10 flex items-end gap-3">
-          <div className="w-6 rounded-t-sm" style={{ height: '60px', backgroundColor: '#F46F0B' }} />
-          <div className="w-6 rounded-t-sm" style={{ height: '84px', backgroundColor: '#FDB907' }} />
-          <div className="w-6 rounded-t-sm" style={{ height: '48px', backgroundColor: '#096ACC' }} />
-          <div className="w-6 rounded-t-sm" style={{ height: '100px', backgroundColor: '#F46F0B' }} />
-          <div className="w-6 rounded-t-sm" style={{ height: '36px', backgroundColor: '#41C4C0' }} />
-          <div className="w-6 rounded-t-sm" style={{ height: '72px', backgroundColor: '#FDB907' }} />
-          <div className="w-6 rounded-t-sm" style={{ height: '56px', backgroundColor: '#096ACC' }} />
-        </div>
-
-        <h1
-          className="text-4xl xl:text-5xl font-extrabold text-white leading-tight mb-6"
-          style={{ fontFamily: "'Montserrat', sans-serif" }}
-        >
-          Sistema de
-          <br />
-          <span style={{ color: '#F46F0B' }}>Registro de KPIs</span>
-        </h1>
-
-        <p
-          className="text-base xl:text-lg text-white/70 leading-relaxed max-w-md"
-          style={{ fontFamily: "'Lato', sans-serif" }}
-        >
-          Acceda a su panel para gestionar indicadores clave de rendimiento,
-          hacer seguimiento de métricas y tomar decisiones basadas en datos.
-        </p>
       </div>
 
-      <div className="relative z-10 px-12 xl:px-16 pb-8">
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/10" />
-          <span
-            className="text-white/30 text-xs tracking-widest uppercase"
-            style={{ fontFamily: "'Montserrat', sans-serif" }}
-          >
-            SISTEKPI
+      <div className="relative z-10 px-14 xl:px-20">
+        <div className="mb-12 max-w-[520px]">
+          <span className="inline-flex items-center rounded-full bg-white/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-white/85 ring-1 ring-white/15">
+            Planeamiento estrategico
           </span>
-          <div className="h-px flex-1 bg-white/10" />
+          <h1 className="mt-7 text-5xl xl:text-7xl font-black leading-[0.98] tracking-tight" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+            Registro
+            <span className="block">inteligente</span>
+            <span className="block text-naranja">de KPIs</span>
+          </h1>
+          <p className="mt-6 max-w-md text-base xl:text-lg leading-8 text-white/76">
+            Gestiona indicadores diarios, metas, participacion y reportes desde un panel claro para cada rol.
+          </p>
+        </div>
+
+      </div>
+
+      <div className="relative z-10 px-14 xl:px-20 pb-10">
+        <div className="flex items-center gap-4 text-white/35">
+          <div className="h-px flex-1 bg-white/15" />
+          <span className="text-[11px] font-bold uppercase tracking-[0.28em]">SISTEKPI</span>
+          <div className="h-px flex-1 bg-white/15" />
         </div>
       </div>
-    </div>
+    </section>
   );
 }

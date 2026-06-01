@@ -10,32 +10,32 @@ export default function InputField({
   showToggle,
   showPassword,
   onTogglePassword,
-  accentColor = '#123498',
+  accentColor = 'var(--azul)',
 }) {
   const handleFocus = (e) => {
     e.target.style.borderColor = accentColor;
-    e.target.style.boxShadow = `0 0 0 3px ${accentColor}18`;
-    e.target.style.backgroundColor = '#fff';
+    e.target.style.boxShadow = `0 0 0 4px ${accentColor}16`;
+    e.target.style.backgroundColor = '#FFFFFF';
   };
 
   const handleBlur = (e) => {
-    e.target.style.borderColor = '#e5e7eb';
+    e.target.style.borderColor = 'var(--gris-borde)';
     e.target.style.boxShadow = 'none';
-    e.target.style.backgroundColor = '#fafafa';
+    e.target.style.backgroundColor = '#FFFFFF';
   };
 
   return (
     <div>
       <label
         htmlFor={id}
-        className="block text-xs font-semibold uppercase tracking-wider mb-2"
-        style={{ fontFamily: "'Montserrat', sans-serif", color: '#A3A3A3' }}
+        className="mb-2.5 block text-[11px] font-black uppercase tracking-[0.16em]"
+        style={{ fontFamily: "'Montserrat', sans-serif", color: 'var(--azul-profundo)' }}
       >
         {label}
       </label>
       <div className="relative">
         {icon && (
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none" style={{ color: '#A3A3A3' }}>
+          <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-azul/50 pointer-events-none">
             {icon}
           </div>
         )}
@@ -48,11 +48,11 @@ export default function InputField({
           onChange={onChange}
           placeholder={placeholder}
           autoComplete={name === 'contrasena' ? 'current-password' : 'username'}
-          className={`w-full ${icon ? 'pl-11' : 'pl-4'} ${showToggle ? 'pr-12' : 'pr-4'} py-3 rounded-lg border text-sm transition-all duration-200`}
+          className={`w-full ${icon ? 'pl-11' : 'pl-4'} ${showToggle ? 'pr-12' : 'pr-4'} rounded-2xl border py-4 text-[15px] font-medium outline-none transition-all duration-200 placeholder:text-azul/38`}
           style={{
-            borderColor: '#e5e7eb',
-            backgroundColor: '#fafafa',
-            color: '#123498',
+            borderColor: 'rgba(18, 52, 152, 0.12)',
+            backgroundColor: '#FFFFFF',
+            color: 'var(--azul-profundo)',
             fontFamily: "'Lato', sans-serif",
           }}
           onFocus={handleFocus}
@@ -63,10 +63,10 @@ export default function InputField({
           <button
             type="button"
             onClick={onTogglePassword}
-            className="absolute inset-y-0 right-0 pr-4 flex items-center transition-colors"
-            style={{ color: '#A3A3A3' }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = '#123498'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = '#A3A3A3'; }}
+            className="absolute inset-y-0 right-0 flex items-center pr-4 transition-colors"
+            style={{ color: 'var(--gris-texto)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--azul)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--gris-texto)'; }}
             aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
           >
             {showPassword ? (

@@ -5,14 +5,44 @@
   --font-lato: 'Lato', sans-serif;
 
   --color-azul: #123498;
-  --color-azul-marino: #096ACC;
   --color-naranja: #F46F0B;
-  --color-amarillo: #FDB907;
-  --color-rojo: #CE0B19;
+  --color-azul-marino: #096ACC;
+  --color-amarillo-hansa: #FDB907;
+  --color-rojo-persa: #CE0B19;
   --color-turquesa: #41C4C0;
-  --color-gris: #A3A3A3;
+  --color-gris-oscuro: #A3A3A3;
+  --color-blanco: #FFFFFF;
+
+  --color-azul-profundo: #123498;
+  --color-azul-brillante: #096ACC;
+  --color-naranja-oscuro: #F46F0B;
+  --color-blanco-suave: #FFFFFF;
+  --color-gris-texto: #A3A3A3;
+  --color-gris-borde: #A3A3A3;
+  --color-rojo: #CE0B19;
+}
+
+:root {
+  --azul: #123498;
+  --naranja: #F46F0B;
+  --azul-marino: #096ACC;
+  --amarillo-hansa: #FDB907;
+  --rojo-persa: #CE0B19;
+  --turquesa: #41C4C0;
+  --gris-oscuro: #A3A3A3;
+  --blanco: #FFFFFF;
+
+  --azul-profundo: #123498;
+  --azul-brillante: #096ACC;
+  --naranja-oscuro: #F46F0B;
+  --blanco-suave: #FFFFFF;
+  --gris-texto: #A3A3A3;
+  --gris-borde: #A3A3A3;
+  --rojo: #CE0B19;
 }
 
 body {
   font-family: 'Lato', sans-serif;
+  background: var(--blanco);
+  color: var(--azul);
 }

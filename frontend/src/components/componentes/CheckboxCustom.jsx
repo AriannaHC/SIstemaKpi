@@ -1,4 +1,4 @@
-export default function CheckboxCustom({ label, checked, onChange, accentColor = '#F46F0B' }) {
+export default function CheckboxCustom({ label, checked, onChange, accentColor = 'var(--naranja)' }) {
   return (
     <div className="flex items-center gap-3">
       <button
@@ -6,9 +6,9 @@ export default function CheckboxCustom({ label, checked, onChange, accentColor =
         role="checkbox"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className="w-[18px] h-[18px] rounded border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200"
+        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200"
         style={{
-          borderColor: checked ? accentColor : '#d1d5db',
+          borderColor: checked ? accentColor : 'var(--gris-borde)',
           backgroundColor: checked ? accentColor : 'transparent',
         }}
       >
@@ -20,8 +20,8 @@ export default function CheckboxCustom({ label, checked, onChange, accentColor =
       </button>
       <label
         onClick={() => onChange(!checked)}
-        className="text-sm cursor-pointer select-none"
-        style={{ color: '#A3A3A3', fontFamily: "'Lato', sans-serif" }}
+        className="cursor-pointer select-none text-sm font-semibold"
+        style={{ color: 'var(--gris-texto)', fontFamily: "'Lato', sans-serif" }}
       >
         {label}
       </label>
