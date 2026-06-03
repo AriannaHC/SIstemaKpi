@@ -7,14 +7,14 @@ const workers = [
   { id: 'u1', name: 'Carlos Martinez', area: 'Planeamiento', role: 'usuario' },
   { id: 'u2', name: 'Ana Torres', area: 'Comercial', role: 'usuario' },
   { id: 'u3', name: 'Luis Ramos', area: 'Operaciones', role: 'usuario' },
-  { id: 'u4', name: 'Maria Salazar', area: 'Planeamiento', role: 'usuario' },
+  { id: 'u4', name: 'María Salazar', area: 'Planeamiento', role: 'usuario' },
 ];
 
 const initialKpis = [
   { id: 'k1', name: 'Reportes enviados', area: 'Planeamiento', assigneeId: 'u1', target: 12, min: 8, max: 20, frequency: 'Diario', limitHour: '17:30', category: 'Productividad', active: true },
   { id: 'k2', name: 'Avance de iniciativas', area: 'Planeamiento', assigneeId: 'u1', target: 85, min: 70, max: 100, frequency: 'Semanal', limitHour: '18:00', category: 'Estrategia', active: true },
   { id: 'k3', name: 'Prospectos contactados', area: 'Comercial', assigneeId: 'u2', target: 25, min: 18, max: 40, frequency: 'Diario', limitHour: '17:00', category: 'Ventas', active: true },
-  { id: 'k4', name: 'Ordenes procesadas', area: 'Operaciones', assigneeId: 'u3', target: 60, min: 45, max: 90, frequency: 'Diario', limitHour: '16:30', category: 'Operaciones', active: true },
+  { id: 'k4', name: 'Órdenes procesadas', area: 'Operaciones', assigneeId: 'u3', target: 60, min: 45, max: 90, frequency: 'Diario', limitHour: '16:30', category: 'Operaciones', active: true },
   { id: 'k5', name: 'Cumplimiento documental', area: 'Planeamiento', assigneeId: 'u4', target: 95, min: 80, max: 100, frequency: 'Mensual', limitHour: '18:30', category: 'Calidad', active: true },
 ];
 
@@ -36,7 +36,7 @@ const initialParticipation = {
 const initialNotifications = [
   { id: 1, worker: 'Ana Torres', type: 'KPI sin registrar', channel: 'Correo', time: '16:45', status: 'Enviado' },
   { id: 2, worker: 'Luis Ramos', type: 'Bajo rendimiento', channel: 'Alerta interna', time: '15:20', status: 'Pendiente' },
-  { id: 3, worker: 'Carlos Martinez', type: 'Recordatorio hora limite', channel: 'Correo', time: '17:00', status: 'Enviado' },
+  { id: 3, worker: 'Carlos Martinez', type: 'Recordatorio hora límite', channel: 'Correo', time: '17:00', status: 'Enviado' },
 ];
 
 function getWorkerName(id) {
@@ -49,7 +49,7 @@ function getKpiStatus(kpi, value) {
   const numberValue = Number(value);
   if (numberValue === 0) return { label: 'Registrado 0', tone: 'blue', color: 'bg-azul', score: 0 };
   if (numberValue >= kpi.target) return { label: 'Meta cumplida', tone: 'green', color: 'bg-turquesa', score: Math.round((numberValue / kpi.target) * 100) };
-  if (numberValue >= kpi.min) return { label: 'Cerca del minimo', tone: 'yellow', color: 'bg-amarillo-hansa', score: Math.round((numberValue / kpi.target) * 100) };
+  if (numberValue >= kpi.min) return { label: 'Cerca del mínimo', tone: 'yellow', color: 'bg-amarillo-hansa', score: Math.round((numberValue / kpi.target) * 100) };
   return { label: 'Bajo meta', tone: 'red', color: 'bg-rojo-persa', score: Math.round((numberValue / kpi.target) * 100) };
 }
 
@@ -83,7 +83,7 @@ function getChartReportData(kpis, entries, participation) {
 
   return [
     {
-      title: 'Cumplimiento por area',
+      title: 'Cumplimiento por área',
       subtitle: 'Promedio de KPIs reportados frente a sus metas configuradas.',
       data: byArea,
       color: 'naranja',
@@ -95,7 +95,7 @@ function getChartReportData(kpis, entries, participation) {
       color: 'azul',
     },
     {
-      title: 'Participacion por colaborador',
+      title: 'Participación por colaborador',
       subtitle: 'Porcentaje de registros completados dentro del tiempo esperado.',
       data: participationData,
       color: 'naranja',
@@ -172,7 +172,7 @@ function getBarChartSvg(data, valueSuffix = '%', color = 'naranja') {
     `;
   }).join('');
 
-  return `<svg viewBox="0 0 ${chartWidth} ${chartHeight}" role="img" aria-label="Grafico de barras" xmlns="http://www.w3.org/2000/svg">${grid}${bars}</svg>`;
+  return `<svg viewBox="0 0 ${chartWidth} ${chartHeight}" role="img" aria-label="Gráfico de barras" xmlns="http://www.w3.org/2000/svg">${grid}${bars}</svg>`;
 }
 
 function downloadChartsReportPdf(charts) {
@@ -182,7 +182,7 @@ function downloadChartsReportPdf(charts) {
   const chartsMarkup = charts.map((chart, index) => `
     <section class="chart-block">
       <div class="chart-heading">
-        <span>Grafico ${index + 1}</span>
+        <span>Gráfico ${index + 1}</span>
         <h2>${chart.title}</h2>
         ${chart.subtitle ? `<p>${chart.subtitle}</p>` : ''}
       </div>
@@ -194,7 +194,7 @@ function downloadChartsReportPdf(charts) {
     <!doctype html>
     <html>
       <head>
-        <title>Informe de graficos KPI</title>
+        <title>Informe de gráficos KPI</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
@@ -216,7 +216,7 @@ function downloadChartsReportPdf(charts) {
       </head>
       <body>
         <header>
-          <h1>Informe completo de graficos KPI</h1>
+          <h1>Informe completo de gráficos KPI</h1>
           <div class="meta">Sistema KPI JB · ${new Date().toLocaleDateString('es-PE')}</div>
         </header>
         ${chartsMarkup}
@@ -244,7 +244,7 @@ function BarChart({ title, subtitle, data, valueSuffix = '%', color = 'naranja' 
           <h3 className="text-lg font-bold text-azul-profundo">{title}</h3>
           {subtitle && <p className="text-sm text-gris-texto mt-1">{subtitle}</p>}
         </div>
-        <span className="text-[10px] font-bold uppercase text-naranja bg-naranja/10 px-3 py-1 rounded-full w-fit">Grafico de barras</span>
+        <span className="text-[10px] font-bold uppercase text-naranja bg-naranja/10 px-3 py-1 rounded-full w-fit">Gráfico de barras</span>
       </div>
 
       <div className="w-full overflow-x-auto">
@@ -316,8 +316,8 @@ function DashboardView({ kpis, entries, userRole }) {
     <section className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard label="Cumplimiento general" value={`${averageScore}%`} helper="Promedio calculado con valores registrados" />
-        <StatCard label="Participacion de llenado" value={`${completion}%`} helper="KPIs completados frente a los esperados" accent="naranja" />
-        <StatCard label="Pendientes del dia" value={pending} helper="Registros vacios marcados en rojo" />
+        <StatCard label="Participación de llenado" value={`${completion}%`} helper="KPIs completados frente a los esperados" accent="naranja" />
+        <StatCard label="Pendientes del día" value={pending} helper="Registros vacíos marcados en rojo" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.7fr] gap-6">
@@ -325,7 +325,7 @@ function DashboardView({ kpis, entries, userRole }) {
           <div className="flex items-center justify-between gap-4 mb-5">
             <div>
               <h3 className="text-lg font-bold text-azul-profundo">Dashboard y comparativas</h3>
-              <p className="text-sm text-gris-texto">Vista {userRole === 'admin' ? 'global por area y trabajador' : 'restringida al equipo asignado'}.</p>
+              <p className="text-sm text-gris-texto">Vista {userRole === 'admin' ? 'global por área y trabajador' : 'restringida al equipo asignado'}.</p>
             </div>
             <span className="text-[10px] font-bold uppercase text-naranja bg-naranja/10 px-3 py-1 rounded-full">Tiempo real simulado</span>
           </div>
@@ -353,7 +353,7 @@ function DashboardView({ kpis, entries, userRole }) {
               <strong className="text-naranja">Activo</strong>
             </div>
             <div className="flex justify-between rounded-lg bg-azul/5 px-4 py-3 text-sm">
-              <span>Area vs area</span>
+              <span>Área vs área</span>
               <strong className="text-naranja">Activo</strong>
             </div>
             <div className="flex justify-between rounded-lg bg-azul/5 px-4 py-3 text-sm">
@@ -366,7 +366,7 @@ function DashboardView({ kpis, entries, userRole }) {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <BarChart
-          title="Cumplimiento por area"
+          title="Cumplimiento por área"
           subtitle="Promedio de KPIs reportados frente a sus metas configuradas."
           data={areaChartData}
         />
@@ -401,9 +401,9 @@ function DailyView({ kpis, entries, setEntries, userRole, addNotification }) {
       <div className="bg-white border border-azul/10 rounded-xl p-6 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <span className="text-[10px] bg-naranja/10 text-naranja px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">Modulo 2</span>
-            <h3 className="text-xl font-bold text-azul-profundo mt-3">Ingreso diario de KPIs y semaforo visual</h3>
-            <p className="text-sm text-gris-texto mt-1">Rojo significa vacio. Negro significa registro valido con valor 0. Verde o amarillo dependen de la meta configurada.</p>
+            <span className="text-[10px] bg-naranja/10 text-naranja px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">Módulo 2</span>
+            <h3 className="text-xl font-bold text-azul-profundo mt-3">Ingreso diario de KPIs y semáforo visual</h3>
+            <p className="text-sm text-gris-texto mt-1">Rojo significa vacío. Negro significa registro válido con valor 0. Verde o amarillo dependen de la meta configurada.</p>
           </div>
           <button onClick={submitDaily} className="bg-naranja hover:bg-naranja-oscuro text-white text-sm font-bold px-5 py-3 rounded-lg transition-colors">
             Guardar registro diario
@@ -417,7 +417,7 @@ function DailyView({ kpis, entries, setEntries, userRole, addNotification }) {
                 <th className="py-3">KPI asignado</th>
                 <th>Trabajador</th>
                 <th>Meta</th>
-                <th>Hora limite</th>
+                <th>Hora límite</th>
                 <th>Valor reportado</th>
                 <th>Estado</th>
               </tr>
@@ -438,7 +438,7 @@ function DailyView({ kpis, entries, setEntries, userRole, addNotification }) {
                         value={value}
                         onChange={(event) => setEntries((current) => ({ ...current, [kpi.id]: event.target.value }))}
                         className="w-28 rounded-lg border border-azul/15 bg-azul/5 px-3 py-2 text-azul-profundo outline-none focus:border-azul"
-                        placeholder="Vacio"
+                        placeholder="Vacío"
                       />
                     </td>
                     <td><StatusPill status={status} /></td>
@@ -469,9 +469,9 @@ function SettingsView({ kpis, setKpis }) {
   return (
     <section className="space-y-6">
       <div className="bg-white border border-azul/10 rounded-xl p-6 shadow-sm">
-        <span className="text-[10px] bg-naranja/10 text-naranja px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">Modulo 3</span>
-        <h3 className="text-xl font-bold text-azul-profundo mt-3">Configuracion general y motor de KPIs</h3>
-        <p className="text-sm text-gris-texto mt-1">Administra indicadores, formulas, metas, periodicidad, horarios limite y asignaciones.</p>
+        <span className="text-[10px] bg-naranja/10 text-naranja px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">Módulo 3</span>
+        <h3 className="text-xl font-bold text-azul-profundo mt-3">Configuración general y motor de KPIs</h3>
+        <p className="text-sm text-gris-texto mt-1">Administra indicadores, fórmulas, metas, periodicidad, horarios límite y asignaciones.</p>
 
         <form onSubmit={createKpi} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mt-6">
           <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre del KPI" className="rounded-lg border border-azul/15 px-3 py-2 text-sm outline-none focus:border-azul" />
@@ -489,12 +489,12 @@ function SettingsView({ kpis, setKpis }) {
             <tr className="text-left text-[11px] uppercase tracking-wider text-gris-texto border-b border-azul/10">
               <th className="py-3">Indicador</th>
               <th>Asignado</th>
-              <th>Area</th>
-              <th>Formula</th>
+              <th>Área</th>
+              <th>Fórmula</th>
               <th>Meta</th>
-              <th>Minimo</th>
+              <th>Mínimo</th>
               <th>Periodicidad</th>
-              <th>Hora limite</th>
+              <th>Hora límite</th>
               <th>Activo</th>
             </tr>
           </thead>
@@ -511,7 +511,7 @@ function SettingsView({ kpis, setKpis }) {
                 <td><input type="time" value={kpi.limitHour} onChange={(e) => updateKpi(kpi.id, 'limitHour', e.target.value)} className="rounded border border-azul/10 px-2 py-1" /></td>
                 <td>
                   <button onClick={() => updateKpi(kpi.id, 'active', !kpi.active)} className={`rounded-full px-3 py-1 text-xs font-bold ${kpi.active ? 'bg-turquesa/15 text-azul' : 'bg-rojo-persa/10 text-rojo-persa'}`}>
-                    {kpi.active ? 'Si' : 'No'}
+                    {kpi.active ? 'Sí' : 'No'}
                   </button>
                 </td>
               </tr>
@@ -535,28 +535,28 @@ function ReportsView({ kpis, entries, participation, notifications, addNotificat
   }));
 
   const exportRows = [
-    ['Trabajador', 'Area', 'Participacion', 'Completados', 'Esperados'],
+    ['Trabajador', 'Área', 'Participación', 'Completados', 'Esperados'],
     ...ranking.map((worker) => [worker.name, worker.area, `${worker.rate}%`, worker.completed, worker.expected]),
   ];
 
   return (
     <section className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard label="Mayor participacion" value={`${ranking[0].rate}%`} helper={ranking[0].name} />
-        <StatCard label="Participacion nula" value={ranking.filter((worker) => worker.rate === 0).length} helper="Colaboradores identificados con 0%" accent="naranja" />
+        <StatCard label="Mayor participación" value={`${ranking[0].rate}%`} helper={ranking[0].name} />
+        <StatCard label="Participación nula" value={ranking.filter((worker) => worker.rate === 0).length} helper="Colaboradores identificados con 0%" accent="naranja" />
         <StatCard label="Notificaciones" value={notifications.length} helper="Historial de recordatorios y alertas" />
       </div>
 
       <div className="bg-white border border-azul/10 rounded-xl p-6 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
           <div>
-            <span className="text-[10px] bg-azul/10 text-azul px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">Modulo 5</span>
-            <h3 className="text-xl font-bold text-azul-profundo mt-3">Auditoria, exportacion y notificaciones</h3>
+            <span className="text-[10px] bg-azul/10 text-azul px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">Módulo 5</span>
+            <h3 className="text-xl font-bold text-azul-profundo mt-3">Auditoría, exportación y notificaciones</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             <button onClick={() => downloadCsv('participacion-kpi.csv', exportRows)} className="bg-azul hover:bg-azul-profundo text-white rounded-lg px-4 py-2 text-sm font-bold">Exportar CSV</button>
             <button onClick={() => window.print()} className="bg-naranja hover:bg-naranja-oscuro text-white rounded-lg px-4 py-2 text-sm font-bold">Exportar PDF</button>
-            <button onClick={() => addNotification({ worker: 'Equipo KPI', type: 'Recordatorio masivo de hora limite', channel: 'Correo', status: 'Enviado' })} className="bg-azul/10 text-azul rounded-lg px-4 py-2 text-sm font-bold">Enviar alerta</button>
+            <button onClick={() => addNotification({ worker: 'Equipo KPI', type: 'Recordatorio masivo de hora límite', channel: 'Correo', status: 'Enviado' })} className="bg-azul/10 text-azul rounded-lg px-4 py-2 text-sm font-bold">Enviar alerta</button>
           </div>
         </div>
 
@@ -567,8 +567,8 @@ function ReportsView({ kpis, entries, participation, notifications, addNotificat
                 <tr className="text-left text-[11px] uppercase tracking-wider text-gris-texto border-b border-azul/10">
                   <th className="py-3">Ranking</th>
                   <th>Trabajador</th>
-                  <th>Area</th>
-                  <th>Participacion</th>
+                  <th>Área</th>
+                  <th>Participación</th>
                   <th>Reconocimiento</th>
                 </tr>
               </thead>
@@ -605,7 +605,7 @@ function ReportsView({ kpis, entries, participation, notifications, addNotificat
       </div>
 
       <BarChart
-        title="Participacion por colaborador"
+        title="Participación por colaborador"
         subtitle="Porcentaje de registros completados dentro del tiempo esperado."
         data={participationChartData}
       />
@@ -623,12 +623,12 @@ function KpiTable({ kpis, entries }) {
         <thead>
           <tr className="text-left text-[11px] uppercase tracking-wider text-gris-texto border-b border-azul/10">
             <th className="py-3">KPI</th>
-            <th>Area</th>
+            <th>Área</th>
             <th>Trabajador</th>
             <th>Valor</th>
             <th>Meta</th>
             <th>Cumplimiento</th>
-            <th>Semaforo</th>
+            <th>Semáforo</th>
           </tr>
         </thead>
         <tbody>
@@ -640,7 +640,7 @@ function KpiTable({ kpis, entries }) {
                 <td className="py-3 font-bold text-azul-profundo">{kpi.name}</td>
                 <td>{kpi.area}</td>
                 <td>{getWorkerName(kpi.assigneeId)}</td>
-                <td>{value === '' ? 'Vacio' : value}</td>
+                <td>{value === '' ? 'Vacío' : value}</td>
                 <td>{kpi.target}</td>
                 <td>{status.score}%</td>
                 <td><StatusPill status={status} /></td>
@@ -663,7 +663,7 @@ export default function App() {
 
   const userName = useMemo(() => {
     if (userRole === 'admin') return 'Administrador JB';
-    if (userRole === 'jefe') return 'Jefe de Area';
+    if (userRole === 'jefe') return 'Jefe de Área';
     return 'Carlos Martinez';
   }, [userRole]);
 
