@@ -1,89 +1,60 @@
 import { useState } from 'react';
-import InputField from './InputField';
-import CheckboxCustom from './CheckboxCustom';
+import { useAuth } from '../context/AuthContext';
+import { loginService } from '../services/authService';
+import InputField from '../components/InputField';
+import CheckboxCustom from '../components/CheckboxCustom';
 
-export default function LoginForm({ onLoginSuccess }) {
-  const [formData, setFormData] = useState({
-    usuario: '',
-    contrasena: '',
-    mantenerSesion: false,
-  });
+export default function Login() {
+  const { login } = useAuth();
+  const [formData, setFormData] = useState({ usuario: '', contrasena: '', mantenerSesion: false });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
     if (error) setError('');
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError('');
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!formData.usuario.trim()) {
-      setError('Por favor, ingrese su correo electronico.');
-      return;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.usuario.trim() || !formData.contrasena) {
+      setError('Llene todos los campos.'); return;
     }
-    if (!emailRegex.test(formData.usuario.trim())) {
-      setError('Por favor, ingrese un formato de correo valido.');
-      return;
-    }
-    if (!formData.contrasena) {
-      setError('Por favor, ingrese su contrasena.');
-      return;
-    }
-    if (formData.contrasena.length < 6) {
-      setError('La contrasena debe tener al menos 6 caracteres.');
-      return;
-    }
-
+    
     setIsLoading(true);
-
     try {
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          if (formData.usuario === 'admin@kpi.com' && formData.contrasena === '123456') {
-            resolve({ token: 'jwt_token_simulado_12345' });
-          } else {
-            reject(new Error('Credenciales incorrectas. Verifique sus datos.'));
-          }
-        }, 900);
-      });
+      const data = await loginService(formData.usuario.trim(), formData.contrasena);
+      
+      const storage = formData.mantenerSesion ? localStorage : sessionStorage;
+      storage.setItem('kpi_token', data.token.access_token);
+      storage.setItem('kpi_user', JSON.stringify(data.user));
 
-      const fakeToken = 'jwt_token_simulado_12345';
-      if (formData.mantenerSesion) {
-        localStorage.setItem('kpi_token', fakeToken);
-      } else {
-        sessionStorage.setItem('kpi_token', fakeToken);
-      }
+      login(data.user, formData.mantenerSesion);
 
-      onLoginSuccess?.();
     } catch (err) {
-      setError(err.message || 'Error de conexion. Intente nuevamente.');
+      if (err.response?.data?.detail) setError(err.response.data.detail);
+      else setError('Error de conexión.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const userIcon = (
-    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
     </svg>
   );
 
   const lockIcon = (
-    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
     </svg>
   );
 
   return (
     <section className="flex min-h-screen flex-1 items-center justify-center bg-[radial-gradient(circle_at_18%_12%,rgba(244,111,11,0.10),transparent_26%),radial-gradient(circle_at_90%_88%,rgba(18,52,152,0.10),transparent_28%),linear-gradient(180deg,#FFFFFF_0%,#FFFFFF_100%)] px-5 py-10 sm:px-8 lg:px-14">
-      <div className="w-full max-w-[480px]">
+      <div className="w-full max-w-120">
         <div className="mb-8 flex items-center gap-4 lg:hidden">
           <img src="/Imag/Consultora_JB.png" alt="Consultora JB" className="h-14 w-14 rounded-2xl bg-white p-2 shadow-md object-contain ring-1 ring-azul/10" />
           <div>
@@ -99,13 +70,13 @@ export default function LoginForm({ onLoginSuccess }) {
             </h2>
             <div className="mt-4 h-1 w-14 rounded-full bg-naranja" />
             <p className="mt-5 text-[15px] leading-7 text-gris-texto">
-              Ingresa al panel de gestion de KPIs, reportes y auditoria de participacion.
+              Ingresa al panel de gestión de KPIs, reportes y auditoría de participación.
             </p>
           </div>
 
           {error && (
             <div className="mb-6 flex items-center gap-3 rounded-2xl border border-rojo-persa/25 bg-rojo-persa/10 p-3.5 shadow-sm">
-              <svg className="w-5 h-5 flex-shrink-0 text-rojo-persa" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 shrink-0 text-rojo-persa" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span className="text-sm font-medium text-rojo-persa">{error}</span>
@@ -113,13 +84,13 @@ export default function LoginForm({ onLoginSuccess }) {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <InputField label="Correo electronico" id="usuario" name="usuario" placeholder="ejemplo@empresa.com" value={formData.usuario} onChange={handleChange} icon={userIcon} accentColor="var(--azul)" />
-            <InputField label="Contrasena" id="contrasena" name="contrasena" placeholder="Ingrese su contrasena" value={formData.contrasena} onChange={handleChange} icon={lockIcon} showToggle showPassword={showPassword} onTogglePassword={() => setShowPassword(!showPassword)} accentColor="var(--azul)" />
+            <InputField label="Correo electrónico" id="usuario" name="usuario" placeholder="ejemplo@empresa.com" value={formData.usuario} onChange={handleChange} icon={userIcon} accentColor="var(--azul)" />
+            <InputField label="Contraseña" id="contrasena" name="contrasena" placeholder="Ingrese su contraseña" value={formData.contrasena} onChange={handleChange} icon={lockIcon} showToggle showPassword={showPassword} onTogglePassword={() => setShowPassword(!showPassword)} accentColor="var(--azul)" />
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CheckboxCustom label="Mantener sesion iniciada" checked={formData.mantenerSesion} onChange={(val) => setFormData((prev) => ({ ...prev, mantenerSesion: val }))} accentColor="var(--naranja)" />
+              <CheckboxCustom label="Mantener sesión iniciada" checked={formData.mantenerSesion} onChange={(val) => setFormData((prev) => ({ ...prev, mantenerSesion: val }))} accentColor="var(--naranja)" />
               <button type="button" className="text-left text-sm font-semibold text-azul-brillante transition-colors hover:text-azul sm:text-right">
-                Olvide mi contrasena
+                Olvidé mi contraseña
               </button>
             </div>
 
@@ -131,7 +102,7 @@ export default function LoginForm({ onLoginSuccess }) {
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin w-4.5 h-4.5" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>

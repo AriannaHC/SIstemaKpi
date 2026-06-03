@@ -6,7 +6,7 @@ export default function CheckboxCustom({ label, checked, onChange, accentColor =
         role="checkbox"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200"
         style={{
           borderColor: checked ? accentColor : 'var(--gris-borde)',
           backgroundColor: checked ? accentColor : 'transparent',
