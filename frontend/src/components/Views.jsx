@@ -339,10 +339,20 @@ export function SettingsView({ kpis, setKpis }) {
 
 export function ReportsView({ kpis, entries, participation, notifications, addNotification }) {
   const ranking = workers.map((worker) => {
-    const data = participation[worker.id];
-    const rate = Math.round((data.completed / data.expected) * 100);
-    return { ...worker, rate, completed: data.completed, expected: data.expected };
-  }).sort((a, b) => b.rate - a.rate);
+  const data = participation?.[worker.id] || {
+    completed: 0,
+    expected: 1
+  };
+
+  const rate = Math.round((data.completed / data.expected) * 100);
+
+  return {
+    ...worker,
+    rate,
+    completed: data.completed,
+    expected: data.expected
+  };
+}).sort((a, b) => b.rate - a.rate);
   const participationChartData = ranking.map((worker) => ({ label: worker.name.split(' ')[0], value: worker.rate }));
   const exportRows = [['Trabajador', 'Area', 'Participacion', 'Completados', 'Esperados'], ...ranking.map((w) => [w.name, w.area, `${w.rate}%`, w.completed, w.expected])];
 

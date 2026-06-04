@@ -52,67 +52,183 @@ export default function Login() {
     </svg>
   );
 
-  return (
-    <section className="flex min-h-screen flex-1 items-center justify-center bg-[radial-gradient(circle_at_18%_12%,rgba(244,111,11,0.10),transparent_26%),radial-gradient(circle_at_90%_88%,rgba(18,52,152,0.10),transparent_28%),linear-gradient(180deg,#FFFFFF_0%,#FFFFFF_100%)] px-5 py-10 sm:px-8 lg:px-14">
-      <div className="w-full max-w-120">
-        <div className="mb-8 flex items-center gap-4 lg:hidden">
-          <img src="/Imag/Consultora_JB.png" alt="Consultora JB" className="h-14 w-14 rounded-2xl bg-white p-2 shadow-md object-contain ring-1 ring-azul/10" />
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-naranja">Sistema KPI</p>
-            <h1 className="text-xl font-black text-azul-profundo tracking-tight">Consultora JB</h1>
-          </div>
-        </div>
+return (
+  <section className="min-h-screen flex">
+    {/* Panel izquierdo con nuevas animaciones */}
+    <div className="hidden lg:flex lg:w-1/2 bg-[#123498] flex-col items-center justify-center px-16 relative overflow-hidden">
+      {/* Degradado de fondo */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1a4ba0] to-[#123498] -z-20"></div>
 
-        <div className="rounded-[1.75rem] border border-azul/10 bg-white/95 p-7 shadow-[0_24px_80px_rgba(18,52,152,0.14)] backdrop-blur sm:p-10">
-          <div className="mb-8">
-            <h2 className="text-4xl font-black text-azul-profundo tracking-tight" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-              Bienvenido
-            </h2>
-            <div className="mt-4 h-1 w-14 rounded-full bg-naranja" />
-            <p className="mt-5 text-[15px] leading-7 text-gris-texto">
-              Ingresa al panel de gestión de KPIs, reportes y auditoría de participación.
-            </p>
-          </div>
-
-          {error && (
-            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-rojo-persa/25 bg-rojo-persa/10 p-3.5 shadow-sm">
-              <svg className="w-5 h-5 shrink-0 text-rojo-persa" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-sm font-medium text-rojo-persa">{error}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <InputField label="Correo electrónico" id="usuario" name="usuario" placeholder="ejemplo@empresa.com" value={formData.usuario} onChange={handleChange} icon={userIcon} accentColor="var(--azul)" />
-            <InputField label="Contraseña" id="contrasena" name="contrasena" placeholder="Ingrese su contraseña" value={formData.contrasena} onChange={handleChange} icon={lockIcon} showToggle showPassword={showPassword} onTogglePassword={() => setShowPassword(!showPassword)} accentColor="var(--azul)" />
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CheckboxCustom label="Mantener sesión iniciada" checked={formData.mantenerSesion} onChange={(val) => setFormData((prev) => ({ ...prev, mantenerSesion: val }))} accentColor="var(--naranja)" />
-              <button type="button" className="text-left text-sm font-semibold text-azul-brillante transition-colors hover:text-azul sm:text-right">
-                Olvidé mi contraseña
-              </button>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="mt-3 w-full rounded-2xl bg-naranja px-5 py-4 text-sm font-black uppercase tracking-[0.12em] text-white shadow-lg shadow-naranja/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-naranja-oscuro hover:shadow-xl hover:shadow-naranja/30 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-naranja-oscuro"
-              style={{ fontFamily: "'Montserrat', sans-serif" }}
-            >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin w-4.5 h-4.5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Ingresando
-                </span>
-              ) : 'Ingresar'}
-            </button>
-          </form>
-        </div>
+      {/* Animación de partículas de fondo */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-white/5 rounded-full blur-3xl animate-particle-1"></div>
+        <div className="absolute top-3/4 right-1/4 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl animate-particle-2"></div>
+        <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-white/10 rounded-full blur-2xl animate-particle-3"></div>
       </div>
-    </section>
-  );
+
+      {/* Logo en la esquina */}
+      <img
+        src="/Imag/Logos.JB-04.png"
+        alt="Consultora JB"
+        className="absolute top-8 left-8 w-24 h-24 object-contain opacity-90 z-10"
+      />
+
+      {/* Contenedor principal (texto estático) */}
+      <div className="text-center z-10 mt-8">
+        
+        {/* Gráfico de Barras Animado (solo el gráfico flota) */}
+        <div className="flex items-end gap-4 mb-8 mx-auto w-fit animate-float-container">
+          {/* Barra 1 */}
+          <div className="w-10 h-20 rounded-t-lg bg-gradient-to-t from-orange-600 to-orange-400 relative animate-bar-1 group">
+            <div className="absolute top-0 left-0 w-full h-2 bg-white/80 rounded-t-lg group-hover:bg-white transition-colors shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
+          </div>
+          {/* Barra 2 (Central, más alta) */}
+          <div className="w-10 h-32 rounded-t-lg bg-gradient-to-t from-orange-600 to-orange-400 relative animate-bar-2 group">
+            <div className="absolute top-0 left-0 w-full h-2 bg-white/80 rounded-t-lg group-hover:bg-white transition-colors shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
+          </div>
+          {/* Barra 3 */}
+          <div className="w-10 h-16 rounded-t-lg bg-gradient-to-t from-orange-600 to-orange-400 relative animate-bar-3 group">
+            <div className="absolute top-0 left-0 w-full h-2 bg-white/80 rounded-t-lg group-hover:bg-white transition-colors shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
+          </div>
+        </div>
+
+        {/* Texto Principal (ahora estático) */}
+        <h1
+          className="text-5xl font-bold text-white mb-6 leading-tight"
+          style={{ fontFamily: "'Montserrat', sans-serif" }}
+        >
+          Gestión Inteligente de Indicadores
+        </h1>
+
+        {/* Texto Descriptivo (ahora estático) */}
+        <p className="text-xl text-white/90 max-w-2xl mx-auto">
+          Plataforma integral para el seguimiento, evaluación y optimización del desempeño empresarial.
+        </p>
+      </div>
+
+      {/* Animaciones CSS actualizadas */}
+      <style jsx>{`
+        /* Animación de crecimiento de las barras */
+        @keyframes growUp {
+          from { transform: scaleY(0); opacity: 0; }
+          to { transform: scaleY(1); opacity: 1; }
+        }
+        .animate-bar-1 { animation: growUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards 0.2s; transform-origin: bottom; }
+        .animate-bar-2 { animation: growUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards 0.4s; transform-origin: bottom; }
+        .animate-bar-3 { animation: growUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards 0.6s; transform-origin: bottom; }
+
+        /* Animación de flotación solo para el gráfico */
+        @keyframes floatContainer {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        .animate-float-container {
+          animation: floatContainer 6s ease-in-out infinite;
+        }
+
+        /* Animaciones para las partículas de fondo */
+        @keyframes particleFloat1 {
+          0%, 100% { transform: translate(0, 0); }
+          50% { transform: translate(20px, -20px); }
+        }
+        @keyframes particleFloat2 {
+          0%, 100% { transform: translate(0, 0); }
+          50% { transform: translate(-30px, 20px); }
+        }
+        @keyframes particleFloat3 {
+          0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+          50% { transform: translate(10px, -10px) scale(1.2); opacity: 0.2; }
+        }
+
+        .animate-particle-1 { animation: particleFloat1 15s ease-in-out infinite; }
+        .animate-particle-2 { animation: particleFloat2 20s ease-in-out infinite reverse; }
+        .animate-particle-3 { animation: particleFloat3 10s ease-in-out infinite; }
+      `}</style>
+
+    </div>
+
+    {/* Panel derecho con textos en azul */}
+    <div className="w-full lg:w-1/2 bg-white flex flex-col items-center justify-center px-8 py-10 relative">
+
+      <div className="w-full max-w-md">
+
+        <div className="mb-10">
+          {/* Título cambiado a azul corporativo */}
+          <h2
+            className="text-3xl font-bold text-[#123498] mb-2"
+            style={{ fontFamily: "'Montserrat', sans-serif" }}
+          >
+            Bienvenido
+          </h2>
+
+          {/* Texto cambiado a azul con 80% de opacidad */}
+          <p className="text-[#123498]/80">
+            Ingrese sus credenciales para continuar al sistema.
+          </p>
+        </div>
+
+        {error && (
+          <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+            <span className="text-sm text-red-700">
+              {error}
+            </span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <InputField
+            label="USUARIO / CORREO"
+            id="usuario"
+            name="usuario"
+            placeholder="ejemplo@empresa.com"
+            value={formData.usuario}
+            onChange={handleChange}
+            icon={userIcon}
+            accentColor="#123498" 
+          />
+
+          <InputField
+            label="CONTRASEÑA"
+            id="contrasena"
+            name="contrasena"
+            placeholder="Ingrese su contraseña"
+            value={formData.contrasena}
+            onChange={handleChange}
+            icon={lockIcon}
+            showToggle
+            showPassword={showPassword}
+            onTogglePassword={() => setShowPassword(!showPassword)}
+            accentColor="#123498" 
+          />
+
+          <CheckboxCustom
+            label="Mantener sesión iniciada"
+            checked={formData.mantenerSesion}
+            onChange={(val) =>
+              setFormData((prev) => ({
+                ...prev,
+                mantenerSesion: val,
+              }))
+            }
+            accentColor="#123498"
+          />
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full rounded-xl bg-orange-500 py-4 text-white font-bold transition-all duration-200 hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-orange-400 flex items-center justify-center gap-2 group"
+          >
+            {isLoading ? "Ingresando..." : "Ingresar"}
+            {!isLoading && (
+              <span className="group-hover:translate-x-1 transition-transform">
+                →
+              </span>
+            )}
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </section>
+);
 }
