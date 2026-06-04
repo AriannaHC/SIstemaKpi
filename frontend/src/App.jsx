@@ -1,40 +1,29 @@
 import { useState } from "react";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
-
-// Páginas (Mueve temporalmente DashboardView, DailyView, etc. desde Views.jsx a la carpeta pages, o impórtalos de donde los tengas por ahora)
 import Login from "./pages/Login";
-import { DashboardView, DailyView, SettingsView, ReportsView } from "./components/Views"; // Ajusta a donde tengas tus vistas ahora
+import LlenadoKPI from "./pages/LlenadoKPI";
+import ConfiguracionKPI from "./pages/ConfiguracionKPI"; // Importar
+import Dashboard from "./pages/Dashboard"; // Importar
 
 export default function App() {
   const { user, logout } = useAuth();
-  const [activePage, setActivePage] = useState("dashboard");
+  const [activePage, setActivePage] = useState("dashboard"); // Volvemos al dashboard inicial
 
-  // Si no hay usuario en el Contexto, mostramos el Login
-  if (!user) {
-    return <Login />;
-  }
-
-  // Mapeamos las props falsas que requieren las vistas temporales
-  const userRole = user.kpi_rol_id === 1 ? 'admin' : 'usuario';
+  if (!user) return <Login />;
 
   const renderPage = () => {
     switch (activePage) {
-      case "dashboard": return <DashboardView userRole={userRole} kpis={[]} entries={{}} />;
-      case "daily": return <DailyView userRole={userRole} kpis={[]} entries={{}} setEntries={()=>{}} addNotification={()=>{}} />;
-      case "settings": return <SettingsView kpis={[]} setKpis={()=>{}} />;
-      case "reports": return <ReportsView kpis={[]} entries={{}} participation={{}} notifications={[]} addNotification={()=>{}} />;
-      default: return <DashboardView userRole={userRole} kpis={[]} entries={{}} />;
+      case "dashboard": return <Dashboard />;
+      case "daily": return <LlenadoKPI />;
+      case "settings": return <ConfiguracionKPI />;
+      case "reports": return <div className="p-10 text-center">Reportes pronto...</div>;
+      default: return <Dashboard />;
     }
   };
 
   return (
-    <Layout
-      activePage={activePage}
-      setActivePage={setActivePage}
-      onLogout={logout}
-      user={user}
-    >
+    <Layout activePage={activePage} setActivePage={setActivePage} onLogout={logout} user={user}>
       {renderPage()}
     </Layout>
   );
