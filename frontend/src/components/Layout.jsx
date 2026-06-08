@@ -1,27 +1,51 @@
 // src/components/Layout.jsx
+import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
 export default function Layout({ children, activePage, setActivePage, onLogout, user }) {
-  const userRole = user?.kpi_rol_id === 1 ? 'admin' : 'usuario';
-  
-  return (
-    <div className="flex bg-blanco-suave h-screen w-full antialiased font-sans text-azul-profundo overflow-hidden">
-      {/* ✅ CORRECCIÓN: añade user={user} aquí */}
-      <Sidebar currentTab={activePage} setCurrentTab={setActivePage} onLogout={onLogout} user={user} />
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden w-full">
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) setSidebarOpen(true);
+      else setSidebarOpen(false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return (
+    <div className="flex min-h-screen bg-blanco-suave font-sans antialiased text-azul-profundo relative">
+      {/* Overlay móvil */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden transition-opacity"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <Sidebar
+        currentTab={activePage}
+        setCurrentTab={setActivePage}
+        onLogout={onLogout}
+        user={user}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+      />
+
+      <main className={`flex-1 min-w-0 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
         <Header
           userName={user?.name || 'Usuario'}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
           currentTab={activePage}
-          userRole={userRole}
-          setCurrentTab={setActivePage}
         />
 
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="p-4 md:p-6 lg:p-8">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

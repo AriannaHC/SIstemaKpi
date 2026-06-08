@@ -1,16 +1,23 @@
 // src/components/Header.jsx
-export default function Header({ userName }) {
+import { Menu, X, User as UserIcon } from 'lucide-react';
+
+export default function Header({ userName, sidebarOpen, setSidebarOpen, currentTab }) {
   const currentDate = new Date().toLocaleDateString('es-PE', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
-
-  // Capitalizamos la primera letra del día para que se vea mejor
   const formattedDate = currentDate.charAt(0).toUpperCase() + currentDate.slice(1);
 
-  // Extraemos las iniciales del nombre (máximo 2)
+  const viewTitles = {
+    dashboard: 'PANEL DE CONTROL',
+    daily: 'INGRESO DIARIO DE KPIS',
+    reports: 'AUDITORÍA Y REPORTES',
+    settings: 'CONFIGURACIÓN GENERAL',
+    users: 'GESTIÓN DE USUARIOS',
+  };
+
   const initials = userName
     .split(' ')
     .filter(n => n.length > 0)
@@ -20,18 +27,26 @@ export default function Header({ userName }) {
     .toUpperCase();
 
   return (
-    <header className="bg-white border-b border-gray-100 px-4 pl-16 sm:pl-8 md:px-8 h-16 flex items-center justify-between select-none shrink-0">
-      <h1 className="text-lg md:text-xl font-bold text-gray-900 tracking-tight truncate pr-4">
-        Hola, {userName}
-      </h1>
-
-      <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-        <h2 className="hidden sm:block text-sm font-medium text-gray-500">
-          {formattedDate}
+    <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-slate-200 px-4 md:px-8 h-16 md:h-20 flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3 md:gap-6 min-w-0">
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="flex-shrink-0 p-2.5 rounded-xl hover:bg-slate-100 text-azul transition-colors"
+        >
+          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+        <h2 className="text-sm md:text-lg font-bold text-azul uppercase tracking-wide truncate">
+          {viewTitles[currentTab] || ''}
         </h2>
-        {/* En móviles mostramos una versión corta de la fecha para ahorrar espacio si es necesario, o simplemente la ocultamos. Optamos por ocultarla para no saturar. */}
-        <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-sm shadow-sm border border-blue-100 ring-2 ring-white shrink-0">
-          {initials}
+      </div>
+
+      <div className="flex items-center gap-2 md:gap-6 flex-shrink-0">
+        <span className="hidden md:block text-sm font-medium text-gray-500">
+          {formattedDate}
+        </span>
+        <div className="hidden md:block h-8 w-px bg-slate-200" />
+        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-slate-100 flex items-center justify-center text-azul border border-slate-200">
+          <span className="text-xs md:text-sm font-bold">{initials}</span>
         </div>
       </div>
     </header>
