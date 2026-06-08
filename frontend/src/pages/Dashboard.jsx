@@ -10,7 +10,7 @@ import {
   Trash2,
   Edit,
   FileSpreadsheet,
-  Settings
+  Settings,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -33,17 +33,17 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const data = await kpiService.getDashboardData();
-      
-      const areasList = data.map(d => ({ id: d.id, nombre: d.nombre }));
+
+      const areasList = data.map((d) => ({ id: d.id, nombre: d.nombre }));
       setAreas(areasList);
 
       const kpisFlat = [];
-      data.forEach(area => {
-        area.kpis.forEach(kpi => {
+      data.forEach((area) => {
+        area.kpis.forEach((kpi) => {
           kpisFlat.push({
             ...kpi,
             area_id: area.id,
-            area_nombre: area.nombre
+            area_nombre: area.nombre,
           });
         });
       });
@@ -117,7 +117,11 @@ export default function Dashboard() {
   };
 
   const handleDeleteArea = async (id, nombre) => {
-    if (window.confirm(`⚠️ ¡CUIDADO!\n\n¿Seguro que deseas eliminar el área "${nombre}" y todos sus KPIs?`)) {
+    if (
+      window.confirm(
+        `⚠️ ¡CUIDADO!\n\n¿Seguro que deseas eliminar el área "${nombre}" y todos sus KPIs?`,
+      )
+    ) {
       try {
         await kpiService.deleteArea(id);
         loadData();
@@ -128,8 +132,12 @@ export default function Dashboard() {
   };
 
   const filteredKpis = allKpis.filter((kpi) => {
-    const matchesSearch = kpi.nombre.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesArea = filterArea ? kpi.area_id.toString() === filterArea : true;
+    const matchesSearch = kpi.nombre
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchesArea = filterArea
+      ? kpi.area_id.toString() === filterArea
+      : true;
     return matchesSearch && matchesArea;
   });
 
@@ -145,7 +153,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 max-w-7xl mx-auto">
-      
       {/* Cabecera */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -153,33 +160,42 @@ export default function Dashboard() {
             Panel de Control <span className="text-naranja">Maestro</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">
-            Gestión centralizada de áreas, carga de estructuras y catálogo de KPIs.
+            Gestión centralizada de áreas, carga de estructuras y catálogo de
+            KPIs.
           </p>
         </div>
       </div>
 
       {/* Centro de Importación */}
-      <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white rounded-4xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="p-6 md:p-8 border-b border-slate-50 bg-slate-50/30">
           <h2 className="text-xl font-bold text-azul-profundo flex items-center gap-2 mb-6">
-            <FileSpreadsheet className="w-6 h-6 text-naranja" /> Centro de Importación
+            <FileSpreadsheet className="w-6 h-6 text-naranja" /> Centro de
+            Importación
           </h2>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Subida 1 */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-              <h3 className="font-bold text-azul mb-1">1. Subir Excel de Área</h3>
-              <p className="text-xs text-gray-500 mb-5">Crea las estructuras, cálculos automáticos y campos base.</p>
-              <form onSubmit={handleUploadArea} className="flex flex-col sm:flex-row gap-3 items-center">
-                <input 
-                  type="file" 
-                  accept=".xlsx" 
-                  required 
+              <h3 className="font-bold text-azul mb-1">
+                1. Subir Excel de Área
+              </h3>
+              <p className="text-xs text-gray-500 mb-5">
+                Crea las estructuras, cálculos automáticos y campos base.
+              </p>
+              <form
+                onSubmit={handleUploadArea}
+                className="flex flex-col sm:flex-row gap-3 items-center"
+              >
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  required
                   className="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-azul/10 file:text-azul hover:file:bg-azul/20 file:cursor-pointer file:uppercase file:tracking-wider file:transition-colors"
                 />
-                <button 
-                  type="submit" 
-                  disabled={isUploading} 
+                <button
+                  type="submit"
+                  disabled={isUploading}
                   className="w-full sm:w-auto shrink-0 bg-azul text-white font-black py-2.5 px-6 rounded-xl hover:bg-azul-profundo transition-all text-xs uppercase tracking-widest disabled:opacity-50"
                 >
                   Interpretar Área
@@ -189,18 +205,25 @@ export default function Dashboard() {
 
             {/* Subida 2 */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-              <h3 className="font-bold text-azul mb-1">2. Subir Diccionario SMART</h3>
-              <p className="text-xs text-gray-500 mb-5">Autoconfigura KPIs Positivos/Negativos matemáticamente.</p>
-              <form onSubmit={handleUploadSmart} className="flex flex-col sm:flex-row gap-3 items-center">
-                <input 
-                  type="file" 
-                  accept=".xlsx" 
-                  required 
+              <h3 className="font-bold text-azul mb-1">
+                2. Subir Diccionario SMART
+              </h3>
+              <p className="text-xs text-gray-500 mb-5">
+                Autoconfigura KPIs Positivos/Negativos matemáticamente.
+              </p>
+              <form
+                onSubmit={handleUploadSmart}
+                className="flex flex-col sm:flex-row gap-3 items-center"
+              >
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  required
                   className="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-naranja/10 file:text-naranja hover:file:bg-naranja/20 file:cursor-pointer file:uppercase file:tracking-wider file:transition-colors"
                 />
-                <button 
-                  type="submit" 
-                  disabled={isUploading} 
+                <button
+                  type="submit"
+                  disabled={isUploading}
                   className="w-full sm:w-auto shrink-0 bg-naranja text-white font-black py-2.5 px-6 rounded-xl hover:bg-orange-600 transition-all text-xs uppercase tracking-widest disabled:opacity-50"
                 >
                   Vincular SMART
@@ -219,7 +242,7 @@ export default function Dashboard() {
             <h2 className="text-xl font-bold text-azul-profundo flex items-center gap-2 shrink-0 self-start md:self-center">
               Catálogo de KPIs
             </h2>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
               {/* Búsqueda */}
               <div className="flex gap-2 w-full sm:w-80">
@@ -246,7 +269,7 @@ export default function Dashboard() {
               {user?.kpi_rol_id === 1 && (
                 <div className="relative w-full sm:w-64">
                   <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <select 
+                  <select
                     value={filterArea}
                     onChange={handleAreaChange}
                     className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none focus:border-azul appearance-none transition-all shadow-sm cursor-pointer"
@@ -292,16 +315,23 @@ export default function Dashboard() {
                 </tr>
               ) : (
                 currentKpis.map((kpi) => (
-                  <tr key={kpi.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr
+                    key={kpi.id}
+                    className="hover:bg-slate-50/50 transition-colors"
+                  >
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-3">
-                        <div className={`shrink-0 w-2 h-2 rounded-full ${kpi.tipo_kpi === 'Positivo' ? 'bg-turquesa' : 'bg-rojo-persa'}`} />
+                        <div
+                          className={`shrink-0 w-2 h-2 rounded-full ${kpi.tipo_kpi === "Positivo" ? "bg-turquesa" : "bg-rojo-persa"}`}
+                        />
                         <div>
                           <p className="text-sm font-bold text-slate-800 leading-tight">
                             {kpi.nombre}
                           </p>
                           <div className="mt-1 flex gap-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${getTipoColor(kpi.tipo_kpi)}`}>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${getTipoColor(kpi.tipo_kpi)}`}
+                            >
                               {kpi.tipo_kpi}
                             </span>
                           </div>
@@ -314,8 +344,10 @@ export default function Dashboard() {
                           {kpi.area_nombre}
                         </p>
                         {user?.kpi_rol_id === 1 && (
-                          <button 
-                            onClick={() => handleDeleteArea(kpi.area_id, kpi.area_nombre)}
+                          <button
+                            onClick={() =>
+                              handleDeleteArea(kpi.area_id, kpi.area_nombre)
+                            }
                             className="opacity-0 group-hover:opacity-100 text-[10px] text-rojo-persa font-bold hover:underline transition-opacity flex items-center gap-1"
                             title="Eliminar toda el área y sus KPIs"
                           >
@@ -325,19 +357,22 @@ export default function Dashboard() {
                       </div>
                     </td>
                     <td className="px-8 py-5">
-                      <p className="text-xs font-mono text-gray-500 line-clamp-2 max-w-[250px]" title={kpi.formula_texto}>
+                      <p
+                        className="text-xs font-mono text-gray-500 line-clamp-2 max-w-[250px]"
+                        title={kpi.formula_texto}
+                      >
                         {kpi.formula_texto || "-"}
                       </p>
                     </td>
                     <td className="px-8 py-5">
                       <div className="flex items-center justify-center gap-2">
-                        <button 
+                        <button
                           className="p-2 text-azul bg-azul/5 rounded-lg hover:bg-azul hover:text-white transition-colors border border-azul/10"
                           title="Configuración"
                         >
                           <Settings className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDeleteKpi(kpi.id, kpi.nombre)}
                           className="p-2 text-rojo-persa bg-rojo-persa/5 rounded-lg hover:bg-rojo-persa hover:text-white transition-colors border border-rojo-persa/10"
                           title="Eliminar KPI"
@@ -373,7 +408,8 @@ export default function Dashboard() {
         {/* Paginación */}
         <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-            {filteredKpis.length} registro{filteredKpis.length !== 1 ? "s" : ""} encontrado{filteredKpis.length !== 1 ? "s" : ""}
+            {filteredKpis.length} registro{filteredKpis.length !== 1 ? "s" : ""}{" "}
+            encontrado{filteredKpis.length !== 1 ? "s" : ""}
           </p>
           <div className="flex items-center gap-2">
             <button
