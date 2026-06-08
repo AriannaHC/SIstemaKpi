@@ -1,7 +1,7 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api import auth, kpis # <-- Importa kpis aquí
+from api import auth, kpis, users # <-- Añade users aquí
 
 app = FastAPI(title="Sistema KPIs API", version="1.0.0")
 
@@ -13,9 +13,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Incluir las rutas
 app.include_router(auth.router)
-app.include_router(kpis.router) # <-- Añade esta línea
+app.include_router(kpis.router)
+app.include_router(users.router) # <-- Añade esta línea
 
 @app.get("/")
 def root():

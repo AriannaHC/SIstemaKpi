@@ -107,7 +107,7 @@ return (
       </div>
 
       {/* Animaciones CSS actualizadas */}
-      <style jsx>{`
+      <style>{`
         /* Animación de crecimiento de las barras */
         @keyframes growUp {
           from { transform: scaleY(0); opacity: 0; }
