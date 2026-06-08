@@ -27,7 +27,6 @@ class User(Base):
     password = Column("password_hash", String(255), nullable=False)
     status = Column(Boolean, default=True)
     
-    # Llaves foráneas para el sistema de KPIs
     kpi_area_id = Column(Integer, ForeignKey("areas.id"), nullable=True)
     kpi_rol_id = Column(Integer, ForeignKey("kpi_roles.id"), nullable=True)
 
