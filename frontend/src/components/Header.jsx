@@ -1,28 +1,34 @@
 // src/components/Header.jsx
-import { Menu, X, User as UserIcon } from 'lucide-react';
+import { Menu, X, User as UserIcon } from "lucide-react";
 
-export default function Header({ userName, sidebarOpen, setSidebarOpen, currentTab }) {
-  const currentDate = new Date().toLocaleDateString('es-PE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+export default function Header({
+  userName,
+  sidebarOpen,
+  setSidebarOpen,
+  currentTab,
+}) {
+  const currentDate = new Date().toLocaleDateString("es-PE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   });
-  const formattedDate = currentDate.charAt(0).toUpperCase() + currentDate.slice(1);
+  const formattedDate =
+    currentDate.charAt(0).toUpperCase() + currentDate.slice(1);
 
   const viewTitles = {
-    dashboard: 'PANEL DE CONTROL',
-    daily: 'INGRESO DIARIO DE KPIS',
-    reports: 'AUDITORÍA Y REPORTES',
-    settings: 'CONFIGURACIÓN GENERAL',
-    users: 'GESTIÓN DE USUARIOS',
+    dashboard: "PANEL DE CONTROL",
+    daily: "INGRESO DIARIO DE KPIS",
+    reports: "AUDITORÍA Y REPORTES",
+    settings: "CONFIGURACIÓN GENERAL",
+    users: "GESTIÓN DE USUARIOS",
   };
 
   const initials = userName
-    .split(' ')
-    .filter(n => n.length > 0)
-    .map(n => n[0])
-    .join('')
+    .split(" ")
+    .filter((n) => n.length > 0)
+    .map((n) => n[0])
+    .join("")
     .substring(0, 2)
     .toUpperCase();
 
@@ -31,16 +37,20 @@ export default function Header({ userName, sidebarOpen, setSidebarOpen, currentT
       <div className="flex items-center gap-3 md:gap-6 min-w-0">
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="flex-shrink-0 p-2.5 rounded-xl hover:bg-slate-100 text-azul transition-colors"
+          className="shrink-0 p-2.5 rounded-xl hover:bg-slate-100 text-azul transition-colors"
         >
-          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          {sidebarOpen ? (
+            <X className="w-5 h-5" />
+          ) : (
+            <Menu className="w-5 h-5" />
+          )}
         </button>
         <h2 className="text-sm md:text-lg font-bold text-azul uppercase tracking-wide truncate">
-          {viewTitles[currentTab] || ''}
+          {viewTitles[currentTab] || ""}
         </h2>
       </div>
 
-      <div className="flex items-center gap-2 md:gap-6 flex-shrink-0">
+      <div className="flex items-center gap-2 md:gap-6 shrink-0">
         <span className="hidden md:block text-sm font-medium text-gray-500">
           {formattedDate}
         </span>
