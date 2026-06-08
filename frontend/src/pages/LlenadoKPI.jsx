@@ -1,46 +1,40 @@
 // pages/LlenadoKPI.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// CAMBIOS vs versión anterior:
-//   1. CERO datos mockeados — todo viene de kpiService
-//   2. Motor matemático de 4 pases portado 1:1 desde registro.html:
-//      - Lee c.origen === 'calculado' y c.formula_personalizada
-//      - Reemplaza [Variable] por el valor numérico del contexto
-//      - Resuelve dependencias anidadas (4 pases)
-//      - Maneja canCalculate: si un operando es null → no evalúa
-//   3. Semáforo basado en el valor de Cumplimiento (igual que el HTML)
-//   4. Autocompletado de meta_valor, meta_produccion, horas_planificadas
-//   5. Campos 'sistema' también se muestran en el panel de resultados
-//   6. El submit recoge TODOS los campos (usuario + calculados + sistema)
-//      para que el backend pueda extraer alerta, cumplimiento, etc.
-//   7. Estados de carga y error con feedback visual
-// ─────────────────────────────────────────────────────────────────────────────
-
-import { useState, useEffect, useCallback } from 'react';
-import { kpiService } from '../services/kpiService';
+import { useState, useEffect, useCallback } from "react";
+import { kpiService } from "../services/kpiService";
+import {
+  FileText,
+  Clock,
+  User,
+  CheckCircle2,
+  ChevronLeft,
+  Activity,
+} from "lucide-react";
 
 // ── Semáforo ──────────────────────────────────────────────────────────────────
 function SemaforoDisplay({ cumplimiento }) {
-  if (cumplimiento === null || cumplimiento === undefined || isNaN(cumplimiento)) {
+  if (
+    cumplimiento === null ||
+    cumplimiento === undefined ||
+    isNaN(cumplimiento)
+  ) {
     return (
       <span className="inline-flex items-center gap-1.5 font-bold text-gray-400">
         ⚪ Sin calcular
       </span>
     );
   }
-  if (cumplimiento >= 0.80) {
+  if (cumplimiento >= 0.8)
     return (
       <span className="inline-flex items-center gap-1.5 font-bold text-green-700">
         🟢 Verde (Óptimo)
       </span>
     );
-  }
-  if (cumplimiento >= 0.60) {
+  if (cumplimiento >= 0.6)
     return (
       <span className="inline-flex items-center gap-1.5 font-bold text-yellow-700">
         🟡 Amarillo (Problemas)
       </span>
     );
-  }
   return (
     <span className="inline-flex items-center gap-1.5 font-bold text-red-700">
       🔴 Rojo (Peligro)
@@ -50,70 +44,60 @@ function SemaforoDisplay({ cumplimiento }) {
 
 // ── Formateador de resultados ─────────────────────────────────────────────────
 function formatearValor(label, valor) {
-  if (valor === null || valor === undefined || valor === '') return '-';
+  if (valor === null || valor === undefined || valor === "") return "-";
   const lbl = label.toLowerCase();
   if (
-    lbl.includes('cumplimiento') ||
-    lbl.includes('eficiencia') ||
-    lbl.includes('eficacia') ||
-    lbl.includes('efectividad') ||
-    lbl.includes('rendimiento') ||
-    lbl.includes('productividad')
+    lbl.includes("cumplimiento") ||
+    lbl.includes("eficiencia") ||
+    lbl.includes("eficacia") ||
+    lbl.includes("efectividad") ||
+    lbl.includes("rendimiento") ||
+    lbl.includes("productividad")
   ) {
-    return (parseFloat(valor) * 100).toFixed(2) + '%';
+    return (parseFloat(valor) * 100).toFixed(2) + "%";
   }
   const num = parseFloat(valor);
   return isNaN(num) ? String(valor) : num.toFixed(2);
 }
 
-// ── Motor matemático (portado 1:1 desde registro.html) ────────────────────────
-/**
- * Recibe la lista de campos y el objeto de valores actuales.
- * Devuelve un nuevo objeto `contexto` con todos los campos resueltos,
- * incluidos los calculados (tras hasta 4 pases para dependencias anidadas).
- */
+// ── Motor matemático ──────────────────────────────────────────────────────────
 function ejecutarMotor(campos, valores) {
-  // Paso 1: construir contexto inicial con los valores crudos del usuario
   let contexto = {};
   campos.forEach((c) => {
     const raw = valores[c.campo_key];
-    if (c.tipo === 'texto') {
-      contexto[c.campo_label] = raw ?? '';
+    if (c.tipo === "texto") {
+      contexto[c.campo_label] = raw ?? "";
     } else {
       contexto[c.campo_label] =
-        raw === '' || raw === undefined || raw === null ? null : parseFloat(raw);
+        raw === "" || raw === undefined || raw === null
+          ? null
+          : parseFloat(raw);
     }
   });
 
-  // Paso 2: 4 pases para resolver dependencias anidadas
   for (let pase = 1; pase <= 4; pase++) {
     campos.forEach((c) => {
-      if (c.origen !== 'calculado' || !c.formula_personalizada) return;
-
+      if (c.origen !== "calculado" || !c.formula_personalizada) return;
       let formula = c.formula_personalizada;
       let canCalculate = true;
 
-      // Reemplazar [Variable] por su valor numérico del contexto
       for (const [label, value] of Object.entries(contexto)) {
-        // Escapar caracteres especiales de regex dentro del label
-        const safeLabel = label.replace(/[\[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-        const regex = new RegExp(`\\[${safeLabel}\\]`, 'g');
-
+        const safeLabel = label.replace(/[\[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+        const regex = new RegExp(`\\[${safeLabel}\\]`, "g");
         if (formula.match(regex) && (value === null || value === undefined)) {
           canCalculate = false;
         }
-        formula = formula.replace(regex, value !== null && value !== undefined ? value : 0);
+        formula = formula.replace(
+          regex,
+          value !== null && value !== undefined ? value : 0,
+        );
       }
 
       if (canCalculate) {
         try {
-          // eslint-disable-next-line no-eval
-          const resultado = eval(formula); // Mismo comportamiento que el prototipo HTML
-          if (!isNaN(resultado) && isFinite(resultado)) {
-            contexto[c.campo_label] = resultado;
-          } else {
-            contexto[c.campo_label] = null;
-          }
+          const resultado = eval(formula);
+          contexto[c.campo_label] =
+            !isNaN(resultado) && isFinite(resultado) ? resultado : null;
         } catch (_) {
           contexto[c.campo_label] = null;
         }
@@ -122,94 +106,63 @@ function ejecutarMotor(campos, valores) {
       }
     });
   }
-
   return contexto;
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function LlenadoKPI() {
-  const [areas, setAreas] = useState([]);
-  const [kpis, setKpis] = useState([]);
+  // Estado para la Vista de Lista (Cards)
+  const [kpisSemanales, setKpisSemanales] = useState([]);
+  const [loadingList, setLoadingList] = useState(true);
+
+  // Estado para la Vista de Formulario
+  const [kpiSeleccionado, setKpiSeleccionado] = useState(null); // Si es null, mostramos las cards
   const [campos, setCampos] = useState([]);
-
-  const [selectedArea, setSelectedArea] = useState('');
-  const [selectedKpi, setSelectedKpi] = useState('');
-
-  // valores: { campo_key: string } — siempre strings del input
   const [valores, setValores] = useState({});
-  // contexto resuelto por el motor (con las fórmulas evaluadas)
   const [contexto, setContexto] = useState({});
-
-  const [isLoadingAreas, setIsLoadingAreas] = useState(true);
   const [isLoadingCampos, setIsLoadingCampos] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState(null); // { tipo: 'ok'|'error', mensaje: string }
+  const [feedback, setFeedback] = useState(null);
 
-  // ── 1. Cargar áreas reales ──────────────────────────────────────────────
+  // ── 1. Cargar KPIs activos de la semana (Vista Cards) ───────────────────────
   useEffect(() => {
-    setIsLoadingAreas(true);
     kpiService
-      .getAreas()
-      .then((data) => setAreas(data))
-      .catch(() => setFeedback({ tipo: 'error', mensaje: 'No se pudieron cargar las áreas.' }))
-      .finally(() => setIsLoadingAreas(false));
+      .getDiario()
+      .then(setKpisSemanales)
+      .catch(() => console.error("Error cargando KPIs diarios"))
+      .finally(() => setLoadingList(false));
   }, []);
 
-  // ── 2. Al cambiar área → cargar KPIs ───────────────────────────────────
-  const handleAreaChange = async (e) => {
-    const areaId = e.target.value;
-    setSelectedArea(areaId);
-    setSelectedKpi('');
+  // ── 2. Al hacer clic en una Card → Cargar Formulario ────────────────────────
+  const abrirFormulario = async (kpi) => {
+    setKpiSeleccionado(kpi);
     setCampos([]);
     setValores({});
     setContexto({});
     setFeedback(null);
-    setKpis([]);
-
-    if (!areaId) return;
-    try {
-      const data = await kpiService.getKpisPorArea(areaId);
-      setKpis(data);
-    } catch {
-      setFeedback({ tipo: 'error', mensaje: 'No se pudieron cargar los KPIs del área.' });
-    }
-  };
-
-  // ── 3. Al cambiar KPI → cargar campos y autocompletar metas ────────────
-  const handleKpiChange = async (e) => {
-    const kpiId = e.target.value;
-    setSelectedKpi(kpiId);
-    setCampos([]);
-    setValores({});
-    setContexto({});
-    setFeedback(null);
-
-    if (!kpiId) return;
-
     setIsLoadingCampos(true);
+
     try {
-      const res = await kpiService.getCamposKpi(kpiId);
+      const res = await kpiService.getCampos(kpi.id);
       const dataCampos = res.campos || [];
       const meta = res.kpi_meta;
 
-      // Autocompletar valores de metas/horas según campo_label (igual que registro.html)
       const valoresIniciales = {};
       dataCampos.forEach((c) => {
         const lbl = c.campo_label.toLowerCase();
-        let prefill = '';
+        let prefill = "";
         if (meta) {
-          if (lbl.includes('meta kpi') && meta.meta_valor !== null && meta.meta_valor !== undefined)
+          if (lbl.includes("meta kpi") && meta.meta_valor != null)
             prefill = String(meta.meta_valor);
           else if (
-            (lbl.includes('meta producción') || lbl.includes('meta produccion')) &&
-            meta.meta_produccion !== null &&
-            meta.meta_produccion !== undefined
+            (lbl.includes("meta producción") ||
+              lbl.includes("meta produccion")) &&
+            meta.meta_produccion != null
           )
             prefill = String(meta.meta_produccion);
           else if (
-            lbl.includes('horas planificadas') &&
-            meta.horas_planificadas !== null &&
-            meta.horas_planificadas !== undefined
+            lbl.includes("horas planificadas") &&
+            meta.horas_planificadas != null
           )
             prefill = String(meta.horas_planificadas);
         }
@@ -219,229 +172,269 @@ export default function LlenadoKPI() {
       setCampos(dataCampos);
       setValores(valoresIniciales);
     } catch {
-      setFeedback({ tipo: 'error', mensaje: 'No se pudieron cargar los campos del KPI.' });
+      setFeedback({
+        tipo: "error",
+        mensaje: "No se pudieron cargar los campos del KPI.",
+      });
     } finally {
       setIsLoadingCampos(false);
     }
   };
 
-  // ── 4. Motor matemático en tiempo real ─────────────────────────────────
-  // Se dispara cada vez que el usuario tipea o cambia un campo
+  const cerrarFormulario = () => {
+    setKpiSeleccionado(null);
+    setFeedback(null);
+  };
+
+  // ── 3. Motor matemático ─────────────────────────────────────────────────────
   useEffect(() => {
     if (campos.length === 0) return;
-    const nuevoContexto = ejecutarMotor(campos, valores);
-    setContexto(nuevoContexto);
+    setContexto(ejecutarMotor(campos, valores));
   }, [valores, campos]);
 
-  // ── 5. Manejo de cambios en inputs de usuario ───────────────────────────
-  const handleChange = useCallback(
-    (e) => {
-      setValores((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    },
-    []
-  );
+  const handleChange = useCallback((e) => {
+    setValores((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }, []);
 
-  // ── 6. Calcular el valor de Cumplimiento para el Semáforo ───────────────
   const cumplimientoValue = (() => {
     for (const key of Object.keys(contexto)) {
-      if (key.toLowerCase().includes('cumplimiento')) return contexto[key];
+      if (key.toLowerCase().includes("cumplimiento")) return contexto[key];
     }
     return null;
   })();
 
-  // ── 7. Renderizar el valor en el panel de resultados ────────────────────
   const renderResultado = (c) => {
     const lbl = c.campo_label.toLowerCase();
-    // Campo de alerta/semáforo → usa SemaforoDisplay
-    if (lbl.includes('alerta') || lbl.includes('semáforo') || lbl.includes('semaforo')) {
+    if (
+      lbl.includes("alerta") ||
+      lbl.includes("semáforo") ||
+      lbl.includes("semaforo")
+    ) {
       return <SemaforoDisplay cumplimiento={cumplimientoValue} />;
     }
-    const val = contexto[c.campo_label];
     return (
       <span className="font-bold text-azul">
-        {formatearValor(c.campo_label, val)}
+        {formatearValor(c.campo_label, contexto[c.campo_label])}
       </span>
     );
   };
 
-  // ── 8. Submit: recopila TODOS los campos (usuario + calculados + sistema)
+  // ── 4. Guardar Datos ────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setFeedback(null);
 
-    // Construir el payload de valores combinando inputs del usuario
-    // y los resultados calculados por el motor (para que el backend
-    // pueda extraer cumplimiento, eficiencia, alerta, etc.)
     const valoresCompletos = {};
     campos.forEach((c) => {
       const valMotor = contexto[c.campo_label];
-      if (c.origen === 'usuario') {
-        valoresCompletos[c.campo_key] = valores[c.campo_key] ?? '';
+      if (c.origen === "usuario") {
+        valoresCompletos[c.campo_key] = valores[c.campo_key] ?? "";
       } else if (valMotor !== null && valMotor !== undefined) {
         valoresCompletos[c.campo_key] = valMotor;
       } else {
-        valoresCompletos[c.campo_key] = valores[c.campo_key] ?? '';
+        valoresCompletos[c.campo_key] = valores[c.campo_key] ?? "";
       }
     });
 
     try {
-      const payload = {
-        kpi_id: parseInt(selectedKpi),
-        valores: valoresCompletos,
-      };
-      const res = await kpiService.registrarValores(payload);
+      const payload = { kpi_id: kpiSeleccionado.id, valores: valoresCompletos };
+      const res = await kpiService.registrar(payload);
       setFeedback({
-        tipo: 'ok',
-        mensaje: `✅ Registro guardado exitosamente. Semáforo: ${(res.alerta || 'gris').toUpperCase()}`,
+        tipo: "ok",
+        mensaje: `✅ Registro exitoso. Semáforo: ${(res.alerta || "gris").toUpperCase()}`,
       });
-      // Reset del formulario manteniendo las metas autocompletadas
+
       const valoresReset = {};
       campos.forEach((c) => {
         const lbl = c.campo_label.toLowerCase();
-        const meta = res.kpi_meta; // puede no venir en la respuesta; usamos el contexto actual
         valoresReset[c.campo_key] =
-          lbl.includes('meta') || lbl.includes('horas planificadas')
+          lbl.includes("meta") || lbl.includes("horas planificadas")
             ? valores[c.campo_key]
-            : '';
+            : "";
       });
       setValores(valoresReset);
     } catch (err) {
-      const msg = err?.response?.data?.detail || 'Error al guardar datos. Intenta nuevamente.';
-      setFeedback({ tipo: 'error', mensaje: `❌ ${msg}` });
+      setFeedback({
+        tipo: "error",
+        mensaje: `❌ ${err?.response?.data?.detail || "Error al guardar datos."}`,
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ── Campos a mostrar en cada sección ────────────────────────────────────
-  const camposUsuario = campos.filter((c) => c.origen === 'usuario');
+  // ────────────────────────────────────────────────────────────────────────────
+  // ── RENDERIZADO VISTA 1: GRID DE CARDS
+  // ────────────────────────────────────────────────────────────────────────────
+  if (!kpiSeleccionado) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
+        <div>
+          <h1 className="text-3xl font-extrabold text-azul font-heading">
+            Ingreso <span className="text-naranja">Diario</span>
+          </h1>
+          <p className="text-gray-500 font-medium mt-1">
+            Estos son los indicadores activos para tu área esta semana.
+          </p>
+        </div>
+
+        {loadingList ? (
+          <div className="flex items-center justify-center py-32">
+            <div className="w-10 h-10 border-4 border-azul border-t-naranja rounded-full animate-spin" />
+          </div>
+        ) : kpisSemanales.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <Activity className="w-14 h-14 text-slate-200 mb-4" />
+            <p className="text-azul font-black text-lg uppercase tracking-widest font-heading">
+              Sin KPIs asignados
+            </p>
+            <p className="text-gray-500 text-sm mt-1">
+              Tu área no tiene indicadores activos esta semana.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {kpisSemanales.map((kpi) => (
+              <div
+                key={kpi.id}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col"
+              >
+                {/* Cabecera decorativa de la Card */}
+                <div className="relative h-24 bg-linear-to-br from-azul/10 to-naranja/10 p-5 flex items-start justify-between">
+                  <span
+                    className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border bg-white ${kpi.es_mi_kpi ? "text-naranja border-naranja/30" : "text-azul border-azul/30"}`}
+                  >
+                    {kpi.es_mi_kpi ? "Tu Responsabilidad" : "KPI de Equipo"}
+                  </span>
+                  <FileText className="w-8 h-8 text-azul/20" />
+                </div>
+
+                {/* Info de la Card */}
+                <div className="p-5 flex-1 bg-white">
+                  <h3 className="text-lg font-black text-azul font-heading leading-tight mb-4">
+                    {kpi.nombre}
+                  </h3>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-naranja shrink-0" />
+                      <span className="text-xs text-slate-600 font-medium">
+                        {kpi.es_mi_kpi ? "Encargado: Tú" : "Encargado: Tu Área"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-turquesa shrink-0" />
+                      <span className="text-xs text-slate-600 font-medium">
+                        Vigencia: Esta semana
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Botón de acción */}
+                <div className="p-4 border-t border-slate-50 bg-slate-50/50">
+                  <button
+                    onClick={() => abrirFormulario(kpi)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-azul hover:bg-azul-profundo text-white font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-azul/20"
+                  >
+                    📝 Llenar Reporte
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // ── RENDERIZADO VISTA 2: FORMULARIO DEL KPI
+  // ────────────────────────────────────────────────────────────────────────────
+  const camposUsuario = campos.filter((c) => c.origen === "usuario");
   const camposResultado = campos.filter(
     (c) =>
-      c.origen === 'calculado' ||
-      c.origen === 'sistema' ||
-      c.campo_label.toLowerCase().includes('semáforo') ||
-      c.campo_label.toLowerCase().includes('semaforo') ||
-      c.campo_label.toLowerCase().includes('alerta')
+      c.origen === "calculado" ||
+      c.origen === "sistema" ||
+      c.campo_label.toLowerCase().includes("semáforo") ||
+      c.campo_label.toLowerCase().includes("alerta"),
   );
 
-  // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-azul/10 p-6 md:p-10">
-      {/* Encabezado */}
-      <div className="mb-8 border-b border-azul/10 pb-4">
-        <h2 className="text-2xl font-bold text-azul-profundo mt-3">
-          📝 Registrar Valores de KPI
-        </h2>
-        <p className="text-sm text-gris-texto mt-1">
-          Los campos calculados se actualizan en tiempo real mientras escribes.
-        </p>
-      </div>
+    <div className="max-w-4xl mx-auto animate-in slide-in-from-right-8 duration-500">
+      <button
+        onClick={cerrarFormulario}
+        className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-azul mb-6 transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4" /> Volver a mis KPIs
+      </button>
 
-      {/* Feedback global */}
-      {feedback && (
-        <div
-          className={`mb-6 px-4 py-3 rounded-lg text-sm font-medium border ${
-            feedback.tipo === 'ok'
-              ? 'bg-green-50 border-green-200 text-green-800'
-              : 'bg-red-50 border-red-200 text-red-700'
-          }`}
-        >
-          {feedback.mensaje}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Selectores encadenados */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-azul/10 p-6 md:p-10">
+        <div className="mb-8 border-b border-azul/10 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <label className="block text-[11px] font-black uppercase text-azul-profundo mb-2">
-              1. Selecciona el Área
-            </label>
-            <select
-              className="w-full rounded border border-azul/15 px-4 py-2 focus:outline-none focus:border-azul disabled:bg-gray-100"
-              value={selectedArea}
-              onChange={handleAreaChange}
-              disabled={isLoadingAreas}
-              required
-            >
-              <option value="">{isLoadingAreas ? 'Cargando...' : '-- Seleccionar --'}</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-black uppercase text-azul-profundo mb-2">
-              2. Selecciona el KPI
-            </label>
-            <select
-              className="w-full rounded border border-azul/15 px-4 py-2 focus:outline-none focus:border-azul disabled:bg-gray-100"
-              value={selectedKpi}
-              onChange={handleKpiChange}
-              disabled={!selectedArea || kpis.length === 0}
-              required
-            >
-              <option value="">-- Seleccionar --</option>
-              {kpis.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.nombre}
-                </option>
-              ))}
-            </select>
+            <span className="text-[10px] bg-naranja/10 text-naranja px-2.5 py-1 rounded-full font-bold uppercase tracking-wider mb-2 inline-block">
+              Ingreso Semanal
+            </span>
+            <h2 className="text-2xl font-bold text-azul-profundo font-heading">
+              {kpiSeleccionado.nombre}
+            </h2>
           </div>
         </div>
 
-        {/* Spinner de carga de campos */}
-        {isLoadingCampos && (
-          <div className="text-center py-8 text-gris-texto text-sm">
-            <span className="animate-spin inline-block mr-2">⏳</span>
-            Cargando campos del KPI...
+        {feedback && (
+          <div
+            className={`mb-6 px-4 py-3 rounded-xl text-sm font-bold border ${feedback.tipo === "ok" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-700"}`}
+          >
+            {feedback.mensaje}
           </div>
         )}
 
-        {/* Cuerpo del formulario — solo cuando hay campos */}
-        {!isLoadingCampos && campos.length > 0 && (
-          <div className="mt-8 space-y-8">
-            {/* Sección: Campos que llena el usuario */}
+        {isLoadingCampos ? (
+          <div className="text-center py-12 text-gray-500">
+            <span className="animate-spin inline-block mr-2 text-xl">⏳</span>{" "}
+            Cargando estructura...
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-8">
             {camposUsuario.length > 0 && (
               <div>
-                <h3 className="text-lg font-bold text-azul-profundo mb-4 border-b-2 border-azul inline-block pb-1">
-                  Campos a rellenar
+                <h3 className="text-sm font-black uppercase text-azul tracking-widest mb-5 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-naranja" /> Completar
+                  Datos
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {camposUsuario.map((c) => {
-                    const lbl = c.campo_label.toLowerCase();
                     const esTextoLargo =
-                      lbl.includes('observaciones') || lbl.includes('acciones');
+                      c.campo_label.toLowerCase().includes("observaciones") ||
+                      c.campo_label.toLowerCase().includes("acciones");
                     return (
-                      <div key={c.id} className={esTextoLargo ? 'md:col-span-2' : ''}>
-                        <label className="block text-sm font-semibold mb-1.5">
-                          ✍️ {c.campo_label}
+                      <div
+                        key={c.id}
+                        className={esTextoLargo ? "md:col-span-2" : ""}
+                      >
+                        <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                          {c.campo_label}{" "}
                           {c.es_requerido && (
-                            <span className="text-red-500 ml-1">*</span>
+                            <span className="text-rojo-persa">*</span>
                           )}
                         </label>
                         {esTextoLargo ? (
                           <textarea
                             name={c.campo_key}
-                            value={valores[c.campo_key] || ''}
+                            value={valores[c.campo_key] || ""}
                             onChange={handleChange}
                             rows={3}
-                            className="w-full rounded border border-azul/15 px-4 py-2 outline-none focus:border-azul resize-none text-sm"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-azul focus:bg-white transition-all text-sm resize-none"
                           />
                         ) : (
                           <input
-                            type={c.tipo === 'numero' ? 'number' : 'text'}
+                            type={c.tipo === "numero" ? "number" : "text"}
                             step="any"
                             name={c.campo_key}
-                            value={valores[c.campo_key] || ''}
+                            value={valores[c.campo_key] || ""}
                             onChange={handleChange}
                             required={c.es_requerido}
-                            className="w-full rounded border border-azul/15 px-4 py-2 outline-none focus:border-azul text-sm"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-azul focus:bg-white transition-all text-sm"
                           />
                         )}
                       </div>
@@ -451,22 +444,20 @@ export default function LlenadoKPI() {
               </div>
             )}
 
-            {/* Sección: Resultados calculados en tiempo real */}
             {camposResultado.length > 0 && (
-              <div className="bg-blue-50 border-l-4 border-azul p-5 rounded-r-xl">
-                <h4 className="text-sm font-bold text-azul-profundo mb-4">
-                  📊 Resultados Calculados{' '}
-                  <span className="text-xs font-normal text-gris-texto ml-1">
-                    (se actualizan al escribir)
-                  </span>
+              <div className="bg-linear-to-br from-blue-50 to-slate-50 border border-blue-100 p-6 rounded-2xl">
+                <h4 className="text-sm font-black uppercase text-azul tracking-widest mb-4">
+                  📊 Resultados en Tiempo Real
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {camposResultado.map((c) => (
                     <div
                       key={c.id}
-                      className="flex justify-between items-center text-sm bg-white/60 px-3 py-2 rounded-lg"
+                      className="flex justify-between items-center text-sm bg-white border border-slate-100 px-4 py-3 rounded-xl shadow-sm"
                     >
-                      <strong className="text-gray-700 mr-2">{c.campo_label}:</strong>
+                      <strong className="text-slate-600">
+                        {c.campo_label}:
+                      </strong>
                       {renderResultado(c)}
                     </div>
                   ))}
@@ -474,23 +465,16 @@ export default function LlenadoKPI() {
               </div>
             )}
 
-            {/* Botón de envío */}
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-2 w-full bg-azul hover:bg-azul-profundo text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full bg-azul hover:bg-azul-profundo text-white font-black text-sm uppercase tracking-widest py-4 rounded-xl transition-all shadow-lg shadow-azul/20 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? (
-                <span className="inline-flex items-center justify-center gap-2">
-                  <span className="animate-spin">⏳</span> Guardando...
-                </span>
-              ) : (
-                'Guardar Registro'
-              )}
+              {isSubmitting ? "Guardando..." : "Guardar Registro"}
             </button>
-          </div>
+          </form>
         )}
-      </form>
+      </div>
     </div>
   );
 }

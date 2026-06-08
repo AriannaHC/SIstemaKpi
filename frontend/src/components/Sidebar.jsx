@@ -8,9 +8,17 @@ import {
   LogOut,
   X,
   ChevronRight,
-} from 'lucide-react';
+  CalendarCheck, // <-- Importamos el nuevo ícono
+} from "lucide-react";
 
-export default function Sidebar({ currentTab, setCurrentTab, onLogout, user, sidebarOpen, setSidebarOpen }) {
+export default function Sidebar({
+  currentTab,
+  setCurrentTab,
+  onLogout,
+  user,
+  sidebarOpen,
+  setSidebarOpen,
+}) {
   const rol = user?.kpi_rol_id;
 
   const handleNavigation = (view) => {
@@ -23,8 +31,8 @@ export default function Sidebar({ currentTab, setCurrentTab, onLogout, user, sid
       onClick={() => handleNavigation(view)}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
         currentTab === view
-          ? 'bg-azul text-white shadow-lg shadow-azul/20'
-          : 'text-gray-500 hover:bg-slate-100 hover:text-azul'
+          ? "bg-azul text-white shadow-lg shadow-azul/20"
+          : "text-gray-500 hover:bg-slate-100 hover:text-azul"
       }`}
     >
       {icon}
@@ -36,7 +44,7 @@ export default function Sidebar({ currentTab, setCurrentTab, onLogout, user, sid
   return (
     <aside
       className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 shadow-sm transition-transform duration-300 ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        sidebarOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
       <div className="flex flex-col h-full">
@@ -58,13 +66,20 @@ export default function Sidebar({ currentTab, setCurrentTab, onLogout, user, sid
 
         {/* Navegación */}
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
-          {/* Admin y Jefes ven Dashboard */}
+          {/* Admin y Jefes ven Dashboard y Selección Semanal */}
           {(rol === 1 || rol === 2) && (
-            <NavItem
-              view="dashboard"
-              icon={<LayoutDashboard className="w-5 h-5" />}
-              label="Dashboard Global"
-            />
+            <>
+              <NavItem
+                view="dashboard"
+                icon={<LayoutDashboard className="w-5 h-5" />}
+                label="Dashboard Global"
+              />
+              <NavItem
+                view="escoger-kpi"
+                icon={<CalendarCheck className="w-5 h-5" />}
+                label="Selección Semanal"
+              />
+            </>
           )}
 
           {/* Todos */}
@@ -105,15 +120,15 @@ export default function Sidebar({ currentTab, setCurrentTab, onLogout, user, sid
             <LogOut className="w-4 h-4" /> CERRAR SESIÓN
           </button>
           <div className="bg-white p-3 rounded-2xl flex items-center gap-3 border border-slate-100 shadow-sm">
-            <div className="w-10 h-10 rounded-full bg-azul/10 text-azul flex items-center justify-center font-bold text-sm border-2 border-azul/10 flex-shrink-0">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            <div className="w-10 h-10 rounded-full bg-azul/10 text-azul flex items-center justify-center font-bold text-sm border-2 border-azul/10 shrink-0">
+              {user?.name?.charAt(0)?.toUpperCase() || "U"}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-slate-900 truncate">
                 {user?.name}
               </p>
               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight truncate">
-                {user?.rol_nombre || 'Sin Rol'}
+                {user?.rol_nombre || "Sin Rol"}
               </p>
             </div>
           </div>
