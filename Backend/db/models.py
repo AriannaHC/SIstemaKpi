@@ -94,3 +94,17 @@ class RegistroValores(Base):
     registro_id = Column(Integer, ForeignKey("registros_kpi.id"), nullable=False)
     campo_id = Column(Integer, ForeignKey("kpi_campos.id"), nullable=False)
     valor = Column(Float, nullable=True)
+
+class KpiProgramado(Base):
+    __tablename__ = "kpis_programados"
+    id = Column(Integer, primary_key=True, index=True)
+    kpi_id = Column(Integer, ForeignKey("kpis.id", ondelete="CASCADE"), nullable=False)
+    fecha_inicio = Column(DateTime, nullable=False)
+    fecha_fin = Column(DateTime, nullable=False)
+    completado = Column(Boolean, default=False)
+    registro_kpi_id = Column(Integer, ForeignKey("registros_kpi.id", ondelete="SET NULL"), nullable=True)
+    asignado_por = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+    kpi = relationship("Kpi")
+    asignador = relationship("User", foreign_keys=[asignado_por])

@@ -7,6 +7,11 @@ export const getKpisSemanales = async (areaId) => {
   return response.data;
 };
 
+export const programarKpi = async (kpiId, payload) => {
+  const response = await apiClient.post(`/kpis/${kpiId}/programar`, payload);
+  return response.data;
+};
+
 export const activarKpi = async (kpiId) => {
   const response = await apiClient.post(`/kpis/${kpiId}/activar`);
   return response.data;
@@ -93,4 +98,5 @@ export const kpiService = {
   getKpisSemanales,
   activarKpi,
   asignarResponsable,
+  programarKpi,
 };

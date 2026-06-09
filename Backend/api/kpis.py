@@ -8,8 +8,8 @@ from typing import List, Optional
 from datetime import datetime
 
 from db.database import get_db
-from db.models import User, Kpi, RegistroKpi, KpiCampo, RegistroValores, Area
-from schemas.kpi_schema import KpiResponse, RegistroCreate
+from db.models import User, Kpi, RegistroKpi, KpiCampo, RegistroValores, Area, KpiProgramado
+from schemas.kpi_schema import KpiResponse, RegistroCreate, KpiProgramar
 from api.deps import get_current_user
 
 router = APIRouter(prefix="/api/kpis", tags=["Gestión de KPIs"])
@@ -319,16 +319,9 @@ def get_kpis_semanales_por_area(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Devuelve TODOS los KPIs activos del área con su estado activo_semanal.
-    Permite al administrador ver qué KPIs están programados para la semana
-    actual y cuáles no, para poder activar/desactivar desde el panel.
-    Solo accesible por Admin (1) y Jefe de Área (2).
-    """
     if current_user.kpi_rol_id not in [1, 2]:
         raise HTTPException(status_code=403, detail="Sin permisos para gestionar KPIs semanales.")
 
-    # Jefe de área solo puede ver su propia área
     if current_user.kpi_rol_id == 2 and current_user.kpi_area_id != area_id:
         raise HTTPException(status_code=403, detail="Solo puedes gestionar tu propia área.")
 
@@ -336,33 +329,38 @@ def get_kpis_semanales_por_area(
     if not area:
         raise HTTPException(status_code=404, detail="Área no encontrada.")
 
-    kpis = (
-        db.query(Kpi)
-        .filter(Kpi.area_id == area_id, Kpi.activo == True)
-        .order_by(Kpi.nombre)
-        .all()
-    )
+    kpis = db.query(Kpi).filter(Kpi.area_id == area_id, Kpi.activo == True).order_by(Kpi.nombre).all()
 
-    activos_count = sum(1 for k in kpis if k.activo_semanal)
+    now = datetime.now()
+    
+    # Buscar programaciones activas (vigentes hoy y no completadas)
+    programaciones = db.query(KpiProgramado).join(Kpi).filter(
+        Kpi.area_id == area_id,
+        KpiProgramado.fecha_inicio <= now,
+        KpiProgramado.fecha_fin >= now,
+        KpiProgramado.completado == False
+    ).all()
+
+    # Diccionario para saber rápidamente qué KPIs están programados
+    prog_dict = {p.kpi_id: p for p in programaciones}
 
     return {
         "area_id": area.id,
         "area_nombre": area.nombre,
-        "activos_count": activos_count,
+        "activos_count": len(programaciones),
         "max_activos": 3,
         "kpis": [
             {
                 "id": k.id,
                 "nombre": k.nombre,
                 "formula_texto": k.formula_texto or "",
-                "activo_semanal": k.activo_semanal,
+                "is_programado": k.id in prog_dict,
+                "fecha_fin": prog_dict[k.id].fecha_fin if k.id in prog_dict else None,
                 "responsable_id": k.responsable_id,
-                "responsable_nombre": k.responsable.name if k.responsable else None,
             }
             for k in kpis
         ],
     }
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  4. OPERACIÓN DIARIA
@@ -374,44 +372,46 @@ def obtener_kpis_diarios(
     current_user: User = Depends(get_current_user),
 ):
     es_admin = current_user.kpi_rol_id == 1
+    now = datetime.now()
 
-    if es_admin and not current_user.kpi_area_id:
-        kpis = db.query(Kpi).filter(Kpi.activo_semanal == True).all()
-    elif current_user.kpi_area_id:
-        kpis = (
-            db.query(Kpi)
-            .filter(
-                Kpi.area_id == current_user.kpi_area_id,
-                Kpi.activo_semanal == True,
-            )
-            .all()
-        )
-    else:
-        return []
+    # Buscamos en auditoría: los que están en fecha y NO están completados
+    query = db.query(KpiProgramado).join(Kpi).filter(
+        KpiProgramado.fecha_inicio <= now,
+        KpiProgramado.fecha_fin >= now,
+        KpiProgramado.completado == False
+    )
 
+    if not es_admin:
+        if not current_user.kpi_area_id:
+            return []
+        query = query.filter(Kpi.area_id == current_user.kpi_area_id)
+
+    programados = query.all()
+
+    # Formateamos la respuesta extrayendo el KPI de la auditoría
     resultado = [
         KpiResponse(
-            id=k.id,
-            nombre=k.nombre,
-            area_id=k.area_id,
-            responsable_id=k.responsable_id,
-            responsable_nombre=k.responsable.name if k.responsable else None,
-            meta_valor=k.meta_valor or 0.0,
-            activo_semanal=k.activo_semanal,
-            es_mi_kpi=(k.responsable_id == current_user.id),
+            id=p.kpi.id,
+            nombre=p.kpi.nombre,
+            area_id=p.kpi.area_id,
+            responsable_id=p.kpi.responsable_id,
+            responsable_nombre=p.kpi.responsable.name if p.kpi.responsable else None,
+            meta_valor=p.kpi.meta_valor or 0.0,
+            activo_semanal=True,
+            es_mi_kpi=(p.kpi.responsable_id == current_user.id),
         )
-        for k in kpis
+        for p in programados
     ]
     return sorted(resultado, key=lambda k: k.es_mi_kpi, reverse=True)
 
-
-@router.post("/{kpi_id}/activar")
-def activar_kpi_semanal(
+@router.post("/{kpi_id}/programar")
+def programar_kpi_semanal(
     kpi_id: int,
+    payload: KpiProgramar,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Activa/desactiva un KPI para la semana. Máximo 3 activos por área."""
+    """Programa un KPI con fecha y hora de inicio y fin en la tabla de auditoría."""
     if current_user.kpi_rol_id not in [1, 2]:
         raise HTTPException(status_code=403, detail="Sin permisos para configurar KPIs.")
 
@@ -419,24 +419,26 @@ def activar_kpi_semanal(
     if not kpi:
         raise HTTPException(status_code=404, detail="KPI no encontrado.")
 
-    if not kpi.activo_semanal:
-        activos_count = (
-            db.query(Kpi)
-            .filter(Kpi.area_id == kpi.area_id, Kpi.activo_semanal == True)
-            .count()
-        )
-        if activos_count >= 3:
-            raise HTTPException(
-                status_code=400,
-                detail="El área ya tiene el máximo de 3 KPIs activos esta semana.",
-            )
+    # NUEVA VALIDACIÓN: Contar cuántos KPIs del área se cruzan/solapan en este rango de fechas
+    activos_count = db.query(KpiProgramado).join(Kpi).filter(
+        Kpi.area_id == kpi.area_id,
+        KpiProgramado.fecha_inicio <= payload.fecha_fin,
+        KpiProgramado.fecha_fin >= payload.fecha_inicio
+    ).count()
 
-    kpi.activo_semanal = not kpi.activo_semanal
+    if activos_count >= 3:
+        raise HTTPException(status_code=400, detail="El área ya tiene el máximo de 3 KPIs programados en este rango de fechas.")
+
+    # Registramos la auditoría (ya no usamos 'semana')
+    nuevo_programado = KpiProgramado(
+        kpi_id=kpi_id,
+        fecha_inicio=payload.fecha_inicio,
+        fecha_fin=payload.fecha_fin,
+        asignado_por=current_user.id
+    )
+    db.add(nuevo_programado)
     db.commit()
-    estado = "activado" if kpi.activo_semanal else "desactivado"
-    return {"message": f"KPI {estado} exitosamente.", "activo_semanal": kpi.activo_semanal}
-
-
+    return {"message": "KPI programado exitosamente."}
 # ══════════════════════════════════════════════════════════════════════════════
 #  5. REGISTRO DE VALORES
 # ══════════════════════════════════════════════════════════════════════════════
@@ -524,6 +526,18 @@ def registrar_llenado(
                     registro_id=nuevo_registro.id, campo_id=c.id, valor=v_float
                 )
                 db.add(rv)
+
+    now = datetime.now()
+    programado = db.query(KpiProgramado).filter(
+        KpiProgramado.kpi_id == registro.kpi_id,
+        KpiProgramado.fecha_inicio <= now,
+        KpiProgramado.fecha_fin >= now,
+        KpiProgramado.completado == False
+    ).first()
+
+    if programado:
+        programado.completado = True
+        programado.registro_kpi_id = nuevo_registro.id
 
     db.commit()
     return {

@@ -1,6 +1,7 @@
 # schemas/kpi_schema.py
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
+from datetime import datetime
 
 class KpiResponse(BaseModel):
     id: int
@@ -15,10 +16,14 @@ class KpiResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Actualiza esta clase para aceptar la estructura compleja de tu Mini Excel
 class RegistroCreate(BaseModel):
     kpi_id: int
     semana: Optional[int] = None
     periodo_inicio: Optional[str] = None
     periodo_fin: Optional[str] = None
-    valores: Dict[str, Any] # Recibe todo el objeto JSON dinámico
+    valores: Dict[str, Any]
+
+
+class KpiProgramar(BaseModel):
+    fecha_inicio: datetime
+    fecha_fin: datetime
