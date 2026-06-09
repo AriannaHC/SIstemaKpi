@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Usuarios from "./pages/Usuarios";
 import EscogerKPI from "./pages/EscogerKPI"; // <-- Importamos la nueva vista
 import MiEquipo from "./pages/MiEquipo";
+import Reportes from "./pages/Reportes";
 
 export default function App() {
   const { user, logout } = useAuth();
@@ -33,7 +34,7 @@ export default function App() {
       case "escoger-kpi":
         return <EscogerKPI />; // <-- Agregamos el caso
       case "reports":
-        return <div className="p-10 text-center">Reportes pronto...</div>;
+        return <Reportes />;
       case "mi-equipo":
         return <MiEquipo />;
       default:
