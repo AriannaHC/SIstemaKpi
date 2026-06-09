@@ -1,28 +1,17 @@
 // pages/ConfiguracionKPI.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// CAMBIOS vs versión anterior:
-//   1. CERO datos mockeados — useEffect usaba setAreas/setKpis/setCampos hardcoded
-//      Ahora todo viene de kpiService (getAreas → getKpisPorArea → getConfiguracion)
-//   2. handleAreaChange y handleKpiChange llaman al backend real
-//   3. handleSubmit llama a kpiService.saveConfiguracion con el prefijo correcto
-//   4. Tooltip de fórmula original portado desde configuracion.html
-//   5. toggleFormula: al cambiar origen a no-calculado limpia la fórmula
-//      (mismo comportamiento que el HTML original)
-//   6. Estados de loading/error con feedback visual
-//   7. Spinner en carga de campos
-// ─────────────────────────────────────────────────────────────────────────────
-
-import { useState, useEffect } from 'react';
-import { kpiService } from '../services/kpiService';
+import { useState, useEffect } from "react";
+import { kpiService } from "../services/kpiService";
+// 🔴 IMPORTANTE: Importamos el componente Toast
+import Toast from "../components/Toast";
 
 export default function ConfiguracionKPI() {
   const [areas, setAreas] = useState([]);
   const [kpis, setKpis] = useState([]);
   const [campos, setCampos] = useState([]);
-  const [formulaOriginal, setFormulaOriginal] = useState('');
+  const [formulaOriginal, setFormulaOriginal] = useState("");
 
-  const [selectedArea, setSelectedArea] = useState('');
-  const [selectedKpi, setSelectedKpi] = useState('');
+  const [selectedArea, setSelectedArea] = useState("");
+  const [selectedKpi, setSelectedKpi] = useState("");
 
   const [isLoadingAreas, setIsLoadingAreas] = useState(true);
   const [isLoadingCampos, setIsLoadingCampos] = useState(false);
@@ -36,7 +25,10 @@ export default function ConfiguracionKPI() {
       .getAreas()
       .then((data) => setAreas(data))
       .catch(() =>
-        setFeedback({ tipo: 'error', mensaje: 'No se pudieron cargar las áreas.' })
+        setFeedback({
+          tipo: "error",
+          mensaje: "No se pudieron cargar las áreas.",
+        }),
       )
       .finally(() => setIsLoadingAreas(false));
   }, []);
@@ -45,9 +37,9 @@ export default function ConfiguracionKPI() {
   const handleAreaChange = async (e) => {
     const areaId = e.target.value;
     setSelectedArea(areaId);
-    setSelectedKpi('');
+    setSelectedKpi("");
     setCampos([]);
-    setFormulaOriginal('');
+    setFormulaOriginal("");
     setFeedback(null);
     setKpis([]);
 
@@ -56,7 +48,10 @@ export default function ConfiguracionKPI() {
       const data = await kpiService.getKpisPorArea(areaId);
       setKpis(data);
     } catch {
-      setFeedback({ tipo: 'error', mensaje: 'Error al cargar los KPIs del área.' });
+      setFeedback({
+        tipo: "error",
+        mensaje: "Error al cargar los KPIs del área.",
+      });
     }
   };
 
@@ -65,20 +60,21 @@ export default function ConfiguracionKPI() {
     const kpiId = e.target.value;
     setSelectedKpi(kpiId);
     setCampos([]);
-    setFormulaOriginal('');
+    setFormulaOriginal("");
     setFeedback(null);
 
     if (!kpiId) return;
 
     setIsLoadingCampos(true);
     try {
-      // Llama a GET /api/kpis/configuracion/{kpiId}
       const data = await kpiService.getConfiguracion(kpiId);
-      setFormulaOriginal(data.formula_original || 'N/A');
+      setFormulaOriginal(data.formula_original || "N/A");
       setCampos(data.campos || []);
     } catch (err) {
-      const msg = err?.response?.data?.detail || 'Error al cargar la configuración del KPI.';
-      setFeedback({ tipo: 'error', mensaje: msg });
+      const msg =
+        err?.response?.data?.detail ||
+        "Error al cargar la configuración del KPI.";
+      setFeedback({ tipo: "error", mensaje: msg });
     } finally {
       setIsLoadingCampos(false);
     }
@@ -90,8 +86,8 @@ export default function ConfiguracionKPI() {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
       // Si cambia de 'calculado' a otro origen → limpiar la fórmula
-      if (field === 'origen' && value !== 'calculado') {
-        updated[index].formula_personalizada = '';
+      if (field === "origen" && value !== "calculado") {
+        updated[index].formula_personalizada = "";
       }
       return updated;
     });
@@ -108,17 +104,19 @@ export default function ConfiguracionKPI() {
         campos: campos.map((c) => ({
           id: c.id,
           origen: c.origen,
-          formula_personalizada: c.origen === 'calculado' ? c.formula_personalizada : '',
+          formula_personalizada:
+            c.origen === "calculado" ? c.formula_personalizada : "",
         })),
       };
       const result = await kpiService.saveConfiguracion(selectedKpi, payload);
       setFeedback({
-        tipo: 'ok',
-        mensaje: result.message || '✅ Configuración guardada exitosamente.',
+        tipo: "ok",
+        mensaje: result.message || "Configuración guardada exitosamente.",
       });
     } catch (err) {
-      const msg = err?.response?.data?.detail || 'Error al guardar la configuración.';
-      setFeedback({ tipo: 'error', mensaje: `❌ ${msg}` });
+      const msg =
+        err?.response?.data?.detail || "Error al guardar la configuración.";
+      setFeedback({ tipo: "error", mensaje: msg });
     } finally {
       setIsSubmitting(false);
     }
@@ -127,19 +125,28 @@ export default function ConfiguracionKPI() {
   // ── Etiqueta visual del origen ─────────────────────────────────────────
   const origenBadge = (origen) => {
     const map = {
-      usuario: { label: 'Usuario', cls: 'bg-green-100 text-green-700' },
-      calculado: { label: 'Calculado', cls: 'bg-blue-100 text-blue-700' },
-      sistema: { label: 'Sistema', cls: 'bg-gray-100 text-gray-500' },
+      usuario: { label: "Usuario", cls: "bg-green-100 text-green-700" },
+      calculado: { label: "Calculado", cls: "bg-blue-100 text-blue-700" },
+      sistema: { label: "Sistema", cls: "bg-gray-100 text-gray-500" },
     };
     const { label, cls } = map[origen] || map.sistema;
     return (
-      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${cls}`}>{label}</span>
+      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${cls}`}>
+        {label}
+      </span>
     );
   };
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-sm border border-azul/10 p-6 md:p-10">
+    <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-sm border border-azul/10 p-6 md:p-10 relative">
+      {/* 🔴 AQUÍ RENDERIZAMOS EL TOAST */}
+      <Toast
+        message={feedback?.mensaje}
+        type={feedback?.tipo}
+        onClose={() => setFeedback(null)}
+      />
+
       {/* Encabezado */}
       <div className="mb-8 border-b border-azul/10 pb-4">
         <span className="text-[10px] bg-azul/10 text-azul px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
@@ -149,22 +156,12 @@ export default function ConfiguracionKPI() {
           ⚙️ Modelador de KPIs (Mini Excel)
         </h2>
         <p className="text-sm text-gris-texto mt-1">
-          Define qué campos llena el usuario y cuáles calcula el sistema automáticamente.
+          Define qué campos llena el usuario y cuáles calcula el sistema
+          automáticamente.
         </p>
       </div>
 
-      {/* Feedback global */}
-      {feedback && (
-        <div
-          className={`mb-6 px-4 py-3 rounded-lg text-sm font-medium border ${
-            feedback.tipo === 'ok'
-              ? 'bg-green-50 border-green-200 text-green-800'
-              : 'bg-red-50 border-red-200 text-red-700'
-          }`}
-        >
-          {feedback.mensaje}
-        </div>
-      )}
+      {/* ❌ Se eliminó el div estático de feedback que estaba aquí */}
 
       {/* Selectores encadenados */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -178,7 +175,9 @@ export default function ConfiguracionKPI() {
             onChange={handleAreaChange}
             disabled={isLoadingAreas}
           >
-            <option value="">{isLoadingAreas ? 'Cargando...' : '-- Seleccionar --'}</option>
+            <option value="">
+              {isLoadingAreas ? "Cargando..." : "-- Seleccionar --"}
+            </option>
             {areas.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.nombre}
@@ -219,13 +218,13 @@ export default function ConfiguracionKPI() {
       {!isLoadingCampos && campos.length > 0 && (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-turquesa/10 border-l-4 border-turquesa p-4 rounded-r-lg text-sm text-azul-profundo">
-            <strong>💡 Fórmula sugerida por el Excel:</strong>{' '}
+            <strong>💡 Fórmula sugerida por el Excel:</strong>{" "}
             <code className="font-mono text-xs bg-white/60 px-1.5 py-0.5 rounded">
               {formulaOriginal}
             </code>
             <span className="block mt-1.5 text-xs opacity-70">
-              Tip: Copia las variables exactas entre corchetes para usarlas en las fórmulas
-              de abajo. Ej: <code>[Nombre del campo]</code>
+              Tip: Copia las variables exactas entre corchetes para usarlas en
+              las fórmulas de abajo. Ej: <code>[Nombre del campo]</code>
             </span>
           </div>
 
@@ -260,7 +259,9 @@ export default function ConfiguracionKPI() {
                       <select
                         className="w-full rounded border border-azul/15 px-2 py-1.5 outline-none focus:border-azul text-sm"
                         value={c.origen}
-                        onChange={(e) => updateCampo(index, 'origen', e.target.value)}
+                        onChange={(e) =>
+                          updateCampo(index, "origen", e.target.value)
+                        }
                       >
                         <option value="usuario">✍️ Usuario teclea</option>
                         <option value="calculado">🧮 Fórmula (Sistema)</option>
@@ -270,19 +271,25 @@ export default function ConfiguracionKPI() {
 
                     {/* Input de fórmula — solo visible si origen === 'calculado' */}
                     <td className="px-4 py-3">
-                      {c.origen === 'calculado' ? (
+                      {c.origen === "calculado" ? (
                         <input
                           type="text"
                           placeholder="Ej: ([Numerador] / [Denominador])"
                           className="w-full rounded border border-azul/15 px-3 py-1.5 outline-none focus:border-azul font-mono text-xs"
-                          value={c.formula_personalizada || ''}
+                          value={c.formula_personalizada || ""}
                           onChange={(e) =>
-                            updateCampo(index, 'formula_personalizada', e.target.value)
+                            updateCampo(
+                              index,
+                              "formula_personalizada",
+                              e.target.value,
+                            )
                           }
                         />
                       ) : (
                         <span className="text-xs text-gris-texto italic">
-                          {c.origen === 'sistema' ? 'Solo lectura' : 'El usuario ingresa el valor'}
+                          {c.origen === "sistema"
+                            ? "Solo lectura"
+                            : "El usuario ingresa el valor"}
                         </span>
                       )}
                     </td>
@@ -303,7 +310,7 @@ export default function ConfiguracionKPI() {
                 <span className="animate-spin">⏳</span> Guardando...
               </span>
             ) : (
-              '💾 Guardar Configuración'
+              "💾 Guardar Configuración"
             )}
           </button>
         </form>

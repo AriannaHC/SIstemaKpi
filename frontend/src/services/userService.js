@@ -1,16 +1,22 @@
 // frontend/src/services/userService.js
-import apiClient from './apiClient';
+import apiClient from "./apiClient";
 
 export const userService = {
   // Lista todos los usuarios activos (solo admin)
   getUsers: async () => {
-    const response = await apiClient.get('/users/');
+    const response = await apiClient.get("/users/");
+    return response.data;
+  },
+
+  // Trabajadores del área del jefe autenticado (solo rol 2)
+  getMiEquipo: async () => {
+    const response = await apiClient.get("/users/mi-equipo");
     return response.data;
   },
 
   // Roles disponibles para el <select>
   getRoles: async () => {
-    const response = await apiClient.get('/users/roles');
+    const response = await apiClient.get("/users/roles");
     return response.data;
   },
 

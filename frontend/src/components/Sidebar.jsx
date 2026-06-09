@@ -66,20 +66,22 @@ export default function Sidebar({
 
         {/* Navegación */}
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
-          {/* Admin y Jefes ven Dashboard y Selección Semanal */}
-          {(rol === 1 || rol === 2) && (
-            <>
-              <NavItem
-                view="dashboard"
-                icon={<LayoutDashboard className="w-5 h-5" />}
-                label="Dashboard Global"
-              />
-              <NavItem
-                view="escoger-kpi"
-                icon={<CalendarCheck className="w-5 h-5" />}
-                label="Selección Semanal"
-              />
-            </>
+          {/* Solo Admin: Dashboard Global */}
+          {rol === 1 && (
+            <NavItem
+              view="dashboard"
+              icon={<LayoutDashboard className="w-5 h-5" />}
+              label="Dashboard Global"
+            />
+          )}
+
+          {/* Solo Admin: Selección Semanal */}
+          {rol === 1 && (
+            <NavItem
+              view="escoger-kpi"
+              icon={<CalendarCheck className="w-5 h-5" />}
+              label="Selección Semanal"
+            />
           )}
 
           {/* Todos */}
@@ -108,6 +110,15 @@ export default function Sidebar({
                 label="Gestión de Usuarios"
               />
             </>
+          )}
+
+          {/* Solo Jefe de Área */}
+          {rol === 2 && (
+            <NavItem
+              view="mi-equipo"
+              icon={<Users className="w-5 h-5" />}
+              label="Mi Equipo"
+            />
           )}
         </nav>
 

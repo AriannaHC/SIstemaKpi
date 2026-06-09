@@ -8,6 +8,7 @@ import ConfiguracionKPI from "./pages/ConfiguracionKPI";
 import Dashboard from "./pages/Dashboard";
 import Usuarios from "./pages/Usuarios";
 import EscogerKPI from "./pages/EscogerKPI"; // <-- Importamos la nueva vista
+import MiEquipo from "./pages/MiEquipo";
 
 export default function App() {
   const { user, logout } = useAuth();
@@ -33,6 +34,8 @@ export default function App() {
         return <EscogerKPI />; // <-- Agregamos el caso
       case "reports":
         return <div className="p-10 text-center">Reportes pronto...</div>;
+      case "mi-equipo":
+        return <MiEquipo />;
       default:
         return <LlenadoKPI />;
     }

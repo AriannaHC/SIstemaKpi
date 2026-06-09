@@ -38,6 +38,35 @@ def get_users(
     return [_serialize_user(u) for u in users]
 
 
+@router.get("/mi-equipo", response_model=List[UserResponse])
+def get_mi_equipo(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Devuelve los trabajadores (rol 3) del área del Jefe de Área autenticado.
+    Solo accesible por Jefe de Área (rol 2). El Admin usa /api/users/ en su lugar.
+    """
+    if current_user.kpi_rol_id != 2:
+        raise HTTPException(status_code=403, detail="Solo el Jefe de Área puede acceder a este endpoint")
+
+    if not current_user.kpi_area_id:
+        raise HTTPException(status_code=400, detail="No tienes un área asignada")
+
+    # Devuelve TODOS los miembros activos del área sin excepción,
+    # incluido el propio jefe de área. Sin filtro por rol.
+    users = (
+        db.query(User)
+        .filter(
+            User.status == True,
+            User.kpi_area_id == current_user.kpi_area_id,
+        )
+        .order_by(User.name)
+        .all()
+    )
+    return [_serialize_user(u) for u in users]
+
+
 @router.put("/{user_id}", response_model=UserResponse)
 def update_user(
     user_id: str,

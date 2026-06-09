@@ -9,6 +9,8 @@ import {
   ChevronLeft,
   Activity,
 } from "lucide-react";
+// 🔴 IMPORTANTE: Importamos el nuevo componente Toast
+import Toast from "../components/Toast";
 
 // ── Semáforo ──────────────────────────────────────────────────────────────────
 function SemaforoDisplay({ cumplimiento }) {
@@ -111,12 +113,10 @@ function ejecutarMotor(campos, valores) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function LlenadoKPI() {
-  // Estado para la Vista de Lista (Cards)
   const [kpisSemanales, setKpisSemanales] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
 
-  // Estado para la Vista de Formulario
-  const [kpiSeleccionado, setKpiSeleccionado] = useState(null); // Si es null, mostramos las cards
+  const [kpiSeleccionado, setKpiSeleccionado] = useState(null);
   const [campos, setCampos] = useState([]);
   const [valores, setValores] = useState({});
   const [contexto, setContexto] = useState({});
@@ -124,7 +124,6 @@ export default function LlenadoKPI() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
-  // ── 1. Cargar KPIs activos de la semana (Vista Cards) ───────────────────────
   useEffect(() => {
     kpiService
       .getDiario()
@@ -133,7 +132,6 @@ export default function LlenadoKPI() {
       .finally(() => setLoadingList(false));
   }, []);
 
-  // ── 2. Al hacer clic en una Card → Cargar Formulario ────────────────────────
   const abrirFormulario = async (kpi) => {
     setKpiSeleccionado(kpi);
     setCampos([]);
@@ -186,7 +184,6 @@ export default function LlenadoKPI() {
     setFeedback(null);
   };
 
-  // ── 3. Motor matemático ─────────────────────────────────────────────────────
   useEffect(() => {
     if (campos.length === 0) return;
     setContexto(ejecutarMotor(campos, valores));
@@ -219,7 +216,6 @@ export default function LlenadoKPI() {
     );
   };
 
-  // ── 4. Guardar Datos ────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -228,7 +224,21 @@ export default function LlenadoKPI() {
     const valoresCompletos = {};
     campos.forEach((c) => {
       const valMotor = contexto[c.campo_label];
-      if (c.origen === "usuario") {
+      const lbl = c.campo_label.toLowerCase();
+
+      if (
+        lbl.includes("alerta") ||
+        lbl.includes("semáforo") ||
+        lbl.includes("semaforo")
+      ) {
+        let colorSemaforo = "gris";
+        if (cumplimientoValue !== null && cumplimientoValue !== undefined) {
+          if (cumplimientoValue >= 0.8) colorSemaforo = "verde";
+          else if (cumplimientoValue >= 0.6) colorSemaforo = "amarillo";
+          else colorSemaforo = "rojo";
+        }
+        valoresCompletos[c.campo_key] = colorSemaforo;
+      } else if (c.origen === "usuario") {
         valoresCompletos[c.campo_key] = valores[c.campo_key] ?? "";
       } else if (valMotor !== null && valMotor !== undefined) {
         valoresCompletos[c.campo_key] = valMotor;
@@ -242,7 +252,7 @@ export default function LlenadoKPI() {
       const res = await kpiService.registrar(payload);
       setFeedback({
         tipo: "ok",
-        mensaje: `✅ Registro exitoso. Semáforo: ${(res.alerta || "gris").toUpperCase()}`,
+        mensaje: `✅ Registro exitoso. Tu llenado ha sido guardado correctamente.`, // Mensaje más amigable
       });
 
       const valoresReset = {};
@@ -264,9 +274,6 @@ export default function LlenadoKPI() {
     }
   };
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // ── RENDERIZADO VISTA 1: GRID DE CARDS
-  // ────────────────────────────────────────────────────────────────────────────
   if (!kpiSeleccionado) {
     return (
       <div className="space-y-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
@@ -300,7 +307,6 @@ export default function LlenadoKPI() {
                 key={kpi.id}
                 className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col"
               >
-                {/* Cabecera decorativa de la Card */}
                 <div className="relative h-24 bg-linear-to-br from-azul/10 to-naranja/10 p-5 flex items-start justify-between">
                   <span
                     className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border bg-white ${kpi.es_mi_kpi ? "text-naranja border-naranja/30" : "text-azul border-azul/30"}`}
@@ -310,7 +316,6 @@ export default function LlenadoKPI() {
                   <FileText className="w-8 h-8 text-azul/20" />
                 </div>
 
-                {/* Info de la Card */}
                 <div className="p-5 flex-1 bg-white">
                   <h3 className="text-lg font-black text-azul font-heading leading-tight mb-4">
                     {kpi.nombre}
@@ -319,7 +324,9 @@ export default function LlenadoKPI() {
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-naranja shrink-0" />
                       <span className="text-xs text-slate-600 font-medium">
-                        {kpi.es_mi_kpi ? "Encargado: Tú" : "Encargado: Tu Área"}
+                        {kpi.es_mi_kpi
+                          ? "Encargado: Tú"
+                          : `Encargado: ${kpi.responsable_nombre || "Tu Área"}`}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -331,7 +338,6 @@ export default function LlenadoKPI() {
                   </div>
                 </div>
 
-                {/* Botón de acción */}
                 <div className="p-4 border-t border-slate-50 bg-slate-50/50">
                   <button
                     onClick={() => abrirFormulario(kpi)}
@@ -348,9 +354,6 @@ export default function LlenadoKPI() {
     );
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // ── RENDERIZADO VISTA 2: FORMULARIO DEL KPI
-  // ────────────────────────────────────────────────────────────────────────────
   const camposUsuario = campos.filter((c) => c.origen === "usuario");
   const camposResultado = campos.filter(
     (c) =>
@@ -361,7 +364,14 @@ export default function LlenadoKPI() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto animate-in slide-in-from-right-8 duration-500">
+    <div className="max-w-4xl mx-auto animate-in slide-in-from-right-8 duration-500 relative">
+      {/* 🔴 AQUÍ RENDERIZAMOS EL TOAST */}
+      <Toast
+        message={feedback?.mensaje}
+        type={feedback?.tipo}
+        onClose={() => setFeedback(null)}
+      />
+
       <button
         onClick={cerrarFormulario}
         className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-azul mb-6 transition-colors"
@@ -381,13 +391,7 @@ export default function LlenadoKPI() {
           </div>
         </div>
 
-        {feedback && (
-          <div
-            className={`mb-6 px-4 py-3 rounded-xl text-sm font-bold border ${feedback.tipo === "ok" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-700"}`}
-          >
-            {feedback.mensaje}
-          </div>
-        )}
+        {/* ❌ Eliminamos el div estático de feedback viejo que estaba aquí */}
 
         {isLoadingCampos ? (
           <div className="text-center py-12 text-gray-500">

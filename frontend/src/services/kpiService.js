@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import apiClient from "./apiClient";
 
 // ── MÉTODOS NUEVOS ────────────────────────────────────────────────────────────
 
@@ -12,11 +12,18 @@ export const activarKpi = async (kpiId) => {
   return response.data;
 };
 
+export const asignarResponsable = async (kpiId, responsableId) => {
+  const response = await apiClient.patch(`/kpis/${kpiId}/responsable`, {
+    responsable_id: responsableId,
+  });
+  return response.data;
+};
+
 // ── MÉTODOS EXISTENTES (copia completa para que no pierdas nada) ──────────────
 
 export const kpiService = {
   getAreas: async () => {
-    const response = await apiClient.get('/kpis/areas');
+    const response = await apiClient.get("/kpis/areas");
     return response.data;
   },
 
@@ -31,17 +38,17 @@ export const kpiService = {
   },
 
   getDiario: async () => {
-    const response = await apiClient.get('/kpis/diario');
+    const response = await apiClient.get("/kpis/diario");
     return response.data;
   },
 
   registrar: async (payload) => {
-    const response = await apiClient.post('/kpis/registrar', payload);
+    const response = await apiClient.post("/kpis/registrar", payload);
     return response.data;
   },
 
   getDashboardData: async () => {
-    const response = await apiClient.get('/kpis/dashboard_data');
+    const response = await apiClient.get("/kpis/dashboard_data");
     return response.data;
   },
 
@@ -51,7 +58,10 @@ export const kpiService = {
   },
 
   saveConfiguracion: async (kpiId, payload) => {
-    const response = await apiClient.post(`/kpis/configuracion/${kpiId}`, payload);
+    const response = await apiClient.post(
+      `/kpis/configuracion/${kpiId}`,
+      payload,
+    );
     return response.data;
   },
 
@@ -66,15 +76,15 @@ export const kpiService = {
   },
 
   uploadExcel: async (formData) => {
-    const response = await apiClient.post('/kpis/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    const response = await apiClient.post("/kpis/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
   },
 
   uploadSmart: async (formData) => {
-    const response = await apiClient.post('/kpis/upload_smart', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    const response = await apiClient.post("/kpis/upload_smart", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
   },
@@ -82,4 +92,5 @@ export const kpiService = {
   // Expuestos también como named exports arriba
   getKpisSemanales,
   activarKpi,
+  asignarResponsable,
 };

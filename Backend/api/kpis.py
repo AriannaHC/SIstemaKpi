@@ -1,12 +1,3 @@
-# api/kpis.py  —  Módulo KPIs con endpoint de gestión semanal por área añadido
-# Solo se agrega el nuevo endpoint. El resto del archivo queda intacto.
-# ─────────────────────────────────────────────────────────────────────────────
-# NUEVO en esta versión:
-#   GET  /api/kpis/semanales/{area_id}  → lista todos los KPIs del área con
-#        su estado activo_semanal, para que el admin pueda ver y cambiar cuáles
-#        tocan esta semana (máx 3 por área).
-# ─────────────────────────────────────────────────────────────────────────────
-
 import os, re
 import openpyxl
 import pandas as pd
@@ -209,8 +200,9 @@ def get_configuracion(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.kpi_rol_id not in [1, 2]:
-        raise HTTPException(status_code=403, detail="Sin permisos para configurar KPIs.")
+    # Solo el Administrador (rol 1) puede ver la configuración de KPIs
+    if current_user.kpi_rol_id != 1:
+        raise HTTPException(status_code=403, detail="Solo el administrador puede ver la configuración de KPIs.")
 
     campos = (
         db.query(KpiCampo)
@@ -245,8 +237,9 @@ def save_configuracion(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.kpi_rol_id not in [1, 2]:
-        raise HTTPException(status_code=403, detail="Sin permisos para configurar KPIs.")
+    # Solo el Administrador (rol 1) puede guardar configuración de KPIs
+    if current_user.kpi_rol_id != 1:
+        raise HTTPException(status_code=403, detail="Solo el administrador puede configurar KPIs.")
 
     campos_payload = payload.get("campos", [])
     for c in campos_payload:
@@ -363,6 +356,8 @@ def get_kpis_semanales_por_area(
                 "nombre": k.nombre,
                 "formula_texto": k.formula_texto or "",
                 "activo_semanal": k.activo_semanal,
+                "responsable_id": k.responsable_id,
+                "responsable_nombre": k.responsable.name if k.responsable else None,
             }
             for k in kpis
         ],
@@ -400,6 +395,7 @@ def obtener_kpis_diarios(
             nombre=k.nombre,
             area_id=k.area_id,
             responsable_id=k.responsable_id,
+            responsable_nombre=k.responsable.name if k.responsable else None,
             meta_valor=k.meta_valor or 0.0,
             activo_semanal=k.activo_semanal,
             es_mi_kpi=(k.responsable_id == current_user.id),
@@ -586,8 +582,9 @@ def delete_kpi(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.kpi_rol_id not in [1, 2]:
-        raise HTTPException(status_code=403, detail="Sin permisos para eliminar KPIs.")
+    # Solo el Administrador (rol 1) puede eliminar KPIs
+    if current_user.kpi_rol_id != 1:
+        raise HTTPException(status_code=403, detail="Solo el administrador puede eliminar KPIs.")
 
     kpi = db.query(Kpi).filter(Kpi.id == kpi_id).first()
     if not kpi:
@@ -619,8 +616,50 @@ def delete_kpi(
 #  7. IMPORTACIÓN DE EXCEL
 # ══════════════════════════════════════════════════════════════════════════════
 
+@router.patch("/{kpi_id}/responsable")
+def asignar_responsable_kpi(
+    kpi_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Asigna un trabajador como responsable de un KPI semanal.
+    Solo el Jefe de Área (rol 2) puede hacerlo, y únicamente para KPIs de su área.
+    El Administrador (rol 1) también puede hacerlo sin restricción de área.
+    """
+    if current_user.kpi_rol_id not in [1, 2]:
+        raise HTTPException(status_code=403, detail="Sin permisos para asignar responsables.")
+
+    kpi = db.query(Kpi).filter(Kpi.id == kpi_id).first()
+    if not kpi:
+        raise HTTPException(status_code=404, detail="KPI no encontrado.")
+
+    # Jefe de área solo puede asignar en su propia área
+    if current_user.kpi_rol_id == 2 and kpi.area_id != current_user.kpi_area_id:
+        raise HTTPException(status_code=403, detail="Solo puedes asignar responsables en tu área.")
+
+    responsable_id = payload.get("responsable_id")
+
+    # Permitir null para desasignar
+    if responsable_id is None:
+        kpi.responsable_id = None
+        db.commit()
+        return {"success": True, "message": f"KPI '{kpi.nombre}' desasignado."}
+
+    # Validar que el trabajador pertenece al área correcta
+    trabajador = db.query(User).filter(User.id == responsable_id).first()
+    if not trabajador:
+        raise HTTPException(status_code=404, detail="Trabajador no encontrado.")
+    if trabajador.kpi_area_id != kpi.area_id:
+        raise HTTPException(status_code=400, detail="El trabajador no pertenece al área de este KPI.")
+
+    kpi.responsable_id = responsable_id
+    db.commit()
+    return {"success": True, "message": f"Responsable asignado correctamente al KPI '{kpi.nombre}'."}
+
 @router.post("/upload")
-async def upload_area_excel(
+async def upload_excel(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -745,7 +784,7 @@ def _parse_excel_and_save(filepath: str, db: Session) -> dict:
             elif "efectividad" in lower_label:
                 origen, formula_pers = "calculado", "([Eficiencia (%)] * [Eficacia (%)])"
             elif "rendimiento" in lower_label:
-                origen, formula_pers = "calculado", "([Cumplimiento (%)] * [Eficiencia (%)])"
+                origen, formula_pers = "calculado", "([Productividad] / [Meta Producción ≥])"
             elif "alerta" in lower_label:
                 origen = "sistema"
             elif "valor semanal" in lower_label:

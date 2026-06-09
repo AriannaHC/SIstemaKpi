@@ -1,53 +1,48 @@
-// frontend/src/pages/Dashboard.jsx
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { kpiService } from "../services/kpiService";
 import {
   Search,
-  Filter,
   ChevronLeft,
   ChevronRight,
   Activity,
   Trash2,
-  Edit,
   FileSpreadsheet,
   Settings,
+  AlertTriangle,
+  Folder,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
-const LIMIT = 10;
+const LIMIT = 12;
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [areas, setAreas] = useState([]);
-  const [allKpis, setAllKpis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
 
   // Filtros y Paginación
   const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterArea, setFilterArea] = useState("");
+
+  // Estado para el Drill-down
+  const [selectedArea, setSelectedArea] = useState(null);
+
+  const [deleteModal, setDeleteModal] = useState({ open: false, area: null });
+  const [deleting, setDeleting] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     try {
       const data = await kpiService.getDashboardData();
-
-      const areasList = data.map((d) => ({ id: d.id, nombre: d.nombre }));
-      setAreas(areasList);
-
-      const kpisFlat = [];
-      data.forEach((area) => {
-        area.kpis.forEach((kpi) => {
-          kpisFlat.push({
-            ...kpi,
-            area_id: area.id,
-            area_nombre: area.nombre,
-          });
-        });
-      });
-      setAllKpis(kpisFlat);
+      setAreas(data);
+      // Actualizar el área seleccionada si existe para refrescar sus KPIs
+      if (selectedArea) {
+        const updated = data.find((a) => a.id === selectedArea.id);
+        if (updated) setSelectedArea(updated);
+        else setSelectedArea(null);
+      }
     } catch (e) {
       console.error("Error cargando dashboard:", e);
     } finally {
@@ -57,17 +52,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadData();
-  }, []);
-
-  const handleSearch = () => {
-    setSearchTerm(searchInput);
-    setPage(1);
-  };
-
-  const handleAreaChange = (e) => {
-    setFilterArea(e.target.value);
-    setPage(1);
-  };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUploadArea = async (e) => {
     e.preventDefault();
@@ -116,33 +101,52 @@ export default function Dashboard() {
     }
   };
 
-  const handleDeleteArea = async (id, nombre) => {
-    if (
-      window.confirm(
-        `⚠️ ¡CUIDADO!\n\n¿Seguro que deseas eliminar el área "${nombre}" y todos sus KPIs?`,
-      )
-    ) {
-      try {
-        await kpiService.deleteArea(id);
-        loadData();
-      } catch (e) {
-        alert("Error al eliminar el Área");
+  const handleDeleteAreaClick = (area) => {
+    setDeleteModal({ open: true, area });
+  };
+
+  const confirmDeleteArea = async () => {
+    if (!deleteModal.area) return;
+    setDeleting(true);
+    try {
+      await kpiService.deleteArea(deleteModal.area.id);
+      setDeleteModal({ open: false, area: null });
+      if (selectedArea && selectedArea.id === deleteModal.area.id) {
+        setSelectedArea(null);
       }
+      loadData();
+    } catch (e) {
+      alert("Error al eliminar el Área");
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const filteredKpis = allKpis.filter((kpi) => {
-    const matchesSearch = kpi.nombre
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesArea = filterArea
-      ? kpi.area_id.toString() === filterArea
-      : true;
-    return matchesSearch && matchesArea;
-  });
+  // LÓGICA DE BÚSQUEDA Y DRILL-DOWN EN VIVO
+  const globalMatchingKpis = searchTerm
+    ? areas.flatMap((a) =>
+        a.kpis
+          .filter((k) =>
+            k.nombre.toLowerCase().includes(searchTerm.toLowerCase()),
+          )
+          .map((k) => ({ ...k, area_nombre: a.nombre, area_id: a.id })),
+      )
+    : [];
 
-  const totalPages = Math.ceil(filteredKpis.length / LIMIT) || 1;
-  const currentKpis = filteredKpis.slice((page - 1) * LIMIT, page * LIMIT);
+  const selectedAreaKpis = selectedArea
+    ? selectedArea.kpis.filter((k) =>
+        k.nombre.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+    : [];
+
+  const itemsToPaginate = selectedArea
+    ? selectedAreaKpis
+    : searchTerm
+      ? globalMatchingKpis
+      : areas;
+
+  const totalPages = Math.ceil(itemsToPaginate.length / LIMIT) || 1;
+  const currentItems = itemsToPaginate.slice((page - 1) * LIMIT, page * LIMIT);
 
   const getTipoColor = (tipo) => {
     if (tipo === "Positivo") {
@@ -234,188 +238,190 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Tabla */}
+      {/* Contenedor Principal de Áreas / KPIs */}
       <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
-        {/* Filtros */}
-        <div className="p-6 md:p-8 border-b border-slate-50 bg-slate-50/30">
+        {/* Filtros y Breadcrumbs */}
+        <div className="p-6 md:p-8 border-b border-slate-50 bg-white">
           <div className="flex flex-col md:flex-row gap-4 lg:gap-6 items-center justify-between">
-            <h2 className="text-xl font-bold text-azul-profundo flex items-center gap-2 shrink-0 self-start md:self-center">
-              Catálogo de KPIs
-            </h2>
-
-            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-              {/* Búsqueda */}
-              <div className="flex gap-2 w-full sm:w-80">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Buscar KPI..."
-                    className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none focus:border-azul transition-all shadow-sm"
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  />
-                </div>
-                <button
-                  onClick={handleSearch}
-                  className="px-6 py-3 bg-azul text-white rounded-2xl text-xs font-black hover:bg-azul-profundo transition-all"
-                >
-                  Buscar
-                </button>
-              </div>
-
-              {/* Filtro área (solo admin) */}
-              {user?.kpi_rol_id === 1 && (
-                <div className="relative w-full sm:w-64">
-                  <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <select
-                    value={filterArea}
-                    onChange={handleAreaChange}
-                    className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none focus:border-azul appearance-none transition-all shadow-sm cursor-pointer"
-                  >
-                    <option value="">TODAS LAS ÁREAS</option>
-                    {areas.map((a) => (
-                      <option key={a.id} value={a.id.toString()}>
-                        {a.nombre.toUpperCase()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            {/* Breadcrumbs */}
+            <div className="flex items-center gap-2 text-sm font-bold text-azul-profundo shrink-0 self-start md:self-center">
+              <button
+                onClick={() => {
+                  setSelectedArea(null);
+                  setSearchTerm("");
+                  setPage(1);
+                }}
+                className={`hover:text-azul transition-colors flex items-center gap-2 ${
+                  !selectedArea ? "text-azul" : "text-slate-400"
+                }`}
+              >
+                <Folder className="w-5 h-5" /> Todas las Áreas
+              </button>
+              {selectedArea && (
+                <>
+                  <ChevronRight className="w-4 h-4 text-slate-300" />
+                  <span className="text-azul">{selectedArea.nombre}</span>
+                </>
               )}
+            </div>
+
+            {/* Búsqueda en vivo */}
+            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder={
+                    selectedArea
+                      ? "Buscar KPI en esta área..."
+                      : "Buscar en todas las áreas..."
+                  }
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none focus:border-azul focus:bg-white transition-all shadow-sm"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Contenido Tabla */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50/80 border-b border-slate-100">
-              <tr>
-                <th className="px-8 py-5 text-[11px] font-black text-azul uppercase tracking-widest">
-                  KPI
-                </th>
-                <th className="px-8 py-5 text-[11px] font-black text-azul uppercase tracking-widest">
-                  Área
-                </th>
-                <th className="px-8 py-5 text-[11px] font-black text-azul uppercase tracking-widest">
-                  Fórmula Base
-                </th>
-                <th className="px-8 py-5 text-[11px] font-black text-azul uppercase tracking-widest text-center">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={4} className="px-8 py-20 text-center">
-                    <div className="w-8 h-8 border-4 border-azul border-t-naranja rounded-full animate-spin mx-auto" />
-                  </td>
-                </tr>
-              ) : (
-                currentKpis.map((kpi) => (
-                  <tr
-                    key={kpi.id}
-                    className="hover:bg-slate-50/50 transition-colors"
-                  >
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`shrink-0 w-2 h-2 rounded-full ${kpi.tipo_kpi === "Positivo" ? "bg-turquesa" : "bg-rojo-persa"}`}
-                        />
-                        <div>
-                          <p className="text-sm font-bold text-slate-800 leading-tight">
-                            {kpi.nombre}
-                          </p>
-                          <div className="mt-1 flex gap-2">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${getTipoColor(kpi.tipo_kpi)}`}
-                            >
-                              {kpi.tipo_kpi}
-                            </span>
-                          </div>
+        {/* Contenido principal: Grid de Cards */}
+        <div className="bg-slate-50/50 min-h-[300px]">
+          {loading ? (
+            <div className="py-20 flex justify-center">
+              <div className="w-8 h-8 border-4 border-azul border-t-naranja rounded-full animate-spin mx-auto" />
+            </div>
+          ) : itemsToPaginate.length === 0 ? (
+            <div className="py-32 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-slate-300 mb-4 border border-slate-100 shadow-sm">
+                <Activity className="w-8 h-8" />
+              </div>
+              <p className="text-azul font-black uppercase tracking-widest text-sm">
+                No se encontraron resultados
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6 md:p-8">
+              {selectedArea === null && searchTerm === ""
+                ? currentItems.map((area) => (
+                    <div
+                      key={area.id}
+                      className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between h-48"
+                      onClick={() => {
+                        setSelectedArea(area);
+                        setSearchTerm("");
+                        setPage(1);
+                      }}
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-14 h-14 rounded-2xl bg-azul/5 flex items-center justify-center text-azul group-hover:bg-azul group-hover:text-white transition-colors">
+                          <Folder className="w-7 h-7" />
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center justify-between group">
-                        <p className="text-xs font-bold text-slate-600">
-                          {kpi.area_nombre}
-                        </p>
                         {user?.kpi_rol_id === 1 && (
                           <button
-                            onClick={() =>
-                              handleDeleteArea(kpi.area_id, kpi.area_nombre)
-                            }
-                            className="opacity-0 group-hover:opacity-100 text-[10px] text-rojo-persa font-bold hover:underline transition-opacity flex items-center gap-1"
-                            title="Eliminar toda el área y sus KPIs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAreaClick(area);
+                            }}
+                            className="p-2.5 text-rojo-persa bg-rojo-persa/5 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-rojo-persa hover:text-white transition-all border border-rojo-persa/10"
+                            title="Eliminar Área"
                           >
-                            Borrar Área
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <p
-                        className="text-xs font-mono text-gray-500 line-clamp-2 max-w-[250px]"
-                        title={kpi.formula_texto}
-                      >
-                        {kpi.formula_texto || "-"}
-                      </p>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          className="p-2 text-azul bg-azul/5 rounded-lg hover:bg-azul hover:text-white transition-colors border border-azul/10"
-                          title="Configuración"
-                        >
-                          <Settings className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteKpi(kpi.id, kpi.nombre)}
-                          className="p-2 text-rojo-persa bg-rojo-persa/5 rounded-lg hover:bg-rojo-persa hover:text-white transition-colors border border-rojo-persa/10"
-                          title="Eliminar KPI"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div>
+                        <h3 className="text-lg font-black text-azul-profundo mb-2 line-clamp-1">
+                          {area.nombre}
+                        </h3>
+                        <span className="inline-block bg-slate-100 text-slate-500 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest">
+                          {area.kpis.length} KPI
+                          {area.kpis.length !== 1 ? "s" : ""}
+                        </span>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-              {!loading && currentKpis.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-8 py-32 text-center">
-                    <div className="flex flex-col items-center">
-                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4 border border-slate-100">
-                        <Activity className="w-8 h-8" />
-                      </div>
-                      <p className="text-azul font-black uppercase tracking-widest text-sm">
-                        No hay KPIs registrados
-                      </p>
-                      <p className="text-gray-500 text-xs mt-1">
-                        Sube un Excel de Área para comenzar.
-                      </p>
                     </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  ))
+                : currentItems.map((kpi) => (
+                    <div
+                      key={kpi.id}
+                      className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-lg transition-all flex flex-col h-56"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                              kpi.tipo_kpi === "Positivo"
+                                ? "bg-turquesa/10 text-turquesa"
+                                : "bg-rojo-persa/10 text-rojo-persa"
+                            }`}
+                          >
+                            <Activity className="w-6 h-6" />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span
+                              className={`self-start px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getTipoColor(
+                                kpi.tipo_kpi,
+                              )}`}
+                            >
+                              {kpi.tipo_kpi}
+                            </span>
+                            {!selectedArea && (
+                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider line-clamp-1">
+                                {kpi.area_nombre}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            className="p-2 text-azul bg-azul/5 rounded-lg hover:bg-azul hover:text-white transition-colors border border-azul/10"
+                            title="Configuración"
+                          >
+                            <Settings className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteKpi(kpi.id, kpi.nombre)}
+                            className="p-2 text-rojo-persa bg-rojo-persa/5 rounded-lg hover:bg-rojo-persa hover:text-white transition-colors border border-rojo-persa/10"
+                            title="Eliminar KPI"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-col flex-1 justify-end">
+                        <h3
+                          className="text-sm font-bold text-slate-800 leading-snug mb-3 line-clamp-2"
+                          title={kpi.nombre}
+                        >
+                          {kpi.nombre}
+                        </h3>
+                        <p
+                          className="text-[10px] font-mono text-gray-500 line-clamp-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100"
+                          title={kpi.formula_texto}
+                        >
+                          {kpi.formula_texto || "Fórmula no especificada"}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+            </div>
+          )}
         </div>
 
         {/* Paginación */}
-        <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="p-6 md:p-8 bg-white border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-            {filteredKpis.length} registro{filteredKpis.length !== 1 ? "s" : ""}{" "}
-            encontrado{filteredKpis.length !== 1 ? "s" : ""}
+            {itemsToPaginate.length} resultado
+            {itemsToPaginate.length !== 1 ? "s" : ""}
           </p>
           <div className="flex items-center gap-2">
             <button
               disabled={page <= 1}
               onClick={() => setPage(page - 1)}
-              className="flex items-center gap-1 px-4 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-azul hover:bg-slate-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-bold text-azul hover:bg-slate-100 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-3 h-3" /> Anterior
             </button>
@@ -425,13 +431,76 @@ export default function Dashboard() {
             <button
               disabled={page >= totalPages}
               onClick={() => setPage(page + 1)}
-              className="flex items-center gap-1 px-4 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-azul hover:bg-slate-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-bold text-azul hover:bg-slate-100 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Siguiente <ChevronRight className="w-3 h-3" />
             </button>
           </div>
         </div>
       </div>
+
+      {/* Modal Eliminación Área */}
+      {deleteModal.open &&
+        deleteModal.area &&
+        createPortal(
+          <div className="fixed inset-0 z-9999 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+            <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border-0">
+              {/* Cabecera roja */}
+              <div className="bg-rojo-persa p-8 text-white text-center">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-black uppercase tracking-tighter font-heading">
+                  Eliminar Área
+                </h3>
+              </div>
+
+              {/* Cuerpo */}
+              <div className="p-8 text-center space-y-4">
+                <p className="text-gray-600 font-semibold text-sm leading-relaxed">
+                  ¿Estás seguro de que deseas eliminar esta área?
+                </p>
+                <div className="flex items-center gap-3 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                  <div className="w-12 h-12 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center">
+                    <Folder className="w-5 h-5 text-azul" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-black text-azul font-heading">
+                      {deleteModal.area.nombre}
+                    </p>
+                    <p className="text-[10px] text-naranja font-black uppercase tracking-widest mt-0.5">
+                      Área de Trabajo
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400 font-semibold">
+                  Todos los KPIs pertenecientes a esta área y sus registros de
+                  llenado serán eliminados permanentemente. Esta acción no se
+                  puede deshacer.
+                </p>
+              </div>
+
+              {/* Botones */}
+              <div className="px-8 pb-8 grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setDeleteModal({ open: false, area: null })}
+                  disabled={deleting}
+                  className="py-4 rounded-2xl border-2 border-slate-200 text-gray-500 font-black text-xs uppercase tracking-widest font-heading hover:bg-slate-50 transition-all disabled:opacity-60"
+                >
+                  CANCELAR
+                </button>
+                <button
+                  onClick={confirmDeleteArea}
+                  disabled={deleting}
+                  className="py-4 rounded-2xl bg-rojo-persa text-white font-black text-xs uppercase tracking-widest font-heading hover:bg-red-700 transition-all shadow-lg shadow-rojo-persa/20 disabled:opacity-60"
+                >
+                  {deleting ? "ELIMINANDO..." : "SÍ, ELIMINAR"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
