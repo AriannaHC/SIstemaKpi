@@ -8,8 +8,8 @@ import {
   CheckCircle2,
   ChevronLeft,
   Activity,
+  Target,
 } from "lucide-react";
-// 🔴 IMPORTANTE: Importamos el nuevo componente Toast
 import Toast from "../components/Toast";
 
 // ── Semáforo ──────────────────────────────────────────────────────────────────
@@ -113,9 +113,11 @@ function ejecutarMotor(campos, valores) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function LlenadoKPI() {
-  const [kpisSemanales, setKpisSemanales] = useState([]);
+  // Estado para la Vista de Lista (Cards)
+  const [kpisActivos, setKpisActivos] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
 
+  // Estado para la Vista de Formulario (Detalle)
   const [kpiSeleccionado, setKpiSeleccionado] = useState(null);
   const [campos, setCampos] = useState([]);
   const [valores, setValores] = useState({});
@@ -124,15 +126,24 @@ export default function LlenadoKPI() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
-  useEffect(() => {
+  // ── 1. Cargar KPIs activos ───────────────────────────────────────────────
+  const cargarKpisDiarios = () => {
+    setLoadingList(true);
     kpiService
       .getDiario()
-      .then(setKpisSemanales)
-      .catch(() => console.error("Error cargando KPIs diarios"))
+      .then(setKpisActivos)
+      .catch(() =>
+        setFeedback({ tipo: "error", mensaje: "Error al cargar tus KPIs." }),
+      )
       .finally(() => setLoadingList(false));
+  };
+
+  useEffect(() => {
+    cargarKpisDiarios();
   }, []);
 
-  const abrirFormulario = async (kpi) => {
+  // ── 2. Abrir Formulario ──────────────────────────────────────────────────
+  const handleLlenarClick = async (kpi) => {
     setKpiSeleccionado(kpi);
     setCampos([]);
     setValores({});
@@ -184,6 +195,7 @@ export default function LlenadoKPI() {
     setFeedback(null);
   };
 
+  // ── 3. Motor en tiempo real ──────────────────────────────────────────────
   useEffect(() => {
     if (campos.length === 0) return;
     setContexto(ejecutarMotor(campos, valores));
@@ -216,6 +228,7 @@ export default function LlenadoKPI() {
     );
   };
 
+  // ── 4. Enviar Datos ──────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -249,21 +262,17 @@ export default function LlenadoKPI() {
 
     try {
       const payload = { kpi_id: kpiSeleccionado.id, valores: valoresCompletos };
-      const res = await kpiService.registrar(payload);
+      await kpiService.registrar(payload);
       setFeedback({
         tipo: "ok",
-        mensaje: `✅ Registro exitoso. Tu llenado ha sido guardado correctamente.`, // Mensaje más amigable
+        mensaje: "✅ Registro exitoso. El KPI ha sido completado.",
       });
 
-      const valoresReset = {};
-      campos.forEach((c) => {
-        const lbl = c.campo_label.toLowerCase();
-        valoresReset[c.campo_key] =
-          lbl.includes("meta") || lbl.includes("horas planificadas")
-            ? valores[c.campo_key]
-            : "";
-      });
-      setValores(valoresReset);
+      // Ocultar formulario y volver a las cards actualizadas tras 2 segundos
+      setTimeout(() => {
+        setKpiSeleccionado(null);
+        cargarKpisDiarios();
+      }, 2000);
     } catch (err) {
       setFeedback({
         tipo: "error",
@@ -274,76 +283,96 @@ export default function LlenadoKPI() {
     }
   };
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // ── RENDERIZADO VISTA 1: CARDS (MASTER)
+  // ────────────────────────────────────────────────────────────────────────────
   if (!kpiSeleccionado) {
     return (
-      <div className="space-y-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
+      <div className="space-y-8 animate-in fade-in duration-500 max-w-7xl mx-auto relative">
+        <Toast
+          message={feedback?.mensaje}
+          type={feedback?.tipo}
+          onClose={() => setFeedback(null)}
+        />
+
         <div>
           <h1 className="text-3xl font-extrabold text-azul font-heading">
-            Ingreso <span className="text-naranja">Diario</span>
+            Tus Indicadores <span className="text-naranja">Pendientes</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">
-            Estos son los indicadores activos para tu área esta semana.
+            Estos son los KPIs programados que debes completar en esta fecha.
           </p>
         </div>
 
         {loadingList ? (
-          <div className="flex items-center justify-center py-32">
-            <div className="w-10 h-10 border-4 border-azul border-t-naranja rounded-full animate-spin" />
+          <div className="flex justify-center py-20">
+            <div className="w-10 h-10 border-4 border-azul border-t-naranja rounded-full animate-spin"></div>
           </div>
-        ) : kpisSemanales.length === 0 ? (
+        ) : kpisActivos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-slate-100 shadow-sm">
-            <Activity className="w-14 h-14 text-slate-200 mb-4" />
+            <Target className="w-14 h-14 text-slate-200 mb-4" />
             <p className="text-azul font-black text-lg uppercase tracking-widest font-heading">
-              Sin KPIs asignados
+              Todo al día
             </p>
             <p className="text-gray-500 text-sm mt-1">
-              Tu área no tiene indicadores activos esta semana.
+              No tienes KPIs pendientes de llenado en este momento.
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {kpisSemanales.map((kpi) => (
+            {kpisActivos.map((kpi) => (
               <div
                 key={kpi.id}
                 className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col"
               >
-                <div className="relative h-24 bg-linear-to-br from-azul/10 to-naranja/10 p-5 flex items-start justify-between">
+                <div className="relative h-32 bg-linear-to-br from-azul/10 to-naranja/10 flex items-center justify-center overflow-hidden">
+                  <Target className="w-16 h-16 text-azul/20" />
                   <span
-                    className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border bg-white ${kpi.es_mi_kpi ? "text-naranja border-naranja/30" : "text-azul border-azul/30"}`}
+                    className={`absolute top-3 left-3 text-[10px] font-black uppercase px-3 py-1 rounded-full border ${kpi.es_mi_kpi ? "bg-orange-100 text-naranja border-orange-200" : "bg-blue-100 text-azul border-blue-200"}`}
                   >
                     {kpi.es_mi_kpi ? "Tu Responsabilidad" : "KPI de Equipo"}
                   </span>
-                  <FileText className="w-8 h-8 text-azul/20" />
+                  <span className="absolute top-3 right-3 bg-rojo-persa text-white text-[10px] font-black px-3 py-1 rounded-full shadow-sm animate-pulse">
+                    Pte. de Llenado
+                  </span>
                 </div>
 
-                <div className="p-5 flex-1 bg-white">
-                  <h3 className="text-lg font-black text-azul font-heading leading-tight mb-4">
+                <div className="p-5 flex-1 flex flex-col">
+                  <h3 className="text-base font-black text-azul font-heading leading-tight mb-4 flex-1">
                     {kpi.nombre}
                   </h3>
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-naranja shrink-0" />
-                      <span className="text-xs text-slate-600 font-medium">
-                        {kpi.es_mi_kpi
-                          ? "Encargado: Tú"
-                          : `Encargado: ${kpi.responsable_nombre || "Tu Área"}`}
-                      </span>
+                  <div className="space-y-3 bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <div className="flex items-start gap-2">
+                      <User className="w-4 h-4 text-azul shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[10px] font-black text-azul uppercase tracking-widest">
+                          Encargado
+                        </p>
+                        <p className="text-xs text-slate-600 font-medium">
+                          {kpi.responsable_nombre || "Equipo"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-turquesa shrink-0" />
-                      <span className="text-xs text-slate-600 font-medium">
-                        Vigencia: Esta semana
-                      </span>
+                    <div className="flex items-start gap-2">
+                      <Clock className="w-4 h-4 text-naranja shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[10px] font-black text-naranja uppercase tracking-widest">
+                          Vigencia
+                        </p>
+                        <p className="text-xs text-slate-600 font-medium">
+                          En rango de fecha programada
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-4 border-t border-slate-50 bg-slate-50/50">
+                <div className="p-4 pt-0">
                   <button
-                    onClick={() => abrirFormulario(kpi)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-azul hover:bg-azul-profundo text-white font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-azul/20"
+                    onClick={() => handleLlenarClick(kpi)}
+                    className="w-full py-3 bg-azul/5 hover:bg-azul hover:text-white text-azul rounded-xl text-xs font-black uppercase tracking-widest transition-all"
                   >
-                    📝 Llenar Reporte
+                    Ingresar Datos
                   </button>
                 </div>
               </div>
@@ -354,6 +383,9 @@ export default function LlenadoKPI() {
     );
   }
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // ── RENDERIZADO VISTA 2: FORMULARIO (DETAIL)
+  // ────────────────────────────────────────────────────────────────────────────
   const camposUsuario = campos.filter((c) => c.origen === "usuario");
   const camposResultado = campos.filter(
     (c) =>
@@ -365,7 +397,6 @@ export default function LlenadoKPI() {
 
   return (
     <div className="max-w-4xl mx-auto animate-in slide-in-from-right-8 duration-500 relative">
-      {/* 🔴 AQUÍ RENDERIZAMOS EL TOAST */}
       <Toast
         message={feedback?.mensaje}
         type={feedback?.tipo}
@@ -390,8 +421,6 @@ export default function LlenadoKPI() {
             </h2>
           </div>
         </div>
-
-        {/* ❌ Eliminamos el div estático de feedback viejo que estaba aquí */}
 
         {isLoadingCampos ? (
           <div className="text-center py-12 text-gray-500">
