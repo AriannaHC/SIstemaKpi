@@ -1,13 +1,16 @@
-// pages/ConfiguracionKPI.jsx
 import { useState, useEffect, useMemo } from "react";
 import { kpiService } from "../services/kpiService";
+import {
+  Settings,
+  ChevronLeft,
+  Folder,
+  Activity,
+  Calculator,
+  AlertTriangle,
+  CheckCircle2,
+  Database,
+} from "lucide-react";
 import Toast from "../components/Toast";
-
-const ORIGEN_BADGES = {
-  usuario: { label: "Usuario", cls: "bg-naranja/10 text-naranja" },
-  calculado: { label: "Calculado", cls: "bg-azul/10 text-azul" },
-  sistema: { label: "Sistema", cls: "bg-slate-100 text-slate-500" },
-};
 
 const ORIGEN_OPTIONS = [
   { value: "usuario", label: "Usuario" },
@@ -16,7 +19,6 @@ const ORIGEN_OPTIONS = [
 ];
 
 const DEFAULT_FORMULA = "N/A";
-const initialFeedback = null;
 
 export default function ConfiguracionKPI() {
   const [areas, setAreas] = useState([]);
@@ -24,32 +26,18 @@ export default function ConfiguracionKPI() {
   const [campos, setCampos] = useState([]);
   const [formulaOriginal, setFormulaOriginal] = useState("");
 
-  const [selectedArea, setSelectedArea] = useState("");
-  const [selectedKpi, setSelectedKpi] = useState("");
+  const [selectedArea, setSelectedArea] = useState(null); // Guardará el objeto área
+  const [selectedKpi, setSelectedKpi] = useState(null); // Guardará el objeto KPI
 
   const [isLoadingAreas, setIsLoadingAreas] = useState(true);
   const [isLoadingCampos, setIsLoadingCampos] = useState(false);
+  const [isLoadingKpis, setIsLoadingKpis] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState(initialFeedback);
-
-  const isKpiSelectDisabled = !selectedArea || isLoadingAreas || kpis.length === 0;
-  const hasCampos = campos.length > 0;
-
-  const getErrorMessage = (error, fallback) =>
-    error?.response?.data?.detail ?? fallback;
-
-  const clearFeedback = () => setFeedback(initialFeedback);
-
-  const resetKpiConfiguration = () => {
-    setSelectedKpi("");
-    setCampos([]);
-    setFormulaOriginal("");
-  };
+  const [feedback, setFeedback] = useState(null);
 
   const loadAreas = async () => {
     setIsLoadingAreas(true);
-    clearFeedback();
-
+    setFeedback(null);
     try {
       const data = await kpiService.getAreas();
       setAreas(data);
@@ -69,15 +57,15 @@ export default function ConfiguracionKPI() {
 
   const handleAreaChange = async (e) => {
     const areaId = e.target.value;
-    setSelectedArea(areaId);
-    clearFeedback();
-    resetKpiConfiguration();
+    const areaObj = areas.find((a) => a.id.toString() === areaId);
+    setSelectedArea(areaObj || null);
+    setFeedback(null);
+    setSelectedKpi(null);
     setKpis([]);
 
-    if (!areaId) {
-      return;
-    }
+    if (!areaId) return;
 
+    setIsLoadingKpis(true);
     try {
       const data = await kpiService.getKpisPorArea(areaId);
       setKpis(data);
@@ -86,47 +74,46 @@ export default function ConfiguracionKPI() {
         tipo: "error",
         mensaje: "Error al cargar los KPIs del área.",
       });
+    } finally {
+      setIsLoadingKpis(false);
     }
   };
 
-  const loadKpiConfiguration = async (kpiId) => {
-    if (!kpiId) return;
-
-    setSelectedKpi(kpiId);
-    clearFeedback();
+  const loadKpiConfiguration = async (kpi) => {
+    setSelectedKpi(kpi);
+    setFeedback(null);
     setCampos([]);
     setFormulaOriginal("");
     setIsLoadingCampos(true);
 
     try {
-      const data = await kpiService.getConfiguracion(kpiId);
+      const data = await kpiService.getConfiguracion(kpi.id);
       setFormulaOriginal(data.formula_original ?? DEFAULT_FORMULA);
       setCampos(data.campos ?? []);
     } catch (err) {
       setFeedback({
         tipo: "error",
-        mensaje: getErrorMessage(err, "Error al cargar la configuración del KPI."),
+        mensaje:
+          err?.response?.data?.detail || "Error al cargar configuración.",
       });
     } finally {
       setIsLoadingCampos(false);
     }
   };
 
-  const handleKpiChange = (e) => {
-    loadKpiConfiguration(e.target.value);
+  const volverAKpis = () => {
+    setSelectedKpi(null);
+    setCampos([]);
   };
 
   const updateCampo = (index, field, value) => {
     setCampos((prev) =>
       prev.map((campo, idx) => {
         if (idx !== index) return campo;
-
         const nextCampo = { ...campo, [field]: value };
-
         if (field === "origen" && value !== "calculado") {
           nextCampo.formula_personalizada = "";
         }
-
         return nextCampo;
       }),
     );
@@ -135,7 +122,7 @@ export default function ConfiguracionKPI() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    clearFeedback();
+    setFeedback(null);
 
     try {
       const payload = {
@@ -147,7 +134,10 @@ export default function ConfiguracionKPI() {
         })),
       };
 
-      const result = await kpiService.saveConfiguracion(selectedKpi, payload);
+      const result = await kpiService.saveConfiguracion(
+        selectedKpi.id,
+        payload,
+      );
       setFeedback({
         tipo: "ok",
         mensaje: result.message || "Configuración guardada exitosamente.",
@@ -155,7 +145,7 @@ export default function ConfiguracionKPI() {
     } catch (err) {
       setFeedback({
         tipo: "error",
-        mensaje: getErrorMessage(err, "Error al guardar la configuración."),
+        mensaje: err?.response?.data?.detail || "Error al guardar.",
       });
     } finally {
       setIsSubmitting(false);
@@ -163,69 +153,82 @@ export default function ConfiguracionKPI() {
   };
 
   const origenBadge = (origen) => {
-    const { label, cls } = ORIGEN_BADGES[origen] ?? ORIGEN_BADGES.sistema;
+    const badges = {
+      usuario: "bg-orange-100 text-naranja border-orange-200",
+      calculado: "bg-blue-100 text-azul border-blue-200",
+      sistema: "bg-slate-100 text-slate-500 border-slate-200",
+    };
+    const labels = {
+      usuario: "Usuario",
+      calculado: "Calculado",
+      sistema: "Sistema",
+    };
     return (
-      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${cls}`}>
-        {label}
+      <span
+        className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded border ${badges[origen] || badges.sistema}`}
+      >
+        {labels[origen] || "Desconocido"}
       </span>
     );
   };
 
   const resumenCampos = useMemo(() => {
-    const totals = { usuario: 0, calculado: 0, sistema: 0, requeridos: 0, formulasFaltantes: 0 };
+    const totals = {
+      usuario: 0,
+      calculado: 0,
+      sistema: 0,
+      requeridos: 0,
+      formulasFaltantes: 0,
+    };
     campos.forEach((campo) => {
       totals[campo.origen] += 1;
       if (campo.es_requerido) totals.requeridos += 1;
-      if (campo.origen === "calculado" && !campo.formula_personalizada) totals.formulasFaltantes += 1;
+      if (campo.origen === "calculado" && !campo.formula_personalizada)
+        totals.formulasFaltantes += 1;
     });
     return totals;
   }, [campos]);
 
-  const origenOptions = useMemo(
-    () =>
-      ORIGEN_OPTIONS.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      )),
-    [],
-  );
-
   return (
-    <div className="bg-gray-50 min-h-screen p-4 md:p-8 font-sans">
+    <div className="space-y-8 animate-in fade-in duration-700 max-w-7xl mx-auto">
       <Toast
         message={feedback?.mensaje}
         type={feedback?.tipo}
-        onClose={clearFeedback}
+        onClose={() => setFeedback(null)}
       />
 
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-extrabold text-azul-profundo tracking-tight">
-              Modelador de KPIs
-            </h1>
-          </div>
+      {/* Cabecera */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-azul font-heading">
+            Modelador de <span className="text-naranja">KPIs</span>
+          </h1>
+          <p className="text-gray-500 font-medium mt-1">
+            Configura las fórmulas y orígenes de datos de los indicadores.
+          </p>
         </div>
+      </div>
 
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <span className="text-azul font-bold text-xs uppercase tracking-wide">1. Selección</span>
-              <h2 className="text-2xl font-extrabold text-azul-profundo mt-3">Selecciona un área</h2>
-            </div>
+      {/* ───────────────────────────────────────────────────────── */}
+      {/* VISTA 1: SELECCIÓN DE ÁREA Y LISTA DE KPIS                */}
+      {/* ───────────────────────────────────────────────────────── */}
+      {!selectedKpi && (
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
+          {/* Selector de Área */}
+          <div className="p-6 md:p-8 border-b border-slate-50 bg-slate-50/30 flex flex-col md:flex-row gap-4 lg:gap-6 justify-between items-center">
+            <h2 className="text-xl font-bold text-azul-profundo flex items-center gap-2 shrink-0 self-start md:self-center">
+              <Folder className="w-6 h-6 text-naranja" /> Área a Configurar
+            </h2>
 
-            <div className="w-full md:w-80">
-              <label className="sr-only">Área</label>
+            <div className="w-full md:w-80 relative">
+              <Folder className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <select
-                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-2xl focus:ring-2 focus:ring-azul/30 focus:border-azul block p-3 transition-colors"
-                value={selectedArea}
+                className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none focus:border-azul appearance-none transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                value={selectedArea ? selectedArea.id : ""}
                 onChange={handleAreaChange}
                 disabled={isLoadingAreas}
               >
-                <option value="">
-                  {isLoadingAreas ? "Cargando..." : "Selecciona un área"}
-                </option>
+                <option value="">-- Selecciona un área --</option>
                 {areas.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.nombre}
@@ -234,202 +237,279 @@ export default function ConfiguracionKPI() {
               </select>
             </div>
           </div>
-        </div>
 
-        {isLoadingCampos && (
-          <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-slate-200">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-azul mb-3"></div>
-            <p className="text-slate-500 text-sm font-medium">Cargando configuración del KPI...</p>
-          </div>
-        )}
-
-        {!isLoadingCampos && !selectedKpi && (
-          <div className="grid gap-6">
-            {selectedArea ? (
-              kpis.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {kpis.map((kpi) => (
-                    <button
-                      key={kpi.id}
-                      type="button"
-                      onClick={() => loadKpiConfiguration(kpi.id)}
-                      className="text-left rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-azul/30"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 className="text-lg font-bold text-azul">{kpi.nombre}</h3>
-                          <p className="text-sm text-slate-500 mt-2">Haz clic para cargar la configuración del KPI.</p>
-                        </div>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">
-                          Disponible
-                        </span>
-                      </div>
-                      <div className="mt-4 text-sm text-slate-500">
-                        {kpi.formula_texto ? (
-                          <p>Fórmula base reconocida.</p>
-                        ) : (
-                          <p>Sin fórmula base definida aún.</p>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-                  <h3 className="text-lg font-semibold text-slate-900">No hay KPIs disponibles</h3>
-                  <p className="text-sm text-slate-500 mt-2">Esta área no contiene KPIs activos para configurar en este momento.</p>
-                </div>
-              )
+          {/* Cuadrícula de KPIs */}
+          <div className="p-6 md:p-8 bg-slate-50/50 min-h-[400px]">
+            {!selectedArea ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <Database className="w-14 h-14 text-slate-200 mb-4" />
+                <p className="text-azul font-black text-lg uppercase tracking-widest font-heading">
+                  Sin Selección
+                </p>
+                <p className="text-gray-500 text-sm mt-1">
+                  Selecciona un área en el menú superior para ver sus KPIs.
+                </p>
+              </div>
+            ) : isLoadingKpis ? (
+              <div className="flex justify-center py-20">
+                <div className="w-10 h-10 border-4 border-azul border-t-naranja rounded-full animate-spin"></div>
+              </div>
+            ) : kpis.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
+                <Activity className="w-14 h-14 text-slate-200 mb-4" />
+                <p className="text-azul font-black text-lg uppercase tracking-widest font-heading">
+                  Sin KPIs
+                </p>
+                <p className="text-gray-500 text-sm mt-1">
+                  El área seleccionada no tiene KPIs activos.
+                </p>
+              </div>
             ) : (
-              <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-                <h3 className="text-xl font-bold text-azul">Selecciona un área</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {kpis.map((kpi) => (
+                  <div
+                    key={kpi.id}
+                    className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col h-48 group relative overflow-hidden"
+                  >
+                    <div className="flex items-start justify-between mb-4 relative z-10">
+                      <div className="w-12 h-12 rounded-2xl bg-azul/5 flex items-center justify-center text-azul group-hover:bg-azul group-hover:text-white transition-colors">
+                        <Settings className="w-6 h-6" />
+                      </div>
+                      <span className="text-[9px] font-black uppercase tracking-widest border border-slate-200 text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg">
+                        Editable
+                      </span>
+                    </div>
+
+                    <div className="mt-auto relative z-10">
+                      <h3
+                        className="text-sm font-black text-azul-profundo line-clamp-2 mb-3 leading-tight"
+                        title={kpi.nombre}
+                      >
+                        {kpi.nombre}
+                      </h3>
+                      <button
+                        onClick={() => loadKpiConfiguration(kpi)}
+                        className="w-full bg-slate-100 text-azul font-black text-[10px] uppercase tracking-widest py-2.5 rounded-xl hover:bg-azul hover:text-white transition-colors"
+                      >
+                        Configurar
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        )}
+        </div>
+      )}
 
-        {!isLoadingCampos && hasCampos && (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden p-6">
-            <div className="grid gap-6 lg:grid-cols-[1.8fr_1fr]">
-              <div className="space-y-6">
-                <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Referencia Excel</p>
-                      <h4 className="mt-2 text-lg font-bold text-azul">Copiar la fórmula oficial</h4>
-                    </div>
-                    <span className="text-[10px] rounded-full bg-naranja/10 px-3 py-1 font-semibold uppercase tracking-[0.24em] text-naranja">
-                      Original
-                    </span>
-                  </div>
-                  <code className="block font-mono text-sm text-slate-700 bg-white p-3 rounded-2xl border border-slate-100 mt-4 overflow-x-auto">
-                    {formulaOriginal}
-                  </code>
-                  <p className="text-xs text-slate-400 mt-3">
-                    Usa las variables entre <strong className="text-slate-600">[corchetes]</strong> y valida que cada campo de origen exista en la tabla.
-                  </p>
-                </div>
+      {/* ───────────────────────────────────────────────────────── */}
+      {/* VISTA 2: EDITOR DEL KPI SELECCIONADO                      */}
+      {/* ───────────────────────────────────────────────────────── */}
+      {selectedKpi && (
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden animate-in slide-in-from-right-8 duration-500">
+          {/* Cabecera del Editor */}
+          <div className="p-6 md:p-8 border-b border-slate-50 bg-white relative">
+            <button
+              onClick={volverAKpis}
+              className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center gap-2 text-xs font-black text-gray-400 hover:text-azul transition-colors uppercase tracking-widest"
+            >
+              <ChevronLeft className="w-4 h-4" /> Volver
+            </button>
 
-                <div className="overflow-hidden rounded-3xl border border-slate-200">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
-                      <tr>
-                        <th className="px-4 py-3 border-b border-slate-200">Nombre del Campo</th>
-                        <th className="px-4 py-3 border-b border-slate-200 w-48">Origen</th>
-                        <th className="px-4 py-3 border-b border-slate-200">Fórmula / Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
-                      {campos.map((c, index) => (
-                        <tr
-                          key={c.id}
-                          className={`transition-colors hover:bg-slate-50 ${
-                            c.origen === "calculado" && !c.formula_personalizada
-                              ? "bg-amber-50"
-                              : ""
-                          }`}
-                        >
-                          <td className="px-4 py-3">
-                            <div className="font-bold text-slate-900">{c.campo_label}</div>
-                            <div className="flex flex-wrap items-center gap-2 mt-2">
-                              <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono">
-                                {c.campo_key}
-                              </span>
-                              {origenBadge(c.origen)}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <select
-                              className="w-full border border-slate-200 text-slate-600 rounded text-xs focus:ring-1 focus:ring-azul/30 focus:border-azul bg-white"
-                              value={c.origen}
-                              onChange={(e) => updateCampo(index, "origen", e.target.value)}
-                            >
-                              {origenOptions}
-                            </select>
-                          </td>
-                          <td className="px-4 py-3">
-                            {c.origen === "calculado" ? (
-                              <input
-                                type="text"
-                                placeholder="Ej: ([Numerador] / [Denominador])"
-                                className="w-full border border-slate-200 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-azul/30 focus:border-azul font-mono text-slate-700 bg-white"
-                                value={c.formula_personalizada || ""}
-                                onChange={(e) => updateCampo(index, "formula_personalizada", e.target.value)}
-                              />
-                            ) : (
-                              <span className="text-xs text-slate-400 italic block py-1.5">
-                                {c.origen === "sistema" ? "Solo lectura" : "Entrada de usuario"}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                  <p className="font-semibold text-azul">Sugerencias inteligentes</p>
-                  <ul className="mt-3 space-y-3">
-                    <li className="rounded-2xl border border-slate-100 bg-white px-3 py-3">
-                      Usa una fórmula por campo calculado y prueba con valores de origen reales.
-                    </li>
-                    <li className="rounded-2xl border border-slate-100 bg-white px-3 py-3">
-                      Mantén el nombre del campo simple y consistente para el equipo.
-                    </li>
-                    <li className="rounded-2xl border border-slate-100 bg-white px-3 py-3">
-                      Verifica las fórmulas antes de guardar para evitar cálculos erróneos.
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="bg-azul hover:bg-azul-profundo text-white text-sm font-medium py-2.5 px-6 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? "Guardando..." : "Guardar configuración"}
-                  </button>
-                </div>
-              </div>
-
-              <aside className="space-y-6">
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.24em] text-slate-400 mb-4">
-                    <span>Estado del modelo</span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">Insights</span>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Campos calculados</p>
-                      <p className="mt-2 text-3xl font-black text-azul">{resumenCampos.calculado}</p>
-                      <p className="text-xs text-slate-500 mt-1">Cantidad de campos que dependen de fórmulas.</p>
-                    </div>
-                    <div className={`rounded-3xl border p-4 ${resumenCampos.formulasFaltantes ? "border-rojo-persa/20 bg-rojo-persa/10" : "border-turquesa/20 bg-turquesa/10"}`}>
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-slate-700">Salud de fórmulas</p>
-                      <p className={`mt-2 text-2xl font-black ${resumenCampos.formulasFaltantes ? "text-rojo-persa" : "text-turquesa"}`}>
-                        {resumenCampos.formulasFaltantes ? `${resumenCampos.formulasFaltantes} pendiente(s)` : "Lista"}
-                      </p>
-                      <p className="text-xs text-slate-700 mt-1">
-                        {resumenCampos.formulasFaltantes
-                          ? "Completa las fórmulas para evitar cálculos faltantes."
-                          : "Las fórmulas están listas para calcular."}
-                      </p>
-                    </div>
-                    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                      <p className="font-semibold text-azul">Acción recomendada</p>
-                      <p className="mt-2 text-slate-500">
-                        Si cambias origen a calculado, revisa el campo antes de guardar para mantener el modelo consistente.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </aside>
+            <div className="pr-24">
+              <span className="text-[10px] bg-naranja/10 text-naranja px-3 py-1 rounded-full font-black uppercase tracking-widest mb-3 inline-block">
+                Configurando Estructura
+              </span>
+              <h2 className="text-2xl md:text-3xl font-black text-azul-profundo font-heading leading-tight">
+                {selectedKpi.nombre}
+              </h2>
             </div>
           </div>
-        )}
-      </div>
+
+          <div className="p-6 md:p-8 bg-slate-50/50">
+            {isLoadingCampos ? (
+              <div className="text-center py-20">
+                <div className="w-10 h-10 border-4 border-azul border-t-naranja rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-500 font-semibold text-sm">
+                  Cargando estructura...
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+                {/* Columna Izquierda: Editor de Campos */}
+                <div className="space-y-6">
+                  {/* Banner de Fórmula Original */}
+                  <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Calculator className="w-5 h-5 text-turquesa" />
+                        <h4 className="text-sm font-black uppercase tracking-widest text-slate-700">
+                          Fórmula Excel Original
+                        </h4>
+                      </div>
+                    </div>
+                    <code className="block font-mono text-xs text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100 overflow-x-auto">
+                      {formulaOriginal}
+                    </code>
+                    <p className="text-[11px] font-semibold text-slate-400 mt-3">
+                      Referencia para replicar la lógica en las variables de
+                      abajo usando{" "}
+                      <span className="text-azul">[Corchetes]</span>.
+                    </p>
+                  </div>
+
+                  {/* Tabla de Configuración */}
+                  <form
+                    id="config-form"
+                    onSubmit={handleSubmit}
+                    className="overflow-x-auto rounded-3xl border border-slate-200 shadow-sm bg-white"
+                  >
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                          <th className="px-6 py-4 text-[10px] font-black text-azul uppercase tracking-widest w-1/3">
+                            Nombre de Variable
+                          </th>
+                          <th className="px-6 py-4 text-[10px] font-black text-azul uppercase tracking-widest w-40">
+                            Origen de Datos
+                          </th>
+                          <th className="px-6 py-4 text-[10px] font-black text-azul uppercase tracking-widest">
+                            Lógica / Valor
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {campos.map((c, index) => (
+                          <tr
+                            key={c.id}
+                            className={`transition-colors hover:bg-slate-50 ${c.origen === "calculado" && !c.formula_personalizada ? "bg-red-50/50" : ""}`}
+                          >
+                            <td className="px-6 py-4">
+                              <div className="font-bold text-slate-800 text-sm mb-2">
+                                {c.campo_label}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-mono font-bold tracking-wider">
+                                  {c.campo_key}
+                                </span>
+                                {origenBadge(c.origen)}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <select
+                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-2.5 px-3 focus:ring-2 focus:ring-azul/20 focus:border-azul outline-none transition-all cursor-pointer hover:bg-white"
+                                value={c.origen}
+                                onChange={(e) =>
+                                  updateCampo(index, "origen", e.target.value)
+                                }
+                              >
+                                {ORIGEN_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-6 py-4">
+                              {c.origen === "calculado" ? (
+                                <input
+                                  type="text"
+                                  placeholder="Ej: ([Numerador] / [Denominador])"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-azul/20 focus:border-azul font-mono text-slate-700 transition-all outline-none"
+                                  value={c.formula_personalizada || ""}
+                                  onChange={(e) =>
+                                    updateCampo(
+                                      index,
+                                      "formula_personalizada",
+                                      e.target.value,
+                                    )
+                                  }
+                                  required
+                                />
+                              ) : (
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">
+                                  {c.origen === "sistema"
+                                    ? "Valor de Base de Datos"
+                                    : "Ingresado por Usuario"}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </form>
+                </div>
+
+                {/* Columna Derecha: Insights & Guardar */}
+                <aside className="space-y-6">
+                  <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">
+                      <span>Análisis de Estructura</span>
+                      <Activity className="w-4 h-4 text-azul" />
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Cajas de info */}
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">
+                          Variables Calculadas
+                        </p>
+                        <p className="mt-1 text-2xl font-black text-azul">
+                          {resumenCampos.calculado}
+                        </p>
+                      </div>
+
+                      <div
+                        className={`rounded-2xl border p-4 ${resumenCampos.formulasFaltantes ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}
+                      >
+                        <p
+                          className={`text-[10px] uppercase font-black tracking-widest ${resumenCampos.formulasFaltantes ? "text-red-600" : "text-green-600"}`}
+                        >
+                          Integridad Lógica
+                        </p>
+                        <p
+                          className={`mt-1 text-xl font-black flex items-center gap-2 ${resumenCampos.formulasFaltantes ? "text-rojo-persa" : "text-green-700"}`}
+                        >
+                          {resumenCampos.formulasFaltantes ? (
+                            <>
+                              <AlertTriangle className="w-5 h-5" />{" "}
+                              {resumenCampos.formulasFaltantes} Incompleta(s)
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-5 h-5" /> Fórmulas
+                              Listas
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 pt-6 border-t border-slate-100">
+                      <button
+                        form="config-form"
+                        type="submit"
+                        disabled={
+                          isSubmitting || resumenCampos.formulasFaltantes > 0
+                        }
+                        className="w-full bg-naranja hover:bg-orange-600 text-white font-black py-4 rounded-xl uppercase tracking-widest transition-all shadow-lg shadow-naranja/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSubmitting ? "Guardando..." : "Guardar Estructura"}
+                      </button>
+                      {resumenCampos.formulasFaltantes > 0 && (
+                        <p className="text-[10px] text-rojo-persa text-center font-bold mt-3">
+                          Rellena las fórmulas faltantes para guardar.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
