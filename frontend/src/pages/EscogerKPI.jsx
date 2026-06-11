@@ -287,9 +287,11 @@ export default function EscogerKPI() {
                 {kpisData.kpis.map((kpi) => (
                   <div
                     key={kpi.id}
-                    className={`p-5 rounded-2xl flex justify-between items-center transition-all duration-300 border h-[92px] ${
+                    className={`p-4 border rounded-xl flex justify-between items-center transition-all duration-300 ${
                       kpi.is_programado
-                        ? "border-green-200 bg-green-50/60 shadow-sm"
+                        ? kpi.completado
+                          ? "border-emerald-300 bg-emerald-50/60 shadow-sm" // Verde más oscuro si está completado
+                          : "border-green-200 bg-green-50/60 shadow-sm" // Verde claro si solo está activo
                         : "bg-white border-slate-200 hover:shadow-md hover:border-azul/30"
                     }`}
                   >
@@ -301,7 +303,9 @@ export default function EscogerKPI() {
                         {kpi.nombre}
                       </h4>
                       {kpi.is_programado ? (
-                        <p className="text-[10px] text-green-700 font-bold uppercase tracking-widest mt-1 flex items-center gap-1.5 truncate">
+                        <p
+                          className={`text-[10px] font-bold uppercase tracking-widest mt-1 flex items-center gap-1.5 truncate ${kpi.completado ? "text-emerald-700" : "text-green-700"}`}
+                        >
                           <Clock className="w-3.5 h-3.5 shrink-0" /> Vence:{" "}
                           {formatFecha(kpi.fecha_fin)}
                         </p>
@@ -314,9 +318,15 @@ export default function EscogerKPI() {
 
                     <div className="shrink-0 flex items-center">
                       {kpi.is_programado ? (
-                        <span className="h-10 px-4 bg-green-100 text-green-700 font-black text-[10px] rounded-xl uppercase tracking-widest flex items-center justify-center gap-1.5 border border-green-200">
-                          <CheckCircle2 className="w-4 h-4" /> Activo
-                        </span>
+                        kpi.completado ? (
+                          <span className="h-10 px-4 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded-xl uppercase tracking-widest flex items-center justify-center gap-1.5 border border-emerald-300">
+                            <CheckCircle2 className="w-4 h-4" /> Completado
+                          </span>
+                        ) : (
+                          <span className="h-10 px-4 bg-green-100 text-green-700 font-black text-[10px] rounded-xl uppercase tracking-widest flex items-center justify-center gap-1.5 border border-green-200">
+                            <Activity className="w-4 h-4" /> Activo
+                          </span>
+                        )
                       ) : (
                         <button
                           onClick={() => abrirModalProgramacion(kpi)}

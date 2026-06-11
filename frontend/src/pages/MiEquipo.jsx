@@ -34,8 +34,24 @@ export default function MiEquipo() {
         apiClient.get("/users/mi-equipo"),
         kpiService.getKpisSemanales(user.kpi_area_id),
       ]);
-      setEquipo(miEquipoRes.data);
-      // Filtramos usando is_programado (la nueva lógica del backend)
+      let equipoData = miEquipoRes.data || [];
+      const jefeIncluido = equipoData.some((t) => t.id === user.id);
+
+      if (!jefeIncluido) {
+        equipoData = [
+          {
+            id: user.id,
+            name: `${user.name} (Tú - Jefe de Área)`, // Distintivo visual
+            email: user.email,
+            kpi_rol_id: user.kpi_rol_id,
+            kpi_area_id: user.kpi_area_id,
+          },
+          ...equipoData,
+        ];
+      }
+
+      setEquipo(equipoData);
+
       setKpisActivos((kpisRes.kpis || []).filter((k) => k.is_programado));
     } catch (err) {
       console.error(err);

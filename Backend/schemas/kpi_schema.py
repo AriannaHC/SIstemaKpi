@@ -12,6 +12,8 @@ class KpiResponse(BaseModel):
     meta_valor: float
     activo_semanal: bool
     es_mi_kpi: Optional[bool] = False
+    fecha_fin: Optional[datetime] = None
+    completado: Optional[bool] = False
 
     class Config:
         from_attributes = True

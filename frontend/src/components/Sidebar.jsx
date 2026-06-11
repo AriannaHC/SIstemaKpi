@@ -88,7 +88,7 @@ export default function Sidebar({
           <NavItem
             view="daily"
             icon={<Clock className="w-5 h-5" />}
-            label="Ingreso Diario"
+            label="Tus Indicadores"
           />
           <NavItem
             view="reports"
