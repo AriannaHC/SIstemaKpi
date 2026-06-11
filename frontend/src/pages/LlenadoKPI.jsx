@@ -126,6 +126,7 @@ export default function LlenadoKPI() {
   const [isLoadingCampos, setIsLoadingCampos] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [showResumenModal, setShowResumenModal] = useState(false);
 
   // ── 1. Cargar KPIs activos ───────────────────────────────────────────────
   const cargarKpisDiarios = () => {
@@ -228,6 +229,81 @@ export default function LlenadoKPI() {
       </span>
     );
   };
+
+  const resumenLabels = [
+    "Valor semanal",
+    "Meta KPI",
+    "Cumplimiento",
+    "Productividad",
+    "Eficiencia",
+    "Eficacia",
+    "Efectividad",
+    "Rendimiento",
+  ];
+
+  const buscarValorResumen = (etiqueta) => {
+    const campo = camposResultado.find((c) =>
+      c.campo_label.toLowerCase().includes(etiqueta.toLowerCase()),
+    );
+    return campo ? formatearValor(campo.campo_label, contexto[campo.campo_label]) : "-";
+  };
+
+  const renderResumenPanel = () => (
+    <div className="rounded-[2rem] border border-slate-200 bg-gradient-to-br from-[#123498]/10 via-slate-50 to-[#F46F0B]/10 p-6 shadow-sm">
+      <div className="mb-6">
+        <h3 className="text-2xl font-extrabold" style={{ color: "#123498" }}>
+          Estado de tu KPI
+        </h3>
+      </div>
+
+      <div className="space-y-4">
+        <div className="rounded-[1.5rem] bg-white border border-slate-200 p-5">
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400 font-black mb-2">
+            Semáforo de cumplimiento
+          </p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-4xl font-black" style={{ color: "#123498" }}>
+                {cumplimientoValue !== null && cumplimientoValue !== undefined
+                  ? `${(cumplimientoValue * 100).toFixed(0)}%`
+                  : "--"}
+              </p>
+              <p className="text-sm text-slate-500 mt-1">Evaluación actual</p>
+            </div>
+            <SemaforoDisplay cumplimiento={cumplimientoValue} />
+          </div>
+          <div className="mt-4 h-3 rounded-full bg-slate-200 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#123498] to-[#123498]/60"
+              style={{
+                width: cumplimientoValue
+                  ? `${Math.max(5, Math.min(cumplimientoValue * 100, 100))}%`
+                  : "5%",
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] bg-white border border-slate-200 p-5">
+          <div className="grid grid-cols-2 gap-3">
+            {resumenLabels.map((label) => (
+              <div
+                key={label}
+                className="rounded-2xl bg-slate-50 px-3 py-3 shadow-sm"
+              >
+                <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500 mb-1">
+                  {label}
+                </p>
+                <p className="text-sm font-semibold text-[#123498]">
+                  {buscarValorResumen(label)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   // ── 4. Enviar Datos ──────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
@@ -398,9 +474,10 @@ export default function LlenadoKPI() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto animate-in slide-in-from-right-8 duration-500 relative">
-      {/* 🔴 AQUÍ RENDERIZAMOS EL TOAST */}
-      <Toast
+    <div className="min-h-screen bg-slate-50 overflow-hidden">
+      <div className="h-full max-w-5xl mx-auto flex flex-col px-3 py-2 lg:px-0 animate-in slide-in-from-right-8 duration-500 relative">
+        {/* 🔴 AQUÍ RENDERIZAMOS EL TOAST */}
+        <Toast
         message={feedback?.mensaje}
         type={feedback?.tipo}
         onClose={() => setFeedback(null)}
@@ -408,22 +485,25 @@ export default function LlenadoKPI() {
 
       <button
         onClick={cerrarFormulario}
-        className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-azul mb-6 transition-colors"
+        className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-azul mb-3 transition-colors"
       >
         <ChevronLeft className="w-4 h-4" /> Volver a mis KPIs
       </button>
 
-      <div className="bg-white rounded-[2rem] shadow-xl border border-slate-100 p-6 md:p-8">
-        <div className="mb-8">
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-azul/10 text-azul text-[11px] font-bold uppercase tracking-[0.24em]">
-            Ingreso Semanal
-          </span>
-          <h2 className="mt-4 text-3xl font-extrabold text-azul-profundo tracking-tight font-heading">
+      <div className="bg-white rounded-[1.5rem] shadow-xl border border-slate-100 p-3 md:p-4 flex-1 overflow-hidden">
+        <div className="mb-3">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-azul-profundo tracking-tight font-heading">
             {kpiSeleccionado.nombre}
           </h2>
-          <p className="mt-3 text-sm text-slate-500 max-w-2xl leading-6">
-            Completa los datos clave para este KPI. La pantalla está diseñada para que el contenido principal quede junto y los resultados en tiempo real se vean en el costado.
-          </p>
+          {camposResultado.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowResumenModal(true)}
+              className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-[#123498]/20 bg-white px-4 py-2.5 text-sm font-black text-[#123498] shadow-sm transition-all hover:bg-slate-50 lg:hidden"
+            >
+              Ver resumen
+            </button>
+          )}
         </div>
 
         {isLoadingCampos ? (
@@ -431,13 +511,13 @@ export default function LlenadoKPI() {
             <span className="animate-spin inline-block mr-2 text-xl">⏳</span> Cargando estructura...
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[1.75fr_1.1fr]">
-            <div className="space-y-8">
-              <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-6 shadow-sm">
-                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <form onSubmit={handleSubmit} className="grid gap-5 h-full lg:grid-cols-[1.8fr_1.05fr]">
+            <div className="space-y-5 flex flex-col h-full overflow-hidden">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm flex flex-col h-full overflow-hidden">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-azul">Datos a completar</h3>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <h3 className="text-base font-bold text-azul">Datos a completar</h3>
+                    <p className="text-xs text-slate-500 mt-1">
                       Ingresa la información que el sistema necesita para calcular los indicadores.
                     </p>
                   </div>
@@ -445,7 +525,7 @@ export default function LlenadoKPI() {
                     {camposUsuario.length} campos
                   </span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0 overflow-y-auto pr-2 pb-3">
                   {camposUsuario.map((c) => {
                     const esTextoLargo =
                       c.campo_label.toLowerCase().includes("observaciones") ||
@@ -462,7 +542,7 @@ export default function LlenadoKPI() {
                             value={valores[c.campo_key] || ""}
                             onChange={handleChange}
                             rows={4}
-                            className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700 outline-none focus:border-azul focus:ring-2 focus:ring-azul/10 transition-all resize-none"
+                            className="w-full rounded-3xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none focus:border-azul focus:ring-2 focus:ring-azul/10 transition-all resize-none"
                           />
                         ) : (
                           <input
@@ -472,7 +552,7 @@ export default function LlenadoKPI() {
                             value={valores[c.campo_key] || ""}
                             onChange={handleChange}
                             required={c.es_requerido}
-                            className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700 outline-none focus:border-azul focus:ring-2 focus:ring-azul/10 transition-all"
+                            className="w-full rounded-3xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none focus:border-azul focus:ring-2 focus:ring-azul/10 transition-all"
                           />
                         )}
                       </div>
@@ -481,80 +561,54 @@ export default function LlenadoKPI() {
                 </div>
               </div>
 
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full rounded-[1.5rem] bg-azul text-white font-black text-sm uppercase tracking-[0.3em] py-4 transition-all shadow-lg shadow-azul/20 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-azul-profundo"
-              >
-                {isSubmitting ? "Guardando..." : "Guardar Registro"}
-              </button>
+              <div className="sticky bottom-0 z-10 bg-slate-50 pt-3">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full rounded-[1.5rem] bg-[#123498] text-white font-black text-xs uppercase tracking-[0.28em] py-3.5 transition-all shadow-lg shadow-[#123498]/20 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-[#0f2f71]"
+                >
+                  {isSubmitting ? "Guardando..." : "Guardar Registro"}
+                </button>
+              </div>
             </div>
 
             {camposResultado.length > 0 && (
-              <div className="lg:sticky lg:top-6 lg:self-start">
-                <div className="rounded-[2rem] border border-slate-200 bg-gradient-to-br from-turquesa/5 via-slate-50 to-azul/5 p-6 shadow-sm">
-                  <div className="mb-6">
-                    <p className="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mb-3">
-                      Resultados en tiempo real
-                    </p>
-                    <h3 className="text-2xl font-extrabold text-azul">Estado de tu KPI</h3>
-                    <p className="mt-3 text-sm leading-6 text-slate-600">
-                      Estas métricas se actualizan mientras completas el formulario.
-                    </p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="rounded-[1.5rem] bg-white border border-slate-200 p-5">
-                      <p className="text-xs uppercase tracking-[0.3em] text-slate-400 font-black mb-2">
-                        Semáforo de cumplimiento
-                      </p>
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-4xl font-black text-azul">
-                            {cumplimientoValue !== null && cumplimientoValue !== undefined
-                              ? `${(cumplimientoValue * 100).toFixed(0)}%`
-                              : "--"}
-                          </p>
-                          <p className="text-sm text-slate-500 mt-1">Evaluación actual</p>
-                        </div>
-                        <SemaforoDisplay cumplimiento={cumplimientoValue} />
-                      </div>
-                      <div className="mt-4 h-3 rounded-full bg-slate-200 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-azul to-turquesa"
-                          style={{
-                            width: cumplimientoValue
-                              ? `${Math.max(5, Math.min(cumplimientoValue * 100, 100))}%`
-                              : "5%",
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-[1.5rem] bg-white border border-slate-200 p-5 space-y-4">
-                      <div className="grid grid-cols-1 gap-4">
-                        {camposResultado.slice(0, 4).map((c) => (
-                          <div key={c.id} className="flex items-center justify-between gap-3">
-                            <span className="text-sm text-slate-500">{c.campo_label}</span>
-                            <span className="text-sm font-semibold text-azul">
-                              {formatearValor(c.campo_label, contexto[c.campo_label])}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      {camposResultado.length > 4 && (
-                        <p className="text-xs text-slate-400 leading-5">
-                          Más métricas calculadas están disponibles en el panel principal después de guardar.
-                        </p>
-                      )}
-                    </div>
-                  </div>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowResumenModal(true)}
+                  className="mb-4 w-full rounded-[1.4rem] border border-[#123498]/20 bg-white px-4 py-3 text-sm font-black text-[#123498] shadow-sm transition-all hover:bg-slate-50 lg:hidden"
+                >
+                  Ver resumen
+                </button>
+                <div className="hidden lg:block lg:sticky lg:top-4 lg:self-start max-h-full overflow-y-auto">
+                  {renderResumenPanel()}
                 </div>
-              </div>
+              </>
             )}
           </form>
         )}
+      </div>
+      {showResumenModal && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/70 p-4">
+          <div className="w-full max-w-xl rounded-[2rem] border border-slate-200 bg-white p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mb-1">Estado de tu KPI</p>
+                <h3 className="text-2xl font-extrabold text-azul">Resumen del KPI</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowResumenModal(false)}
+                className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 transition"
+              >
+                Cerrar
+              </button>
+            </div>
+            {renderResumenPanel()}
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
