@@ -1,5 +1,5 @@
 // App.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
@@ -7,17 +7,38 @@ import LlenadoKPI from "./pages/LlenadoKPI";
 import ConfiguracionKPI from "./pages/ConfiguracionKPI";
 import Dashboard from "./pages/Dashboard";
 import Usuarios from "./pages/Usuarios";
-import EscogerKPI from "./pages/EscogerKPI"; // <-- Importamos la nueva vista
+import EscogerKPI from "./pages/EscogerKPI";
 import MiEquipo from "./pages/MiEquipo";
 import Reportes from "./pages/Reportes";
 
 export default function App() {
   const { user, logout } = useAuth();
 
-  // Por defecto, si es trabajador (3) mandarlo a daily, si no, al dashboard
-  const [activePage, setActivePage] = useState(
-    user?.kpi_rol_id === 3 ? "daily" : "dashboard",
+  // 1. Función para determinar la página inicial según el rol
+  const getDefaultPage = (rol) => {
+    switch (rol) {
+      case 1:
+        return "settings"; // Admin -> Configuración KPI
+      case 2:
+        return "mi-equipo"; // Jefe de Área -> Mi Equipo
+      case 3:
+        return "daily"; // Trabajador -> Ingreso Diario
+      default:
+        return "daily";
+    }
+  };
+
+  // 2. Inicializamos el estado con la función
+  const [activePage, setActivePage] = useState(() =>
+    getDefaultPage(user?.kpi_rol_id),
   );
+
+  // 3. Efecto clave: Si el usuario inicia sesión o cambia de cuenta, forzamos la redirección
+  useEffect(() => {
+    if (user) {
+      setActivePage(getDefaultPage(user.kpi_rol_id));
+    }
+  }, [user]);
 
   if (!user) return <Login />;
 
@@ -32,7 +53,7 @@ export default function App() {
       case "users":
         return <Usuarios />;
       case "escoger-kpi":
-        return <EscogerKPI />; // <-- Agregamos el caso
+        return <EscogerKPI />;
       case "reports":
         return <Reportes />;
       case "mi-equipo":
@@ -43,7 +64,6 @@ export default function App() {
   };
 
   return (
-    // ¡Asegúrate de pasarle 'user' al Layout si este a su vez se lo pasa al Sidebar!
     <Layout
       activePage={activePage}
       setActivePage={setActivePage}

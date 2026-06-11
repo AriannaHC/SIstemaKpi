@@ -347,14 +347,14 @@ export default function EscogerKPI() {
         createPortal(
           <>
             <div
-              className={`fixed inset-0 bg-slate-900/40 z-[9990] transition-opacity duration-300 ${
+              className={`fixed inset-0 bg-slate-900/40 z-9990 transition-opacity duration-300 ${
                 modalSide.open ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               onClick={cerrarModal}
             />
 
             <div
-              className={`fixed top-0 right-0 h-[100dvh] w-full md:w-[450px] bg-white z-[9999] shadow-2xl transform transition-transform duration-300 ease-out flex flex-col ${
+              className={`fixed top-0 right-0 h-dvh w-full md:w-[450px] bg-white z-9999 shadow-2xl transform transition-transform duration-300 ease-out flex flex-col ${
                 modalSide.open ? "translate-x-0" : "translate-x-full"
               }`}
             >
