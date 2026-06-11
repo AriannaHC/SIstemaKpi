@@ -338,7 +338,6 @@ def get_kpis_semanales_por_area(
         Kpi.area_id == area_id,
         KpiProgramado.fecha_inicio <= now,
         KpiProgramado.fecha_fin >= now,
-        KpiProgramado.completado == False
     ).all()
 
     # Diccionario para saber rápidamente qué KPIs están programados
@@ -357,6 +356,7 @@ def get_kpis_semanales_por_area(
                 "is_programado": k.id in prog_dict,
                 "fecha_fin": prog_dict[k.id].fecha_fin if k.id in prog_dict else None,
                 "responsable_id": k.responsable_id,
+                "completado": prog_dict[k.id].completado if k.id in prog_dict else False,
             }
             for k in kpis
         ],
@@ -378,7 +378,6 @@ def obtener_kpis_diarios(
     query = db.query(KpiProgramado).join(Kpi).filter(
         KpiProgramado.fecha_inicio <= now,
         KpiProgramado.fecha_fin >= now,
-        KpiProgramado.completado == False
     )
 
     if not es_admin:
@@ -399,6 +398,8 @@ def obtener_kpis_diarios(
             meta_valor=p.kpi.meta_valor or 0.0,
             activo_semanal=True,
             es_mi_kpi=(p.kpi.responsable_id == current_user.id),
+            fecha_fin=p.fecha_fin,
+            completado=p.completado
         )
         for p in programados
     ]
@@ -655,18 +656,20 @@ def asignar_responsable_kpi(
 
     responsable_id = payload.get("responsable_id")
 
-    # Permitir null para desasignar
     if responsable_id is None:
         kpi.responsable_id = None
         db.commit()
         return {"success": True, "message": f"KPI '{kpi.nombre}' desasignado."}
 
-    # Validar que el trabajador pertenece al área correcta
+    # --- INICIO DE BLOQUE MODIFICADO ---
     trabajador = db.query(User).filter(User.id == responsable_id).first()
     if not trabajador:
         raise HTTPException(status_code=404, detail="Trabajador no encontrado.")
-    if trabajador.kpi_area_id != kpi.area_id:
+    
+    # Validar área EXCEPTO si el que se asigna es Administrador (rol 1)
+    if trabajador.kpi_rol_id != 1 and trabajador.kpi_area_id != kpi.area_id:
         raise HTTPException(status_code=400, detail="El trabajador no pertenece al área de este KPI.")
+    # --- FIN DE BLOQUE MODIFICADO ---
 
     kpi.responsable_id = responsable_id
     db.commit()
@@ -894,3 +897,56 @@ def _process_smart_excel(filepath: str, db: Session) -> int:
 
     db.commit()
     return kpis_actualizados
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  8. CIERRE AUTOMÁTICO DE KPIs (MÓDULO 2 Y 3)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/cerrar-vencidos")
+def cerrar_kpis_vencidos(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Cierra automáticamente los KPIs cuya fecha_fin ya pasó y no fueron llenados (Omisión)."""
+    if current_user.kpi_rol_id != 1:
+        raise HTTPException(status_code=403, detail="Solo el administrador puede ejecutar el cierre de KPIs.")
+
+    now = datetime.now()
+    
+    # Buscar KPIs programados que ya vencieron y NO han sido completados
+    vencidos = db.query(KpiProgramado).filter(
+        KpiProgramado.fecha_fin < now,
+        KpiProgramado.completado == False
+    ).all()
+
+    if not vencidos:
+        return {"success": True, "message": "No hay KPIs vencidos pendientes por cerrar.", "cerrados": 0}
+
+    cerrados_count = 0
+    for p in vencidos:
+        # 1. Crear un registro automático de omisión (Castigo)
+        registro_omision = RegistroKpi(
+            usuario_id=p.asignado_por or current_user.id, # Asignamos la omisión al jefe/admin por defecto si no tenía responsable
+            kpi_id=p.kpi_id,
+            periodo_inicio=p.fecha_inicio.strftime("%Y-%m-%d"),
+            periodo_fin=p.fecha_fin.strftime("%Y-%m-%d"),
+            estado="no_reportado", # Módulo 2: Diferenciar de "enviado"
+            alerta="rojo",         # Semáforo rojo innegociable
+            valor_semanal=0.0,     # Valor penalizado
+            observaciones="Cierre automático por sistema (Fecha vencida sin llenado)",
+        )
+        db.add(registro_omision)
+        db.flush() # Flush para obtener el ID del registro insertado
+        
+        # 2. Cerrar el ciclo en la programación
+        p.completado = True
+        p.registro_kpi_id = registro_omision.id
+        cerrados_count += 1
+
+    db.commit()
+    return {
+        "success": True, 
+        "message": f"Se cerraron {cerrados_count} KPIs vencidos con reporte de omisión (Rojo).", 
+        "cerrados": cerrados_count
+    }

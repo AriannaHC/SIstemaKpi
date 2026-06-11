@@ -407,60 +407,131 @@ export default function LlenadoKPI() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {kpisActivos.map((kpi) => (
-              <div
-                key={kpi.id}
-                className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col"
-              >
-                <div className="relative h-24 bg-linear-to-br from-azul/10 to-naranja/10 p-5 flex items-start justify-between">
-                  <span
-                    className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border bg-white ${kpi.es_mi_kpi ? "text-naranja border-naranja/30" : "text-azul border-azul/30"}`}
-                  >
-                    {kpi.es_mi_kpi ? "Tu responsabilidad" : "KPI de equipo"}
-                  </span>
-                  <FileText className="w-8 h-8 text-azul/20" />
-                </div>
+            {kpisActivos.map((kpi) => {
+              const isCompletado = kpi.completado;
+              // Calculamos si la fecha ya venció
+              const isVencido =
+                kpi.fecha_fin && new Date() > new Date(kpi.fecha_fin);
 
-                <div className="p-5 flex-1 flex flex-col">
-                  <h3 className="text-base font-black text-azul font-heading leading-tight mb-4 flex-1">
-                    {kpi.nombre}
-                  </h3>
-                  <div className="space-y-3 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    <div className="flex items-start gap-2">
-                      <User className="w-4 h-4 text-azul shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-[10px] font-black text-azul uppercase tracking-widest">
-                          Encargado
-                        </p>
-                        <p className="text-xs text-slate-600 font-medium">
-                          {kpi.responsable_nombre || "Equipo"}
-                        </p>
+              return (
+                <div
+                  key={kpi.id}
+                  className={`rounded-2xl border shadow-sm transition-all duration-300 overflow-hidden flex flex-col ${
+                    isCompletado
+                      ? "bg-slate-50 border-slate-200 opacity-80"
+                      : isVencido
+                        ? "bg-red-50 border-red-200"
+                        : "bg-white border-slate-100 hover:shadow-lg"
+                  }`}
+                >
+                  <div
+                    className={`relative h-24 p-5 flex items-start justify-between ${
+                      isCompletado
+                        ? "bg-slate-200"
+                        : isVencido
+                          ? "bg-red-100"
+                          : "bg-linear-to-br from-azul/10 to-naranja/10"
+                    }`}
+                  >
+                    <span
+                      className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border bg-white ${
+                        isCompletado
+                          ? "text-slate-500 border-slate-300"
+                          : isVencido
+                            ? "text-red-600 border-red-300"
+                            : kpi.es_mi_kpi
+                              ? "text-naranja border-naranja/30"
+                              : "text-azul border-azul/30"
+                      }`}
+                    >
+                      {isCompletado
+                        ? "Completado"
+                        : isVencido
+                          ? "Plazo Expirado"
+                          : kpi.es_mi_kpi
+                            ? "Tu responsabilidad"
+                            : "KPI de equipo"}
+                    </span>
+                    <FileText
+                      className={`w-8 h-8 ${isCompletado ? "text-slate-400" : isVencido ? "text-red-400/50" : "text-azul/20"}`}
+                    />
+                  </div>
+
+                  <div
+                    className={`p-5 flex-1 flex flex-col ${isCompletado ? "bg-slate-50" : "bg-white"}`}
+                  >
+                    <h3
+                      className={`text-base font-black font-heading leading-tight mb-4 flex-1 ${isCompletado ? "text-slate-500" : "text-azul"}`}
+                    >
+                      {kpi.nombre}
+                    </h3>
+                    <div className="space-y-3 bg-white/50 rounded-xl p-3 border border-slate-100/50">
+                      <div className="flex items-start gap-2">
+                        <User
+                          className={`w-4 h-4 shrink-0 mt-0.5 ${isCompletado ? "text-slate-400" : "text-azul"}`}
+                        />
+                        <div>
+                          <p
+                            className={`text-[10px] font-black uppercase tracking-widest ${isCompletado ? "text-slate-400" : "text-azul"}`}
+                          >
+                            Encargado
+                          </p>
+                          <p className="text-xs text-slate-600 font-medium">
+                            {kpi.responsable_nombre || "Equipo"}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <Clock className="w-4 h-4 text-naranja shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-[10px] font-black text-naranja uppercase tracking-widest">
-                          Vigencia
-                        </p>
-                        <p className="text-xs text-slate-600 font-medium">
-                          En rango de fecha programada
-                        </p>
+                      <div className="flex items-start gap-2">
+                        <Clock
+                          className={`w-4 h-4 shrink-0 mt-0.5 ${isCompletado ? "text-slate-400" : isVencido ? "text-red-500" : "text-naranja"}`}
+                        />
+                        <div>
+                          <p
+                            className={`text-[10px] font-black uppercase tracking-widest ${isCompletado ? "text-slate-400" : isVencido ? "text-red-500" : "text-naranja"}`}
+                          >
+                            Vigencia
+                          </p>
+                          <p
+                            className={`text-xs font-bold ${isVencido && !isCompletado ? "text-red-600" : "text-slate-600"}`}
+                          >
+                            {kpi.fecha_fin
+                              ? `Vence: ${new Date(kpi.fecha_fin).toLocaleString("es-PE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}`
+                              : "Sin fecha"}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="p-4 pt-0">
-                  <button
-                    onClick={() => handleLlenarClick(kpi)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-azul hover:bg-azul-profundo text-white font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-azul/20"
+                  <div
+                    className={`p-4 border-t ${isCompletado ? "border-slate-200 bg-slate-100" : "border-slate-50 bg-slate-50/50"}`}
                   >
-                    Llenar Reporte
-                  </button>
+                    {isCompletado ? (
+                      <button
+                        disabled
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-200 text-slate-500 font-black text-xs uppercase tracking-widest cursor-not-allowed"
+                      >
+                        <CheckCircle2 className="w-4 h-4" /> Entregado
+                      </button>
+                    ) : isVencido ? (
+                      <button
+                        disabled
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-100 text-red-500 font-black text-xs uppercase tracking-widest cursor-not-allowed"
+                      >
+                        Cerrado por Sistema
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleLlenarClick(kpi)}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-azul hover:bg-azul-profundo text-white font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-azul/20"
+                      >
+                        📝 Llenar Reporte
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
