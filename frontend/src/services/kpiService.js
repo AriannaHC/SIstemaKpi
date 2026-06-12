@@ -24,6 +24,11 @@ export const asignarResponsable = async (kpiId, responsableId) => {
   return response.data;
 };
 
+export const getAlertas = async () => {
+  const response = await apiClient.get("/kpis/alertas");
+  return response.data;
+};
+
 // ── MÉTODOS EXISTENTES (copia completa para que no pierdas nada) ──────────────
 
 export const kpiService = {
@@ -99,4 +104,5 @@ export const kpiService = {
   activarKpi,
   asignarResponsable,
   programarKpi,
+  getAlertas,
 };

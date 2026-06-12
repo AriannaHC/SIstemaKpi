@@ -331,6 +331,8 @@ def get_kpis_semanales_por_area(
 
     kpis = db.query(Kpi).filter(Kpi.area_id == area_id, Kpi.activo == True).order_by(Kpi.nombre).all()
 
+    _cerrar_kpis_vencidos_interno(db, system_user_id=current_user.id)
+
     now = datetime.now()
     
     # Buscar programaciones activas (vigentes hoy y no completadas)
@@ -372,6 +374,7 @@ def obtener_kpis_diarios(
     current_user: User = Depends(get_current_user),
 ):
     es_admin = current_user.kpi_rol_id == 1
+    _cerrar_kpis_vencidos_interno(db, system_user_id=current_user.id)
     now = datetime.now()
 
     # Buscamos en auditoría: los que están en fecha y NO están completados
@@ -900,53 +903,187 @@ def _process_smart_excel(filepath: str, db: Session) -> int:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  8. CIERRE AUTOMÁTICO DE KPIs (MÓDULO 2 Y 3)
+#  8. CIERRE AUTOMÁTICO DE KPIs — FUNCIÓN INTERNA + ENDPOINT MANUAL
 # ══════════════════════════════════════════════════════════════════════════════
+
+def _cerrar_kpis_vencidos_interno(db: Session, system_user_id: str | None = None) -> int:
+    """
+    Función interna que cierra los KPIs cuya fecha_fin ya pasó y no fueron completados. 
+    Genera un RegistroKpi de omisión en rojo. Se invoca automáticamente (lazy closure).
+    """
+    now = datetime.now()
+
+    vencidos = db.query(KpiProgramado).filter(
+        KpiProgramado.fecha_fin < now,
+        KpiProgramado.completado == False,
+    ).all()
+
+    if not vencidos:
+        return 0
+
+    cerrados_count = 0
+    for p in vencidos:
+        # Prioridad para asignar el castigo: 1. Responsable 2. Quien lo asignó 3. Usuario actual
+        responsable_omision = p.kpi.responsable_id or p.asignado_por or system_user_id
+
+        if not responsable_omision:
+            continue
+
+        registro_omision = RegistroKpi(
+            usuario_id=responsable_omision,
+            kpi_id=p.kpi_id,
+            periodo_inicio=p.fecha_inicio.strftime("%Y-%m-%d"),
+            periodo_fin=p.fecha_fin.strftime("%Y-%m-%d"),
+            semana=p.fecha_inicio.isocalendar()[1],
+            estado="no_reportado",
+            alerta="rojo",
+            valor_semanal=0.0,
+            observaciones="Cierre automático por sistema (fecha vencida sin llenado)",
+        )
+        db.add(registro_omision)
+        db.flush()
+
+        p.completado = True
+        p.registro_kpi_id = registro_omision.id
+        cerrados_count += 1
+
+    if cerrados_count:
+        db.commit()
+
+    return cerrados_count
+
 
 @router.post("/cerrar-vencidos")
 def cerrar_kpis_vencidos(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Cierra automáticamente los KPIs cuya fecha_fin ya pasó y no fueron llenados (Omisión)."""
+    """Endpoint manual para forzar el cierre. En operación normal ocurre automáticamente."""
     if current_user.kpi_rol_id != 1:
         raise HTTPException(status_code=403, detail="Solo el administrador puede ejecutar el cierre de KPIs.")
 
-    now = datetime.now()
-    
-    # Buscar KPIs programados que ya vencieron y NO han sido completados
-    vencidos = db.query(KpiProgramado).filter(
-        KpiProgramado.fecha_fin < now,
-        KpiProgramado.completado == False
-    ).all()
-
-    if not vencidos:
+    cerrados = _cerrar_kpis_vencidos_interno(db, system_user_id=current_user.id)
+    if cerrados == 0:
         return {"success": True, "message": "No hay KPIs vencidos pendientes por cerrar.", "cerrados": 0}
 
-    cerrados_count = 0
-    for p in vencidos:
-        # 1. Crear un registro automático de omisión (Castigo)
-        registro_omision = RegistroKpi(
-            usuario_id=p.asignado_por or current_user.id, # Asignamos la omisión al jefe/admin por defecto si no tenía responsable
-            kpi_id=p.kpi_id,
-            periodo_inicio=p.fecha_inicio.strftime("%Y-%m-%d"),
-            periodo_fin=p.fecha_fin.strftime("%Y-%m-%d"),
-            estado="no_reportado", # Módulo 2: Diferenciar de "enviado"
-            alerta="rojo",         # Semáforo rojo innegociable
-            valor_semanal=0.0,     # Valor penalizado
-            observaciones="Cierre automático por sistema (Fecha vencida sin llenado)",
-        )
-        db.add(registro_omision)
-        db.flush() # Flush para obtener el ID del registro insertado
-        
-        # 2. Cerrar el ciclo en la programación
-        p.completado = True
-        p.registro_kpi_id = registro_omision.id
-        cerrados_count += 1
-
-    db.commit()
     return {
-        "success": True, 
-        "message": f"Se cerraron {cerrados_count} KPIs vencidos con reporte de omisión (Rojo).", 
-        "cerrados": cerrados_count
+        "success": True,
+        "message": f"Se cerraron {cerrados} KPIs vencidos con reporte de omisión (Rojo).",
+        "cerrados": cerrados,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  9. PANEL DE ALERTAS Y REPORTES (MÓDULO 3)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/alertas")
+def obtener_alertas_dashboard(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Endpoint para el Módulo 3: Retorna KPIs pendientes, registros en riesgo (rojos/amarillos) 
+    y el porcentaje de participación por área.
+    """
+    # 1. Seguridad: Solo Admin (1) y Jefe de Área (2)
+    if current_user.kpi_rol_id not in [1, 2]:
+        raise HTTPException(status_code=403, detail="Sin permisos para ver el panel de alertas.")
+
+    # 2. Lazy Closure: Asegurarnos de que no haya KPIs vencidos flotando antes de calcular
+    _cerrar_kpis_vencidos_interno(db, system_user_id=current_user.id)
+    
+    now = datetime.now()
+    es_admin = current_user.kpi_rol_id == 1
+    filtro_area = current_user.kpi_area_id if not es_admin else None
+
+    # -------------------------------------------------------------------------
+    # BLOQUE 1: PENDIENTES DE LLENADO (Vigentes pero completado == False)
+    # -------------------------------------------------------------------------
+    query_pendientes = db.query(KpiProgramado, Kpi, User, Area).join(Kpi, KpiProgramado.kpi_id == Kpi.id)\
+        .outerjoin(User, Kpi.responsable_id == User.id)\
+        .join(Area, Kpi.area_id == Area.id)\
+        .filter(
+            KpiProgramado.fecha_inicio <= now,
+            KpiProgramado.fecha_fin >= now,
+            KpiProgramado.completado == False
+        )
+    
+    if filtro_area:
+        query_pendientes = query_pendientes.filter(Kpi.area_id == filtro_area)
+        
+    pendientes_raw = query_pendientes.all()
+    pendientes = []
+    for p, k, u, a in pendientes_raw:
+        pendientes.append({
+            "kpi_nombre": k.nombre,
+            "area_nombre": a.nombre,
+            "responsable": u.name if u else "Sin asignar",
+            "fecha_fin": p.fecha_fin,
+            "dias_restantes": (p.fecha_fin - now).days
+        })
+
+    # -------------------------------------------------------------------------
+    # BLOQUE 2: REGISTROS EN RIESGO (Alertas Rojas y Amarillas recientes)
+    # -------------------------------------------------------------------------
+    query_riesgo = db.query(RegistroKpi, Kpi, User, Area).join(Kpi, RegistroKpi.kpi_id == Kpi.id)\
+        .join(User, RegistroKpi.usuario_id == User.id)\
+        .join(Area, Kpi.area_id == Area.id)\
+        .filter(RegistroKpi.alerta.in_(["rojo", "amarillo"]))\
+        .order_by(RegistroKpi.id.desc())
+
+    if filtro_area:
+        query_riesgo = query_riesgo.filter(Kpi.area_id == filtro_area)
+
+    riesgo_raw = query_riesgo.limit(10).all() # Traemos los 10 más recientes para no saturar
+    en_riesgo = []
+    for r, k, u, a in riesgo_raw:
+        en_riesgo.append({
+            "id_registro": r.id,
+            "kpi_nombre": k.nombre,
+            "area_nombre": a.nombre,
+            "responsable": u.name,
+            "alerta": r.alerta,
+            "valor_registrado": r.valor_semanal,
+            "estado": r.estado, # Clave: Ayudará a Jesús a saber si fue 'enviado' o 'no_reportado' (omisión)
+            "fecha": r.periodo_fin
+        })
+
+    # -------------------------------------------------------------------------
+    # BLOQUE 3: PARTICIPACIÓN (% Completados vs Programados en la semana actual)
+    # -------------------------------------------------------------------------
+    query_participacion = db.query(KpiProgramado, Kpi, Area).join(Kpi, KpiProgramado.kpi_id == Kpi.id)\
+        .join(Area, Kpi.area_id == Area.id)\
+        .filter(
+            KpiProgramado.fecha_inicio <= now,
+            KpiProgramado.fecha_fin >= now
+        )
+    
+    if filtro_area:
+        query_participacion = query_participacion.filter(Kpi.area_id == filtro_area)
+
+    part_raw = query_participacion.all()
+    
+    stats_por_area = {}
+    for p, k, a in part_raw:
+        if a.nombre not in stats_por_area:
+            stats_por_area[a.nombre] = {"total": 0, "completados": 0}
+        stats_por_area[a.nombre]["total"] += 1
+        if p.completado:
+            stats_por_area[a.nombre]["completados"] += 1
+
+    participacion = []
+    for area_nom, stats in stats_por_area.items():
+        porcentaje = (stats["completados"] / stats["total"] * 100) if stats["total"] > 0 else 0
+        participacion.append({
+            "area": area_nom,
+            "total_programados": stats["total"],
+            "completados": stats["completados"],
+            "porcentaje": round(porcentaje, 1)
+        })
+
+    return {
+        "pendientes": pendientes,
+        "en_riesgo": en_riesgo,
+        "participacion": participacion
     }
