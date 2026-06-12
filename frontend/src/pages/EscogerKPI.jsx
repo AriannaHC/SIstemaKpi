@@ -284,60 +284,66 @@ export default function EscogerKPI() {
               </div>
             ) : kpisData?.kpis?.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {kpisData.kpis.map((kpi) => (
-                  <div
-                    key={kpi.id}
-                    className={`p-4 border rounded-xl flex justify-between items-center transition-all duration-300 ${
-                      kpi.is_programado
-                        ? kpi.completado
-                          ? "border-emerald-300 bg-emerald-50/60 shadow-sm" // Verde más oscuro si está completado
-                          : "border-green-200 bg-green-50/60 shadow-sm" // Verde claro si solo está activo
-                        : "bg-white border-slate-200 hover:shadow-md hover:border-azul/30"
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0 pr-4 flex flex-col justify-center">
-                      <h4
-                        className="font-bold text-azul-profundo text-sm md:text-base truncate"
-                        title={kpi.nombre}
-                      >
-                        {kpi.nombre}
-                      </h4>
-                      {kpi.is_programado ? (
-                        <p
-                          className={`text-[10px] font-bold uppercase tracking-widest mt-1 flex items-center gap-1.5 truncate ${kpi.completado ? "text-emerald-700" : "text-green-700"}`}
-                        >
-                          <Clock className="w-3.5 h-3.5 shrink-0" /> Vence:{" "}
-                          {formatFecha(kpi.fecha_fin)}
-                        </p>
-                      ) : (
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 truncate">
-                          ⚪ Esperando programación
-                        </p>
-                      )}
-                    </div>
+                {kpisData.kpis.map((kpi) => {
+                  const isCompletado = kpi.completado;
+                  const isVencido =
+                    kpi.fecha_fin && new Date() > new Date(kpi.fecha_fin);
 
-                    <div className="shrink-0 flex items-center">
-                      {kpi.is_programado ? (
-                        kpi.completado ? (
-                          <span className="h-10 px-4 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded-xl uppercase tracking-widest flex items-center justify-center gap-1.5 border border-emerald-300">
-                            <CheckCircle2 className="w-4 h-4" /> Completado
-                          </span>
-                        ) : (
-                          <span className="h-10 px-4 bg-green-100 text-green-700 font-black text-[10px] rounded-xl uppercase tracking-widest flex items-center justify-center gap-1.5 border border-green-200">
-                            <Activity className="w-4 h-4" /> Activo
-                          </span>
-                        )
-                      ) : (
-                        <button
-                          onClick={() => abrirModalProgramacion(kpi)}
-                          className="h-10 px-5 bg-slate-100 text-azul font-black text-[10px] rounded-xl hover:bg-azul hover:text-white transition-all shadow-sm uppercase tracking-widest flex items-center justify-center"
+                  return (
+                    <div
+                      key={kpi.id}
+                      className={`p-4 border rounded-xl flex justify-between items-center transition-all duration-300 ${
+                        kpi.is_programado
+                          ? isCompletado || isVencido
+                            ? "border-emerald-300 bg-emerald-50/60 shadow-sm" // Verde oscuro si está completado o vencido
+                            : "border-green-200 bg-green-50/60 shadow-sm" // Verde claro si está vivo y activo
+                          : "bg-white border-slate-200 hover:shadow-md hover:border-azul/30"
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0 pr-4 flex flex-col justify-center">
+                        <h4
+                          className="font-bold text-azul-profundo text-sm md:text-base truncate"
+                          title={kpi.nombre}
                         >
-                          Programar
-                        </button>
-                      )}
+                          {kpi.nombre}
+                        </h4>
+                        {kpi.is_programado ? (
+                          <p
+                            className={`text-[10px] font-bold uppercase tracking-widest mt-1 flex items-center gap-1.5 truncate ${isCompletado || isVencido ? "text-emerald-700" : "text-green-700"}`}
+                          >
+                            <Clock className="w-3.5 h-3.5 shrink-0" /> Vence:{" "}
+                            {formatFecha(kpi.fecha_fin)}
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 truncate">
+                            ⚪ Esperando programación
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="shrink-0 flex items-center">
+                        {kpi.is_programado ? (
+                          isCompletado || isVencido ? (
+                            <span className="h-10 px-4 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded-xl uppercase tracking-widest flex items-center justify-center gap-1.5 border border-emerald-300">
+                              <CheckCircle2 className="w-4 h-4" /> Finalizado
+                            </span>
+                          ) : (
+                            <span className="h-10 px-4 bg-green-100 text-green-700 font-black text-[10px] rounded-xl uppercase tracking-widest flex items-center justify-center gap-1.5 border border-green-200">
+                              <Activity className="w-4 h-4" /> Activo
+                            </span>
+                          )
+                        ) : (
+                          <button
+                            onClick={() => abrirModalProgramacion(kpi)}
+                            className="h-10 px-5 bg-slate-100 text-azul font-black text-[10px] rounded-xl hover:bg-azul hover:text-white transition-all shadow-sm uppercase tracking-widest flex items-center justify-center"
+                          >
+                            Programar
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-16 bg-white rounded-2xl border border-slate-100 shadow-sm">
