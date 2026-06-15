@@ -8,7 +8,9 @@ import {
   LogOut,
   X,
   ChevronRight,
-  CalendarCheck, // <-- Importamos el nuevo ícono
+  CalendarCheck,
+  ClipboardList,
+  History,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -91,14 +93,28 @@ export default function Sidebar({
             label="Tus Indicadores"
           />
           <NavItem
-            view="reports"
-            icon={<FileBarChart className="w-5 h-5" />}
-            label="Auditoría y Reportes"
+            view="mis-reportes"
+            icon={<ClipboardList className="w-5 h-5" />}
+            label="Mis Reportes"
           />
+
+          {/* Solo Admin y Jefe */}
+          {(rol === 1 || rol === 2) && (
+            <NavItem
+              view="reports"
+              icon={<FileBarChart className="w-5 h-5" />}
+              label="Auditoría y Reportes"
+            />
+          )}
 
           {/* Solo Admin */}
           {rol === 1 && (
             <>
+              <NavItem
+                view="historial"
+                icon={<History className="w-5 h-5" />}
+                label="Historial General"
+              />
               <NavItem
                 view="settings"
                 icon={<Settings className="w-5 h-5" />}

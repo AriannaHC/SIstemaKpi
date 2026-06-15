@@ -10,6 +10,8 @@ import Usuarios from "./pages/Usuarios";
 import EscogerKPI from "./pages/EscogerKPI";
 import MiEquipo from "./pages/MiEquipo";
 import Reportes from "./pages/Reportes";
+import MisReportes from "./pages/MisReportes";
+import HistorialKPIs from "./pages/HistorialKPIs";
 
 export default function App() {
   const { user, logout } = useAuth();
@@ -56,6 +58,10 @@ export default function App() {
         return <EscogerKPI />;
       case "reports":
         return <Reportes />;
+      case "mis-reportes":
+        return <MisReportes />;
+      case "historial":
+        return <HistorialKPIs />;
       case "mi-equipo":
         return <MiEquipo />;
       default:

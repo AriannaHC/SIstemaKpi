@@ -1087,3 +1087,84 @@ def obtener_alertas_dashboard(
         "en_riesgo": en_riesgo,
         "participacion": participacion
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  10. MIS REPORTES — Historial personal (todos los roles)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/mis-reportes")
+def obtener_mis_reportes(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Retorna todos los RegistroKpi del usuario autenticado, ordenados por fecha
+    descendente. Incluye el nombre del KPI mediante JOIN.
+    """
+    registros = (
+        db.query(RegistroKpi, Kpi)
+        .join(Kpi, RegistroKpi.kpi_id == Kpi.id)
+        .filter(RegistroKpi.usuario_id == current_user.id)
+        .order_by(RegistroKpi.id.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": r.id,
+            "kpi_nombre": k.nombre,
+            "periodo_inicio": r.periodo_inicio,
+            "periodo_fin": r.periodo_fin,
+            "estado": r.estado,
+            "valor_semanal": r.valor_semanal,
+            "cumplimiento": r.cumplimiento,
+            "alerta": r.alerta,
+            "observaciones": r.observaciones,
+            "enviado_en": r.enviado_en,
+        }
+        for r, k in registros
+    ]
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  11. HISTORIAL GENERAL — Solo Admin (Rol 1)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/historial")
+def obtener_historial_general(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Retorna el historial absoluto de registros de la empresa.
+    JOIN con User, Kpi y Area. Solo accesible por Administrador (rol 1).
+    """
+    if current_user.kpi_rol_id != 1:
+        raise HTTPException(status_code=403, detail="Solo el administrador puede ver el historial general.")
+
+    registros = (
+        db.query(RegistroKpi, Kpi, User, Area)
+        .join(Kpi, RegistroKpi.kpi_id == Kpi.id)
+        .join(User, RegistroKpi.usuario_id == User.id)
+        .join(Area, Kpi.area_id == Area.id)
+        .order_by(RegistroKpi.id.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": r.id,
+            "periodo_inicio": r.periodo_inicio,
+            "periodo_fin": r.periodo_fin,
+            "area_nombre": a.nombre,
+            "kpi_nombre": k.nombre,
+            "responsable": u.name,
+            "valor_semanal": r.valor_semanal,
+            "cumplimiento": r.cumplimiento,
+            "estado": r.estado,
+            "alerta": r.alerta,
+            "enviado_en": r.enviado_en,
+        }
+        for r, k, u, a in registros
+    ]
