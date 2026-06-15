@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { kpiService } from "../services/kpiService";
 import {
   Database,
@@ -7,6 +7,13 @@ import {
   CheckCircle2,
   XCircle,
   Inbox,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  BarChart4,
+  Activity,
+  Target,
+  FileText,
 } from "lucide-react";
 import Toast from "../components/Toast";
 
@@ -48,8 +55,21 @@ export default function HistorialKPIs() {
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState(null);
+
+  // Filtros
   const [busqueda, setBusqueda] = useState("");
   const [filtroAlerta, setFiltroAlerta] = useState("todos");
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Estado para la Fila Desplegable (Acordeón)
+  const [expandedId, setExpandedId] = useState(null);
+
+  // Estado para el Badge seguidor del Mouse
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isHoveringTable, setIsHoveringTable] = useState(false);
 
   const COLOR_AZUL = "#123498";
   const COLOR_NARANJA = "#F46F0B";
@@ -67,7 +87,7 @@ export default function HistorialKPIs() {
         (r) =>
           r.kpi_nombre.toLowerCase().includes(q) ||
           r.area_nombre.toLowerCase().includes(q) ||
-          r.responsable.toLowerCase().includes(q)
+          r.responsable.toLowerCase().includes(q),
       );
     }
 
@@ -76,6 +96,8 @@ export default function HistorialKPIs() {
     }
 
     setFiltered(resultado);
+    setCurrentPage(1);
+    setExpandedId(null); // Cierra cualquier fila abierta al buscar
   }, [busqueda, filtroAlerta, registros]);
 
   const cargarHistorial = async () => {
@@ -93,6 +115,24 @@ export default function HistorialKPIs() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Cálculos de paginación
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedData = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      setExpandedId(null); // Cierra detalles al cambiar de página
+    }
+  };
+
+  const toggleRow = (id) => {
+    setExpandedId(expandedId === id ? null : id);
   };
 
   if (loading) {
@@ -113,6 +153,24 @@ export default function HistorialKPIs() {
         type={feedback?.tipo}
         onClose={() => setFeedback(null)}
       />
+
+      {/* ── Badge Seguidor del Mouse (Tooltip Flotante) ── */}
+      {isHoveringTable && (
+        <div
+          className="fixed pointer-events-none z-50 px-3 py-1.5 rounded-full shadow-2xl flex items-center gap-1.5 transition-transform duration-75 ease-out"
+          style={{
+            left: mousePos.x + 15,
+            top: mousePos.y + 15,
+            backgroundColor: COLOR_AZUL,
+            color: "white",
+          }}
+        >
+          <Eye className="w-3.5 h-3.5" />
+          <span className="text-[10px] font-black uppercase tracking-widest">
+            Click para detalle
+          </span>
+        </div>
+      )}
 
       {/* ── Cabecera ── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -177,9 +235,12 @@ export default function HistorialKPIs() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div
+            className="overflow-x-auto"
+            onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+          >
+            <table className="w-full min-w-[900px] border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80">
                   {[
@@ -201,108 +262,232 @@ export default function HistorialKPIs() {
                   ))}
                 </tr>
               </thead>
-              <tbody>
-                {filtered.map((reg, idx) => {
+              <tbody
+                onMouseEnter={() => setIsHoveringTable(true)}
+                onMouseLeave={() => setIsHoveringTable(false)}
+              >
+                {paginatedData.map((reg, idx) => {
                   const esOmision = reg.estado === "no_reportado";
+                  const isExpanded = expandedId === reg.id;
+
                   return (
-                    <tr
-                      key={reg.id}
-                      className={`border-b border-slate-50 transition-colors ${
-                        esOmision
-                          ? "bg-rose-50/50 hover:bg-rose-50"
-                          : idx % 2 === 0
-                            ? "bg-white hover:bg-slate-50/80"
-                            : "bg-slate-50/30 hover:bg-slate-50/80"
-                      }`}
-                    >
-                      {/* Periodo */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs font-medium text-slate-600">
-                          {formatFecha(reg.periodo_inicio)}
-                        </span>
-                        <span className="text-slate-300 mx-1">→</span>
-                        <span className="text-xs font-medium text-slate-600">
-                          {formatFecha(reg.periodo_fin)}
-                        </span>
-                      </td>
-
-                      {/* Área */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
-                          {reg.area_nombre}
-                        </span>
-                      </td>
-
-                      {/* KPI */}
-                      <td className="px-5 py-4 max-w-[200px]">
-                        <p
-                          className="text-xs font-bold truncate"
-                          style={{
-                            color: esOmision ? "#991b1b" : COLOR_AZUL,
-                          }}
-                          title={reg.kpi_nombre}
-                        >
-                          {reg.kpi_nombre}
-                        </p>
-                      </td>
-
-                      {/* Responsable */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs font-medium text-slate-600">
-                          {reg.responsable}
-                        </span>
-                      </td>
-
-                      {/* Valor */}
-                      <td className="px-5 py-4">
-                        <span
-                          className="text-sm font-black"
-                          style={{ color: COLOR_AZUL }}
-                        >
-                          {reg.valor_semanal !== null &&
-                          reg.valor_semanal !== undefined
-                            ? Number(reg.valor_semanal).toFixed(2)
-                            : "—"}
-                        </span>
-                      </td>
-
-                      {/* Cumplimiento */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs font-bold text-slate-700">
-                          {formatCumplimiento(reg.cumplimiento)}
-                        </span>
-                      </td>
-
-                      {/* Estado */}
-                      <td className="px-5 py-4">
-                        {esOmision ? (
-                          <span className="inline-flex items-center gap-1.5 bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest">
-                            <XCircle className="w-3 h-3" /> Omisión
+                    <React.Fragment key={reg.id}>
+                      {/* FILA PRINCIPAL */}
+                      <tr
+                        onClick={() => toggleRow(reg.id)}
+                        className={`transition-colors cursor-none relative ${
+                          isExpanded
+                            ? "bg-blue-50/30 border-b-0"
+                            : "border-b border-slate-50"
+                        } ${
+                          esOmision
+                            ? "hover:bg-rose-50/80"
+                            : "hover:bg-slate-50/80"
+                        }`}
+                      >
+                        <td className="px-5 py-4">
+                          <span className="text-xs font-medium text-slate-600">
+                            {formatFecha(reg.periodo_inicio)}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest">
-                            <CheckCircle2 className="w-3 h-3" /> Enviado
+                          <span className="text-slate-300 mx-1">→</span>
+                          <span className="text-xs font-medium text-slate-600">
+                            {formatFecha(reg.periodo_fin)}
                           </span>
-                        )}
-                      </td>
-
-                      {/* Alerta */}
-                      <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-2">
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
+                            {reg.area_nombre}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 max-w-[200px]">
+                          <p
+                            className="text-xs font-bold truncate"
+                            style={{
+                              color: esOmision ? "#991b1b" : COLOR_AZUL,
+                            }}
+                            title={reg.kpi_nombre}
+                          >
+                            {reg.kpi_nombre}
+                          </p>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="text-xs font-medium text-slate-600">
+                            {reg.responsable}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
                           <span
-                            className={`h-3 w-3 rounded-full ${alertaDot(reg.alerta)} shadow-sm`}
-                          />
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                            {reg.alerta || "—"}
+                            className="text-sm font-black"
+                            style={{ color: COLOR_AZUL }}
+                          >
+                            {reg.valor_semanal !== null &&
+                            reg.valor_semanal !== undefined
+                              ? Number(reg.valor_semanal).toFixed(2)
+                              : "—"}
                           </span>
-                        </span>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="text-xs font-bold text-slate-700">
+                            {formatCumplimiento(reg.cumplimiento)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          {esOmision ? (
+                            <span className="inline-flex items-center gap-1.5 bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest">
+                              <XCircle className="w-3 h-3" /> Omisión
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest">
+                              <CheckCircle2 className="w-3 h-3" /> Enviado
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="inline-flex items-center gap-2">
+                            <span
+                              className={`h-3 w-3 rounded-full ${alertaDot(reg.alerta)} shadow-sm`}
+                            />
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                              {reg.alerta || "—"}
+                            </span>
+                          </span>
+                        </td>
+                      </tr>
+
+                      {/* FILA DESPLEGABLE (DETALLES) */}
+                      {isExpanded && (
+                        <tr className="bg-slate-50/50 border-b border-slate-200">
+                          <td
+                            colSpan={8}
+                            className="p-0 cursor-default"
+                            onMouseEnter={(e) => e.stopPropagation()}
+                          >
+                            <div className="p-6 md:p-8 animate-in slide-in-from-top-2 duration-300">
+                              {/* Tarjeta Interna del Detalle */}
+                              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                                <div className="flex items-center gap-2 mb-6">
+                                  <BarChart4 className="w-5 h-5 text-[#123498]" />
+                                  <h3 className="text-sm font-black text-[#123498] uppercase tracking-widest">
+                                    Desglose Analítico
+                                  </h3>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                                  {[
+                                    {
+                                      label: "Productividad",
+                                      val: reg.productividad,
+                                    },
+                                    {
+                                      label: "Eficiencia",
+                                      val: reg.eficiencia,
+                                    },
+                                    { label: "Eficacia", val: reg.eficacia },
+                                    {
+                                      label: "Efectividad",
+                                      val: reg.efectividad,
+                                    },
+                                    {
+                                      label: "Rendimiento",
+                                      val: reg.rendimiento,
+                                    },
+                                  ].map((stat, i) => (
+                                    <div
+                                      key={i}
+                                      className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col items-center justify-center text-center"
+                                    >
+                                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        {stat.label}
+                                      </p>
+                                      <p className="text-lg font-black text-slate-800">
+                                        {stat.val !== null &&
+                                        stat.val !== undefined
+                                          ? formatCumplimiento(stat.val)
+                                          : "—"}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5">
+                                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                      <FileText className="w-3.5 h-3.5" />{" "}
+                                      Observaciones
+                                    </h4>
+                                    <p className="text-sm text-slate-700 font-medium whitespace-pre-wrap">
+                                      {reg.observaciones ||
+                                        "Sin observaciones registradas."}
+                                    </p>
+                                  </div>
+                                  {reg.acciones_correctivas && (
+                                    <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">
+                                      <h4 className="text-[10px] font-black text-orange-700 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <FileText className="w-3.5 h-3.5" />{" "}
+                                        Acciones Correctivas
+                                      </h4>
+                                      <p className="text-sm text-orange-900 font-medium whitespace-pre-wrap">
+                                        {reg.acciones_correctivas}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
             </table>
           </div>
+
+          {/* ── Paginación ── */}
+          {totalPages > 1 && (
+            <div className="border-t border-slate-100 p-4 bg-slate-50/50 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500">
+                Mostrando {(currentPage - 1) * itemsPerPage + 1} -{" "}
+                {Math.min(currentPage * itemsPerPage, filtered.length)} de{" "}
+                {filtered.length}
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-[#123498] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                <div className="flex gap-1">
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i + 1}
+                      onClick={() => handlePageChange(i + 1)}
+                      className={`w-8 h-8 rounded-xl text-xs font-black transition-all ${
+                        currentPage === i + 1
+                          ? "bg-[#123498] text-white shadow-md shadow-[#123498]/20"
+                          : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#123498]"
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-[#123498] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

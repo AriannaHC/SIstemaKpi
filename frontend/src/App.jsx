@@ -47,7 +47,7 @@ export default function App() {
   const renderPage = () => {
     switch (activePage) {
       case "dashboard":
-        return <Dashboard />;
+        return <Dashboard setActivePage={setActivePage} />;
       case "daily":
         return <LlenadoKPI />;
       case "settings":

@@ -7,8 +7,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   Target,
-  Edit2,
-} from "lucide-react"; 
+} from "lucide-react";
 import Toast from "../components/Toast";
 
 // ── Semáforo (Colores Corporativos) ────────────────────────────────────────
@@ -65,7 +64,7 @@ function formatearValor(label, valor) {
   return isNaN(num) ? String(valor) : num.toFixed(2);
 }
 
-// ── Motor matemático ──────────────────────────────────────────────────────────
+// ── Motor matemático Optimizado y Seguro ──────────────────────────────────────
 function ejecutarMotor(campos, valores) {
   let contexto = {};
   campos.forEach((c) => {
@@ -80,7 +79,12 @@ function ejecutarMotor(campos, valores) {
     }
   });
 
-  for (let pase = 1; pase <= 4; pase++) {
+  // OPTIMIZACIÓN: Añadimos un indicador "huboCambios" (Early Exit).
+  // Si en un pase no se calculó nada nuevo, no hacemos los pases restantes.
+  let huboCambios = true;
+  for (let pase = 1; pase <= 4 && huboCambios; pase++) {
+    huboCambios = false;
+
     campos.forEach((c) => {
       if (c.origen !== "calculado" || !c.formula_personalizada) return;
       let formula = c.formula_personalizada;
@@ -99,15 +103,33 @@ function ejecutarMotor(campos, valores) {
       }
 
       if (canCalculate) {
-        try {
-          const resultado = eval(formula);
-          contexto[c.campo_label] =
-            !isNaN(resultado) && isFinite(resultado) ? resultado : null;
-        } catch (_) {
-          contexto[c.campo_label] = null;
+        // SEGURIDAD: Expresión regular que solo permite matemáticas válidas (Números, operadores y Math.max/min)
+        // Bloquea cualquier inyección de código JavaScript (XSS).
+        if (!/[^0-9+\-*/().,\sMathmaxin]/.test(formula)) {
+          try {
+            // Usamos new Function en lugar de eval() por ser más restrictivo
+            const evaluador = new Function("return " + formula);
+            const resultado = evaluador();
+            const valorFinal =
+              !isNaN(resultado) && isFinite(resultado) ? resultado : null;
+
+            // Si el valor cambió en este pase, marcamos que hubo cambios para dar otra vuelta si es necesario
+            if (contexto[c.campo_label] !== valorFinal) {
+              contexto[c.campo_label] = valorFinal;
+              huboCambios = true;
+            }
+          } catch (_) {
+            if (contexto[c.campo_label] !== null) {
+              contexto[c.campo_label] = null;
+              huboCambios = true;
+            }
+          }
         }
       } else {
-        contexto[c.campo_label] = null;
+        if (contexto[c.campo_label] !== null) {
+          contexto[c.campo_label] = null;
+          huboCambios = true;
+        }
       }
     });
   }
@@ -120,7 +142,7 @@ export default function LlenadoKPI() {
   const [loadingList, setLoadingList] = useState(true);
 
   const [kpiSeleccionado, setKpiSeleccionado] = useState(null);
-  const [kpiMeta, setKpiMeta] = useState(null); 
+  const [kpiMeta, setKpiMeta] = useState(null);
   const [campos, setCampos] = useState([]);
   const [valores, setValores] = useState({});
   const [contexto, setContexto] = useState({});
@@ -131,7 +153,7 @@ export default function LlenadoKPI() {
   // Colores Corporativos
   const COLOR_AZUL = "#123498";
   const COLOR_NARANJA = "#F46F0B";
-  const COLOR_DESHABILITADO = "#cbd5e1"; 
+  const COLOR_DESHABILITADO = "#cbd5e1";
 
   // ── 1. Cargar KPIs ───────────────────────────────────────────────────────
   const cargarKpisDiarios = () => {
@@ -166,35 +188,35 @@ export default function LlenadoKPI() {
       setKpiMeta(meta);
 
       const valoresIniciales = {};
-      
+
       if (kpi.completado) {
         if (kpi.valores_guardados) {
-           Object.keys(kpi.valores_guardados).forEach(key => {
-             valoresIniciales[key] = kpi.valores_guardados[key];
-           });
+          Object.keys(kpi.valores_guardados).forEach((key) => {
+            valoresIniciales[key] = kpi.valores_guardados[key];
+          });
         }
       }
 
       dataCampos.forEach((c) => {
         if (valoresIniciales[c.campo_key] === undefined) {
-            const lbl = c.campo_label.toLowerCase();
-            let prefill = ""; 
-            if (meta) {
-                if (lbl.includes("meta kpi") && meta.meta_valor != null)
-                prefill = String(meta.meta_valor);
-                else if (
-                    (lbl.includes("meta producción") ||
-                    lbl.includes("meta produccion")) &&
-                    meta.meta_produccion != null
-                )
-                prefill = String(meta.meta_produccion);
-                else if (
-                    lbl.includes("horas planificadas") &&
-                    meta.horas_planificadas != null
-                )
-                prefill = String(meta.horas_planificadas);
-            }
-            valoresIniciales[c.campo_key] = prefill;
+          const lbl = c.campo_label.toLowerCase();
+          let prefill = "";
+          if (meta) {
+            if (lbl.includes("meta kpi") && meta.meta_valor != null)
+              prefill = String(meta.meta_valor);
+            else if (
+              (lbl.includes("meta producción") ||
+                lbl.includes("meta produccion")) &&
+              meta.meta_produccion != null
+            )
+              prefill = String(meta.meta_produccion);
+            else if (
+              lbl.includes("horas planificadas") &&
+              meta.horas_planificadas != null
+            )
+              prefill = String(meta.horas_planificadas);
+          }
+          valoresIniciales[c.campo_key] = prefill;
         }
       });
 
@@ -236,10 +258,10 @@ export default function LlenadoKPI() {
   const buscarValorDisplay = (labelBuscada) => {
     const lb = labelBuscada.toLowerCase();
 
-    const campoEncontrado = campos.find(c => 
-      c.campo_label && c.campo_label.toLowerCase().includes(lb)
+    const campoEncontrado = campos.find(
+      (c) => c.campo_label && c.campo_label.toLowerCase().includes(lb),
     );
-    
+
     if (campoEncontrado) {
       const val = contexto[campoEncontrado.campo_label];
       if (val !== undefined && val !== null) {
@@ -248,7 +270,8 @@ export default function LlenadoKPI() {
     }
 
     if (lb.includes("meta kpi")) {
-      if (kpiMeta?.meta_valor != null) return formatearValor(labelBuscada, kpiMeta.meta_valor);
+      if (kpiMeta?.meta_valor != null)
+        return formatearValor(labelBuscada, kpiMeta.meta_valor);
     }
     if (lb.includes("meta producc") && kpiMeta?.meta_produccion != null) {
       return formatearValor(labelBuscada, kpiMeta.meta_produccion);
@@ -268,7 +291,7 @@ export default function LlenadoKPI() {
     if (!campos || campos.length === 0) return false;
 
     const camposUsuario = campos.filter((c) => c.origen === "usuario");
-    
+
     if (camposUsuario.length === 0) return false;
 
     return camposUsuario.every((c) => {
@@ -323,24 +346,23 @@ export default function LlenadoKPI() {
     try {
       const payload = { kpi_id: kpiSeleccionado.id, valores: valoresCompletos };
       await kpiService.registrar(payload);
-      
+
       setFeedback({
         tipo: "ok",
         mensaje: `✅ Registro exitoso.`,
       });
 
       if (!kpiSeleccionado.completado) {
-          const valoresReset = {};
-          campos.forEach((c) => {
-            const lbl = c.campo_label.toLowerCase();
-            valoresReset[c.campo_key] =
-              lbl.includes("meta") || lbl.includes("horas planificadas")
-                ? valores[c.campo_key]
-                : "";
-          });
-          setValores(valoresReset);
-      } 
-      
+        const valoresReset = {};
+        campos.forEach((c) => {
+          const lbl = c.campo_label.toLowerCase();
+          valoresReset[c.campo_key] =
+            lbl.includes("meta") || lbl.includes("horas planificadas")
+              ? valores[c.campo_key]
+              : "";
+        });
+        setValores(valoresReset);
+      }
     } catch (err) {
       setFeedback({
         tipo: "error",
@@ -364,8 +386,12 @@ export default function LlenadoKPI() {
         />
 
         <div>
-          <h1 className="text-3xl font-extrabold font-heading" style={{ color: COLOR_AZUL }}>
-            Tus Indicadores <span style={{ color: COLOR_NARANJA }}>Pendientes</span>
+          <h1
+            className="text-3xl font-extrabold font-heading"
+            style={{ color: COLOR_AZUL }}
+          >
+            Tus Indicadores{" "}
+            <span style={{ color: COLOR_NARANJA }}>Pendientes</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">
             Estos son los KPIs programados que debes completar en esta fecha.
@@ -374,12 +400,18 @@ export default function LlenadoKPI() {
 
         {loadingList ? (
           <div className="flex justify-center py-20">
-            <div className="w-10 h-10 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: COLOR_AZUL, borderTopColor: 'transparent' }}></div>
+            <div
+              className="w-10 h-10 border-4 border-t-transparent rounded-full animate-spin"
+              style={{ borderColor: COLOR_AZUL, borderTopColor: "transparent" }}
+            ></div>
           </div>
         ) : kpisActivos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-slate-100 shadow-sm">
             <Target className="w-14 h-14 text-slate-200 mb-4" />
-            <p className="font-black text-lg uppercase tracking-widest font-heading" style={{ color: COLOR_AZUL }}>
+            <p
+              className="font-black text-lg uppercase tracking-widest font-heading"
+              style={{ color: COLOR_AZUL }}
+            >
               Todo al día
             </p>
           </div>
@@ -387,7 +419,8 @@ export default function LlenadoKPI() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {kpisActivos.map((kpi) => {
               const isCompletado = kpi.completado;
-              const isVencido = kpi.fecha_fin && new Date() > new Date(kpi.fecha_fin);
+              const isVencido =
+                kpi.fecha_fin && new Date() > new Date(kpi.fecha_fin);
 
               return (
                 <div
@@ -400,10 +433,17 @@ export default function LlenadoKPI() {
                         : "bg-white border-slate-100 hover:shadow-lg"
                   }`}
                 >
-                  <div className={`relative h-24 p-5 flex items-start justify-between ${
-                      isCompletado ? "bg-slate-200" : isVencido ? "bg-red-100" : "bg-gradient-to-br from-[#123498]/10 to-[#F46F0B]/10"
-                    }`}>
-                    <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border bg-white ${
+                  <div
+                    className={`relative h-24 p-5 flex items-start justify-between ${
+                      isCompletado
+                        ? "bg-slate-200"
+                        : isVencido
+                          ? "bg-red-100"
+                          : "bg-linear-to-br from-[#123498]/10 to-[#F46F0B]/10"
+                    }`}
+                  >
+                    <span
+                      className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border bg-white ${
                         isCompletado
                           ? "text-slate-500 border-slate-300"
                           : isVencido
@@ -411,47 +451,111 @@ export default function LlenadoKPI() {
                             : kpi.es_mi_kpi
                               ? "text-[#F46F0B] border-[#F46F0B]/30"
                               : "text-[#123498] border-[#123498]/30"
-                      }`}>
-                      {isCompletado ? "Completado" : isVencido ? "Plazo Expirado" : kpi.es_mi_kpi ? "Tu responsabilidad" : "KPI de equipo"}
+                      }`}
+                    >
+                      {isCompletado
+                        ? "Completado"
+                        : isVencido
+                          ? "Plazo Expirado"
+                          : kpi.es_mi_kpi
+                            ? "Tu responsabilidad"
+                            : "KPI de equipo"}
                     </span>
-                    <FileText className={`w-8 h-8 ${isCompletado ? "text-slate-400" : "text-[#123498]/20"}`} />
+                    <FileText
+                      className={`w-8 h-8 ${isCompletado ? "text-slate-400" : "text-[#123498]/20"}`}
+                    />
                   </div>
 
-                  <div className={`p-5 flex-1 flex flex-col ${isCompletado ? "bg-slate-50" : "bg-white"}`}>
-                    <h3 className={`text-base font-black font-heading leading-tight mb-4 flex-1 ${isCompletado ? "text-slate-500" : ""}`} style={{ color: isCompletado ? '' : COLOR_AZUL }}>
+                  <div
+                    className={`p-5 flex-1 flex flex-col ${isCompletado ? "bg-slate-50" : "bg-white"}`}
+                  >
+                    <h3
+                      className={`text-base font-black font-heading leading-tight mb-4 flex-1 ${isCompletado ? "text-slate-500" : ""}`}
+                      style={{ color: isCompletado ? "" : COLOR_AZUL }}
+                    >
                       {kpi.nombre}
                     </h3>
                     <div className="space-y-3 bg-white/50 rounded-xl p-3 border border-slate-100/50">
                       <div className="flex items-start gap-2">
-                        <User className={`w-4 h-4 shrink-0 mt-0.5`} style={{ color: isCompletado ? '#94a3b8' : COLOR_AZUL }} />
+                        <User
+                          className={`w-4 h-4 shrink-0 mt-0.5`}
+                          style={{
+                            color: isCompletado ? "#94a3b8" : COLOR_AZUL,
+                          }}
+                        />
                         <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: isCompletado ? '#94a3b8' : COLOR_AZUL }}>Encargado</p>
-                          <p className="text-xs text-slate-600 font-medium">{kpi.responsable_nombre || "Equipo"}</p>
+                          <p
+                            className="text-[10px] font-black uppercase tracking-widest"
+                            style={{
+                              color: isCompletado ? "#94a3b8" : COLOR_AZUL,
+                            }}
+                          >
+                            Encargado
+                          </p>
+                          <p className="text-xs text-slate-600 font-medium">
+                            {kpi.responsable_nombre || "Equipo"}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2">
-                        <Clock className={`w-4 h-4 shrink-0 mt-0.5`} style={{ color: isCompletado ? '#94a3b8' : isVencido ? '#ef4444' : COLOR_NARANJA }} />
+                        <Clock
+                          className={`w-4 h-4 shrink-0 mt-0.5`}
+                          style={{
+                            color: isCompletado
+                              ? "#94a3b8"
+                              : isVencido
+                                ? "#ef4444"
+                                : COLOR_NARANJA,
+                          }}
+                        />
                         <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: isCompletado ? '#94a3b8' : isVencido ? '#ef4444' : COLOR_NARANJA }}>Vigencia</p>
-                          <p className={`text-xs font-bold ${isVencido && !isCompletado ? "text-red-600" : "text-slate-600"}`}>
-                            {kpi.fecha_fin ? `Vence: ${new Date(kpi.fecha_fin).toLocaleString("es-PE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}` : "Sin fecha"}
+                          <p
+                            className="text-[10px] font-black uppercase tracking-widest"
+                            style={{
+                              color: isCompletado
+                                ? "#94a3b8"
+                                : isVencido
+                                  ? "#ef4444"
+                                  : COLOR_NARANJA,
+                            }}
+                          >
+                            Vigencia
+                          </p>
+                          <p
+                            className={`text-xs font-bold ${isVencido && !isCompletado ? "text-red-600" : "text-slate-600"}`}
+                          >
+                            {kpi.fecha_fin
+                              ? `Vence: ${new Date(kpi.fecha_fin).toLocaleString("es-PE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}`
+                              : "Sin fecha"}
                           </p>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className={`p-4 border-t ${isCompletado ? "border-slate-200 bg-slate-100" : "border-slate-50 bg-slate-50/50"}`}>
+                  <div
+                    className={`p-4 border-t ${isCompletado ? "border-slate-200 bg-slate-100" : "border-slate-50 bg-slate-50/50"}`}
+                  >
                     {isCompletado ? (
-                      <button disabled className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-200 text-slate-500 font-black text-xs uppercase tracking-widest cursor-not-allowed">
+                      <button
+                        disabled
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-200 text-slate-500 font-black text-xs uppercase tracking-widest cursor-not-allowed"
+                      >
                         <CheckCircle2 className="w-4 h-4" /> Entregado
                       </button>
                     ) : isVencido ? (
-                      <button disabled className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-100 text-red-500 font-black text-xs uppercase tracking-widest cursor-not-allowed">
+                      <button
+                        disabled
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-100 text-red-500 font-black text-xs uppercase tracking-widest cursor-not-allowed"
+                      >
                         Cerrado por Sistema
                       </button>
                     ) : (
-                      <button onClick={() => handleLlenarClick(kpi)} className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-white font-black text-xs uppercase tracking-widest transition-all shadow-md hover:shadow-lg" style={{ backgroundColor: COLOR_AZUL }}>
+                      <button
+                        onClick={() => handleLlenarClick(kpi)}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-white font-black text-xs uppercase tracking-widest transition-all shadow-md hover:shadow-lg"
+                        style={{ backgroundColor: COLOR_AZUL }}
+                      >
                         📝 Llenar Reporte
                       </button>
                     )}
@@ -503,10 +607,16 @@ export default function LlenadoKPI() {
 
         <div className="bg-white rounded-4xl shadow-xl border border-slate-100 p-6 md:p-8">
           <div className="mb-8">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.24em] text-white" style={{ backgroundColor: COLOR_AZUL }}>
+            <span
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.24em] text-white"
+              style={{ backgroundColor: COLOR_AZUL }}
+            >
               Ingreso Semanal
             </span>
-            <h2 className="mt-4 text-3xl font-extrabold tracking-tight font-heading" style={{ color: COLOR_AZUL }}>
+            <h2
+              className="mt-4 text-3xl font-extrabold tracking-tight font-heading"
+              style={{ color: COLOR_AZUL }}
+            >
               {kpiSeleccionado.nombre}
             </h2>
             <p className="mt-3 text-sm text-slate-500 max-w-2xl leading-6">
@@ -520,13 +630,23 @@ export default function LlenadoKPI() {
               Cargando estructura...
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[1.75fr_1.1fr]">
+            <form
+              onSubmit={handleSubmit}
+              className="grid gap-8 lg:grid-cols-[1.75fr_1.1fr]"
+            >
               <div className="space-y-8">
                 <div className="rounded-4xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
                   <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h3 className="text-lg font-bold" style={{ color: COLOR_AZUL }}>Datos a completar</h3>
-                      <p className="text-sm text-slate-500 mt-1">Ingresa la información necesaria.</p>
+                      <h3
+                        className="text-lg font-bold"
+                        style={{ color: COLOR_AZUL }}
+                      >
+                        Datos a completar
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1">
+                        Ingresa la información necesaria.
+                      </p>
                     </div>
                     <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.3em] text-slate-500 border border-slate-200">
                       {camposUsuario.length} campos
@@ -538,7 +658,10 @@ export default function LlenadoKPI() {
                         c.campo_label.toLowerCase().includes("observaciones") ||
                         c.campo_label.toLowerCase().includes("acciones");
                       return (
-                        <div key={c.id} className={esTextoLargo ? "md:col-span-2" : ""}>
+                        <div
+                          key={c.id}
+                          className={esTextoLargo ? "md:col-span-2" : ""}
+                        >
                           <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-[0.18em]">
                             {c.campo_label}{" "}
                             <span className="text-red-600">*</span>
@@ -572,24 +695,37 @@ export default function LlenadoKPI() {
                   type="submit"
                   disabled={isSubmitting || !isFormValid}
                   className="w-full rounded-3xl text-white font-black text-sm uppercase tracking-[0.3em] py-4 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-100"
-                  style={{ 
-                    backgroundColor: (!isFormValid || isSubmitting) ? COLOR_DESHABILITADO : COLOR_AZUL,
-                    color: (!isFormValid || isSubmitting) ? "#64748b" : "white",
-                    boxShadow: (!isFormValid || isSubmitting) ? 'none' : `0 10px 15px -3px ${COLOR_AZUL}40`
+                  style={{
+                    backgroundColor:
+                      !isFormValid || isSubmitting
+                        ? COLOR_DESHABILITADO
+                        : COLOR_AZUL,
+                    color: !isFormValid || isSubmitting ? "#64748b" : "white",
+                    boxShadow:
+                      !isFormValid || isSubmitting
+                        ? "none"
+                        : `0 10px 15px -3px ${COLOR_AZUL}40`,
                   }}
                 >
-                  {isSubmitting ? "Guardando..." : (!isFormValid ? "Debes completar todos los campos" : "Guardar Registro")}
+                  {isSubmitting
+                    ? "Guardando..."
+                    : !isFormValid
+                      ? "Debes completar todos los campos"
+                      : "Guardar Registro"}
                 </button>
               </div>
 
               {camposResultado.length > 0 && (
                 <div className="lg:sticky lg:top-6 lg:self-start">
-                  <div className="rounded-4xl border border-slate-200 bg-gradient-to-br from-[#123498]/5 via-slate-50 to-[#F46F0B]/5 p-6 shadow-sm">
+                  <div className="rounded-4xl border border-slate-200 bg-linear-to-br from-[#123498]/5 via-slate-50 to-[#F46F0B]/5 p-6 shadow-sm">
                     <div className="mb-6">
                       <p className="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mb-3">
                         Resultados en tiempo real
                       </p>
-                      <h3 className="text-2xl font-extrabold" style={{ color: COLOR_AZUL }}>
+                      <h3
+                        className="text-2xl font-extrabold"
+                        style={{ color: COLOR_AZUL }}
+                      >
                         Estado de tu KPI
                       </h3>
                     </div>
@@ -601,18 +737,24 @@ export default function LlenadoKPI() {
                         </p>
                         <div className="flex items-center justify-between gap-4">
                           <div>
-                            <p className="text-4xl font-black" style={{ color: COLOR_AZUL }}>
-                              {cumplimientoValue !== null && cumplimientoValue !== undefined
+                            <p
+                              className="text-4xl font-black"
+                              style={{ color: COLOR_AZUL }}
+                            >
+                              {cumplimientoValue !== null &&
+                              cumplimientoValue !== undefined
                                 ? `${(cumplimientoValue * 100).toFixed(0)}%`
                                 : "--"}
                             </p>
-                            <p className="text-sm text-slate-500 mt-1">Evaluación actual</p>
+                            <p className="text-sm text-slate-500 mt-1">
+                              Evaluación actual
+                            </p>
                           </div>
                           <SemaforoDisplay cumplimiento={cumplimientoValue} />
                         </div>
                         <div className="mt-4 h-3 rounded-full bg-slate-200 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-gradient-to-r from-[#123498] to-[#3b82f6]"
+                            className="h-full rounded-full bg-linear-to-r from-[#123498] to-[#3b82f6]"
                             style={{
                               width: cumplimientoValue
                                 ? `${Math.max(5, Math.min(cumplimientoValue * 100, 100))}%`
@@ -625,9 +767,17 @@ export default function LlenadoKPI() {
                       <div className="rounded-3xl bg-white border border-slate-200 p-5 space-y-4">
                         <div className="grid grid-cols-1 gap-4">
                           {resumenLabels.map((label) => (
-                            <div key={label} className="flex items-center justify-between gap-3">
-                              <span className="text-sm text-slate-500 font-medium">{label}</span>
-                              <span className="text-sm font-bold" style={{ color: COLOR_AZUL }}>
+                            <div
+                              key={label}
+                              className="flex items-center justify-between gap-3"
+                            >
+                              <span className="text-sm text-slate-500 font-medium">
+                                {label}
+                              </span>
+                              <span
+                                className="text-sm font-bold"
+                                style={{ color: COLOR_AZUL }}
+                              >
                                 {buscarValorDisplay(label)}
                               </span>
                             </div>

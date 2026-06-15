@@ -26,7 +26,7 @@ export default function Usuarios() {
     try {
       const [resUsers, resAreas] = await Promise.all([
         userService.getUsers(),
-        kpiService.getAreas(),
+        kpiService.getAreasStats(),
       ]);
       setUsuarios(resUsers);
       setAreas(resAreas);

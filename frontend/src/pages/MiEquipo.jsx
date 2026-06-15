@@ -72,9 +72,12 @@ export default function MiEquipo() {
       (k) => !k.responsable_id || k.responsable_id === trabajadorId,
     );
 
+  // OPTIMIZADO: Actualiza el estado local en vez de hacer refetch
   const asignarKpi = async (trabajadorId, kpiId) => {
     if (!kpiId) return;
+    const kpiIdNumber = parseInt(kpiId, 10);
     const yaAsignados = kpisDePersona(trabajadorId);
+
     if (yaAsignados.length >= 3) {
       setFeedback({
         tipo: "error",
@@ -82,16 +85,26 @@ export default function MiEquipo() {
       });
       return;
     }
+
     setSaving(trabajadorId);
     try {
-      await apiClient.patch(`/kpis/${kpiId}/responsable`, {
+      await apiClient.patch(`/kpis/${kpiIdNumber}/responsable`, {
         responsable_id: trabajadorId,
       });
+
+      // Actualizamos la memoria de React directamente
+      setKpisActivos((prev) =>
+        prev.map((kpi) =>
+          kpi.id === kpiIdNumber
+            ? { ...kpi, responsable_id: trabajadorId }
+            : kpi,
+        ),
+      );
+
       setFeedback({
         tipo: "success",
         mensaje: "✅ KPI asignado correctamente al trabajador.",
       });
-      await cargarDatos();
     } catch (err) {
       setFeedback({
         tipo: "error",
@@ -102,17 +115,25 @@ export default function MiEquipo() {
     }
   };
 
+  // OPTIMIZADO: Actualiza el estado local en vez de hacer refetch
   const quitarKpi = async (kpiId) => {
     setSaving(kpiId);
     try {
       await apiClient.patch(`/kpis/${kpiId}/responsable`, {
         responsable_id: null,
       });
+
+      // Actualizamos la memoria de React directamente
+      setKpisActivos((prev) =>
+        prev.map((kpi) =>
+          kpi.id === kpiId ? { ...kpi, responsable_id: null } : kpi,
+        ),
+      );
+
       setFeedback({
         tipo: "success",
         mensaje: "✅ KPI liberado exitosamente.",
       });
-      await cargarDatos();
     } catch (err) {
       setFeedback({
         tipo: "error",
@@ -134,8 +155,8 @@ export default function MiEquipo() {
       {/* Cabecera */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-azul font-heading">
-            Mi <span className="text-naranja">Equipo</span>
+          <h1 className="text-3xl font-extrabold text-[#123498] font-heading">
+            Mi <span className="text-[#F46F0B]">Equipo</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">
             {user?.area_nombre || "Tu área"} · {equipo.length} colaborador
@@ -148,7 +169,7 @@ export default function MiEquipo() {
       {kpisActivos.length === 0 ? (
         <div className="flex items-center gap-4 bg-orange-50 border border-orange-200 rounded-2xl p-5 shadow-sm">
           <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm border border-orange-100">
-            <Activity className="w-6 h-6 text-naranja" />
+            <Activity className="w-6 h-6 text-[#F46F0B]" />
           </div>
           <div>
             <h3 className="text-sm font-black text-orange-800 uppercase tracking-widest mb-0.5">
@@ -163,7 +184,7 @@ export default function MiEquipo() {
       ) : (
         <div className="flex items-center gap-4 bg-blue-50 border border-blue-200 rounded-2xl p-5 shadow-sm">
           <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm border border-blue-100">
-            <UserCheck className="w-6 h-6 text-azul" />
+            <UserCheck className="w-6 h-6 text-[#123498]" />
           </div>
           <div>
             <h3 className="text-sm font-black text-blue-800 uppercase tracking-widest mb-0.5">
@@ -180,12 +201,12 @@ export default function MiEquipo() {
       {/* Área Principal */}
       {loading ? (
         <div className="flex justify-center py-32">
-          <div className="w-10 h-10 border-4 border-azul border-t-naranja rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-4 border-[#123498] border-t-[#F46F0B] rounded-full animate-spin"></div>
         </div>
       ) : equipo.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-4xl border border-slate-100 shadow-sm">
+        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm">
           <Users className="w-14 h-14 text-slate-200 mb-4" />
-          <p className="text-azul font-black text-lg uppercase tracking-widest font-heading">
+          <p className="text-[#123498] font-black text-lg uppercase tracking-widest font-heading">
             Sin Colaboradores
           </p>
           <p className="text-gray-500 text-sm mt-1">
@@ -205,16 +226,16 @@ export default function MiEquipo() {
             return (
               <div
                 key={trabajador.id}
-                className="bg-white border border-slate-200 rounded-4xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col h-full relative overflow-hidden group"
+                className="bg-white border border-slate-200 rounded-[2.5rem] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col h-full relative overflow-hidden group"
               >
                 {/* Info Personal */}
                 <div className="flex items-center gap-4 mb-6 relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-azul/10 to-naranja/10 flex items-center justify-center text-azul text-xl font-bold shrink-0 border border-white shadow-sm">
+                  <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-[#123498]/10 to-[#F46F0B]/10 flex items-center justify-center text-[#123498] text-xl font-bold shrink-0 border border-white shadow-sm">
                     {trabajador.name?.charAt(0)?.toUpperCase() || "T"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3
-                      className="text-sm font-black text-azul-profundo leading-tight truncate mb-1"
+                      className="text-sm font-black text-[#123498] leading-tight truncate mb-1"
                       title={trabajador.name}
                     >
                       {trabajador.name}
@@ -246,10 +267,10 @@ export default function MiEquipo() {
                       {asignados.map((k) => (
                         <div
                           key={k.id}
-                          className="flex items-center justify-between bg-white border border-slate-200 p-2.5 rounded-xl hover:border-turquesa/50 transition-colors shadow-sm"
+                          className="flex items-center justify-between bg-white border border-slate-200 p-2.5 rounded-xl hover:border-emerald-300 transition-colors shadow-sm"
                         >
                           <div className="flex items-center gap-2 overflow-hidden pr-2">
-                            <Target className="w-3.5 h-3.5 text-turquesa shrink-0" />
+                            <Target className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                             <span
                               className="text-xs font-bold text-slate-700 truncate"
                               title={k.nombre}
@@ -260,11 +281,11 @@ export default function MiEquipo() {
                           <button
                             onClick={() => quitarKpi(k.id)}
                             disabled={saving === k.id}
-                            className="text-slate-300 hover:text-rojo-persa bg-slate-50 hover:bg-red-50 p-1.5 rounded-lg transition-colors disabled:opacity-40 shrink-0"
+                            className="text-slate-300 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 p-1.5 rounded-lg transition-colors disabled:opacity-40 shrink-0"
                             title="Desasignar KPI"
                           >
                             {saving === k.id ? (
-                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-400" />
                             ) : (
                               <X className="w-3.5 h-3.5" />
                             )}
@@ -291,7 +312,7 @@ export default function MiEquipo() {
                           asignarKpi(trabajador.id, e.target.value)
                         }
                         disabled={saving === trabajador.id}
-                        className="w-full appearance-none px-4 py-3 text-xs font-black uppercase tracking-widest border border-slate-200 rounded-xl bg-white text-azul hover:bg-azul/5 focus:outline-none focus:border-azul focus:ring-2 focus:ring-azul/20 cursor-pointer disabled:opacity-50 transition-all shadow-sm"
+                        className="w-full appearance-none px-4 py-3 text-xs font-black uppercase tracking-widest border border-slate-200 rounded-xl bg-white text-[#123498] hover:bg-[#123498]/5 focus:outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/20 cursor-pointer disabled:opacity-50 transition-all shadow-sm"
                       >
                         <option value="" disabled>
                           + Asignar Tarea
@@ -306,7 +327,7 @@ export default function MiEquipo() {
                       </select>
                     </div>
                   ) : asignados.length >= 3 ? (
-                    <div className="bg-orange-50 border border-orange-100 text-naranja px-4 py-3 rounded-xl text-center">
+                    <div className="bg-orange-50 border border-orange-100 text-[#F46F0B] px-4 py-3 rounded-xl text-center">
                       <p className="text-[10px] font-black uppercase tracking-widest">
                         Carga Máxima (3/3)
                       </p>

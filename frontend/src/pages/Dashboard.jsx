@@ -16,7 +16,7 @@ import { useAuth } from "../context/AuthContext";
 
 const LIMIT = 12;
 
-export default function Dashboard() {
+export default function Dashboard({ setActivePage }) {
   const { user } = useAuth();
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -120,6 +120,13 @@ export default function Dashboard() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleConfigurarKpi = (kpi, areaFallbackId) => {
+    // Asegurarnos de tener el area_id, ya sea del objeto KPI o del área seleccionada
+    const kpiData = { ...kpi, area_id: kpi.area_id || areaFallbackId };
+    sessionStorage.setItem("kpiToConfig", JSON.stringify(kpiData));
+    setActivePage("settings"); // Viajamos a la configuración
   };
 
   // LÓGICA DE BÚSQUEDA Y DRILL-DOWN EN VIVO
@@ -377,6 +384,9 @@ export default function Dashboard() {
                         </div>
                         <div className="flex items-center gap-1.5">
                           <button
+                            onClick={() =>
+                              handleConfigurarKpi(kpi, selectedArea?.id)
+                            }
                             className="p-2 text-azul bg-azul/5 rounded-lg hover:bg-azul hover:text-white transition-colors border border-azul/10"
                             title="Configuración"
                           >

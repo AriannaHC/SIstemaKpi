@@ -39,6 +39,11 @@ export const getHistorial = async () => {
   return response.data;
 };
 
+export const getAreasStats = async () => {
+  const response = await apiClient.get("/kpis/areas/stats");
+  return response.data;
+};
+
 // ── MÉTODOS EXISTENTES (copia completa para que no pierdas nada) ──────────────
 
 export const kpiService = {
@@ -117,4 +122,5 @@ export const kpiService = {
   getAlertas,
   getMisReportes,
   getHistorial,
+  getAreasStats,
 };

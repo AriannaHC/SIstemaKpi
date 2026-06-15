@@ -35,25 +35,51 @@ export default function ConfiguracionKPI() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
-  const loadAreas = async () => {
-    setIsLoadingAreas(true);
-    setFeedback(null);
-    try {
-      const data = await kpiService.getAreas();
-      setAreas(data);
-    } catch {
-      setFeedback({
-        tipo: "error",
-        mensaje: "No se pudieron cargar las áreas.",
-      });
-    } finally {
-      setIsLoadingAreas(false);
-    }
-  };
-
   useEffect(() => {
-    loadAreas();
-  }, []);
+    const initConfiguracion = async () => {
+      setIsLoadingAreas(true);
+      setFeedback(null);
+      try {
+        // 1. Cargar las áreas primero
+        const dataAreas = await kpiService.getAreasStats();
+        setAreas(dataAreas);
+
+        // 2. Revisar si venimos redirigidos del Dashboard
+        const kpiToConfigStr = sessionStorage.getItem("kpiToConfig");
+
+        if (kpiToConfigStr) {
+          const kpiToConfig = JSON.parse(kpiToConfigStr);
+          sessionStorage.removeItem("kpiToConfig"); // Limpiar para que no se quede pegado en futuros ingresos
+
+          // 3. Seleccionar el área automáticamente
+          const areaObj = dataAreas.find((a) => a.id === kpiToConfig.area_id);
+          if (areaObj) {
+            setSelectedArea(areaObj);
+
+            // 4. Cargar los KPIs de esa área en el selector central
+            setIsLoadingKpis(true);
+            const dataKpis = await kpiService.getKpisPorArea(areaObj.id);
+            setKpis(dataKpis);
+            setIsLoadingKpis(false);
+
+            // 5. ¡Abrir el editor del KPI automáticamente!
+            const fullKpi =
+              dataKpis.find((k) => k.id === kpiToConfig.id) || kpiToConfig;
+            loadKpiConfiguration(fullKpi);
+          }
+        }
+      } catch (err) {
+        setFeedback({
+          tipo: "error",
+          mensaje: "Error al inicializar la configuración.",
+        });
+      } finally {
+        setIsLoadingAreas(false);
+      }
+    };
+
+    initConfiguracion();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAreaChange = async (e) => {
     const areaId = e.target.value;
@@ -206,7 +232,10 @@ export default function ConfiguracionKPI() {
       {/* Cabecera */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold font-heading" style={{ color: "#123498" }}>
+          <h1
+            className="text-3xl font-extrabold font-heading"
+            style={{ color: "#123498" }}
+          >
             Modelador de <span style={{ color: "#F46F0B" }}>KPIs</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">
@@ -222,14 +251,19 @@ export default function ConfiguracionKPI() {
         <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
           {/* Selector de Área */}
           <div className="p-6 md:p-8 border-b border-slate-50 bg-slate-50/30 flex flex-col md:flex-row gap-4 lg:gap-6 justify-between items-center">
-            <h2 className="text-xl font-bold flex items-center gap-2 shrink-0 self-start md:self-center" style={{ color: "#123498" }}>
-              <Folder className="w-6 h-6" style={{ color: "#F46F0B" }} /> Área a Configurar
+            <h2
+              className="text-xl font-bold flex items-center gap-2 shrink-0 self-start md:self-center"
+              style={{ color: "#123498" }}
+            >
+              <Folder className="w-6 h-6" style={{ color: "#F46F0B" }} /> Área a
+              Configurar
             </h2>
 
             <div className="w-full md:w-80 relative">
               <Folder className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <select
-                className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none transition-all shadow-sm cursor-pointer disabled:opacity-50" style={{ borderColor: "#123498" }}
+                className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                style={{ borderColor: "#123498" }}
                 value={selectedArea ? selectedArea.id : ""}
                 onChange={handleAreaChange}
                 disabled={isLoadingAreas}
@@ -249,7 +283,10 @@ export default function ConfiguracionKPI() {
             {!selectedArea ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <Database className="w-14 h-14 text-slate-200 mb-4" />
-                <p className="font-black text-lg uppercase tracking-widest font-heading" style={{ color: "#123498" }}>
+                <p
+                  className="font-black text-lg uppercase tracking-widest font-heading"
+                  style={{ color: "#123498" }}
+                >
                   Sin Selección
                 </p>
                 <p className="text-gray-500 text-sm mt-1">
@@ -258,12 +295,18 @@ export default function ConfiguracionKPI() {
               </div>
             ) : isLoadingKpis ? (
               <div className="flex justify-center py-20">
-                <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: "#123498", borderTopColor: "#F46F0B" }}></div>
+                <div
+                  className="w-10 h-10 border-4 rounded-full animate-spin"
+                  style={{ borderColor: "#123498", borderTopColor: "#F46F0B" }}
+                ></div>
               </div>
             ) : kpis.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
                 <Activity className="w-14 h-14 text-slate-200 mb-4" />
-                <p className="font-black text-lg uppercase tracking-widest font-heading" style={{ color: "#123498" }}>
+                <p
+                  className="font-black text-lg uppercase tracking-widest font-heading"
+                  style={{ color: "#123498" }}
+                >
                   Sin KPIs
                 </p>
                 <p className="text-gray-500 text-sm mt-1">
@@ -278,9 +321,15 @@ export default function ConfiguracionKPI() {
                     className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col h-48 group relative overflow-hidden"
                   >
                     <div className="flex items-start justify-between mb-4 relative z-10">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-colors" style={{ backgroundColor: "#123498/5", color: "#123498" }}>
+                      <div
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center transition-colors"
+                        style={{
+                          backgroundColor: "#123498/5",
+                          color: "#123498",
+                        }}
+                      >
                         <Settings className="w-6 h-6" />
-                    </div>
+                      </div>
                       <span className="text-[9px] font-black uppercase tracking-widest border border-slate-200 text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg">
                         Editable
                       </span>
@@ -296,7 +345,8 @@ export default function ConfiguracionKPI() {
                       </h3>
                       <button
                         onClick={() => loadKpiConfiguration(kpi)}
-                        className="w-full bg-slate-100 font-black text-[10px] uppercase tracking-widest py-2.5 rounded-xl transition-colors" style={{ color: "#123498", backgroundColor: "#f1f5f9" }}
+                        className="w-full bg-slate-100 font-black text-[10px] uppercase tracking-widest py-2.5 rounded-xl transition-colors"
+                        style={{ color: "#123498", backgroundColor: "#f1f5f9" }}
                       >
                         Configurar
                       </button>
@@ -318,16 +368,23 @@ export default function ConfiguracionKPI() {
           <div className="p-6 md:p-8 border-b border-slate-50 bg-white relative">
             <button
               onClick={volverAKpis}
-              className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest" style={{ "--hover-color": "#123498" }}
+              className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest"
+              style={{ "--hover-color": "#123498" }}
             >
               <ChevronLeft className="w-4 h-4" /> Volver
             </button>
 
             <div className="pr-24">
-              <span className="text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest mb-3 inline-block" style={{ backgroundColor: "#F46F0B/10", color: "#F46F0B" }}>
+              <span
+                className="text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest mb-3 inline-block"
+                style={{ backgroundColor: "#F46F0B/10", color: "#F46F0B" }}
+              >
                 Configurando Estructura
               </span>
-              <h2 className="text-2xl md:text-3xl font-black font-heading leading-tight" style={{ color: "#123498" }}>
+              <h2
+                className="text-2xl md:text-3xl font-black font-heading leading-tight"
+                style={{ color: "#123498" }}
+              >
                 {selectedKpi.nombre}
               </h2>
             </div>
@@ -336,7 +393,10 @@ export default function ConfiguracionKPI() {
           <div className="p-6 md:p-8 bg-slate-50/50">
             {isLoadingCampos ? (
               <div className="text-center py-20">
-                <div className="w-10 h-10 border-4 rounded-full animate-spin mx-auto mb-4" style={{ borderColor: "#123498", borderTopColor: "#F46F0B" }}></div>
+                <div
+                  className="w-10 h-10 border-4 rounded-full animate-spin mx-auto mb-4"
+                  style={{ borderColor: "#123498", borderTopColor: "#F46F0B" }}
+                ></div>
                 <p className="text-gray-500 font-semibold text-sm">
                   Cargando estructura...
                 </p>
@@ -349,7 +409,10 @@ export default function ConfiguracionKPI() {
                   <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                      <Calculator className="w-5 h-5" style={{ color: "#F46F0B" }} />
+                        <Calculator
+                          className="w-5 h-5"
+                          style={{ color: "#F46F0B" }}
+                        />
                         <h4 className="text-sm font-black uppercase tracking-widest text-slate-700">
                           Fórmula Excel Original
                         </h4>
@@ -374,13 +437,22 @@ export default function ConfiguracionKPI() {
                     <table className="w-full text-left">
                       <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                          <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-1/3" style={{ color: "#123498" }}>
+                          <th
+                            className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-1/3"
+                            style={{ color: "#123498" }}
+                          >
                             Nombre de Variable
                           </th>
-                          <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-24" style={{ color: "#123498" }}>
+                          <th
+                            className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-24"
+                            style={{ color: "#123498" }}
+                          >
                             Origen de Datos
                           </th>
-                          <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest" style={{ color: "#123498" }}>
+                          <th
+                            className="px-6 py-4 text-[10px] font-black uppercase tracking-widest"
+                            style={{ color: "#123498" }}
+                          >
                             Lógica / Valor
                           </th>
                         </tr>
@@ -455,7 +527,10 @@ export default function ConfiguracionKPI() {
                   <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
                     <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">
                       <span>Análisis de Estructura</span>
-                      <Activity className="w-4 h-4" style={{ color: "#123498" }} />
+                      <Activity
+                        className="w-4 h-4"
+                        style={{ color: "#123498" }}
+                      />
                     </div>
 
                     <div className="space-y-4">
@@ -464,7 +539,10 @@ export default function ConfiguracionKPI() {
                         <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">
                           Variables Calculadas
                         </p>
-                        <p className="mt-1 text-2xl font-black" style={{ color: "#123498" }}>
+                        <p
+                          className="mt-1 text-2xl font-black"
+                          style={{ color: "#123498" }}
+                        >
                           {resumenCampos.calculado}
                         </p>
                       </div>
@@ -502,7 +580,8 @@ export default function ConfiguracionKPI() {
                         disabled={
                           isSubmitting || resumenCampos.formulasFaltantes > 0
                         }
-                        className="w-full text-white font-black py-4 rounded-xl uppercase tracking-widest transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" style={{ backgroundColor: "#F46F0B" }}
+                        className="w-full text-white font-black py-4 rounded-xl uppercase tracking-widest transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ backgroundColor: "#F46F0B" }}
                       >
                         {isSubmitting ? "Guardando..." : "Guardar Estructura"}
                       </button>

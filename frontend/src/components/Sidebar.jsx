@@ -33,8 +33,8 @@ export default function Sidebar({
       onClick={() => handleNavigation(view)}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
         currentTab === view
-          ? "bg-azul text-white shadow-lg shadow-azul/20"
-          : "text-gray-500 hover:bg-slate-100 hover:text-azul"
+          ? "bg-[#123498] text-white shadow-lg shadow-[#123498]/20"
+          : "text-gray-500 hover:bg-slate-100 hover:text-[#123498]"
       }`}
     >
       {icon}
@@ -47,13 +47,13 @@ export default function Sidebar({
     <aside
       className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 shadow-sm transition-transform duration-300 ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      }`}
+      } lg:translate-x-0`}
     >
       <div className="flex flex-col h-full">
         {/* Logo / Título */}
         <div className="p-6 text-center border-b border-slate-50 mb-4 relative">
-          <h1 className="text-xl font-extrabold text-azul">
-            SISTEMA <span className="text-naranja">KPI JB</span>
+          <h1 className="text-xl font-extrabold text-[#123498]">
+            SISTEMA <span className="text-[#F46F0B]">KPI JB</span>
           </h1>
           <p className="text-[9px] font-black text-gray-400 tracking-[0.2em] mt-1">
             SISTEMA CORPORATIVO
@@ -68,48 +68,21 @@ export default function Sidebar({
 
         {/* Navegación */}
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
-          {/* Solo Admin: Dashboard Global */}
-          {rol === 1 && (
-            <NavItem
-              view="dashboard"
-              icon={<LayoutDashboard className="w-5 h-5" />}
-              label="Dashboard Global"
-            />
-          )}
-
-          {/* Solo Admin: Selección Semanal */}
-          {rol === 1 && (
-            <NavItem
-              view="escoger-kpi"
-              icon={<CalendarCheck className="w-5 h-5" />}
-              label="Selección Semanal"
-            />
-          )}
-
-          {/* Todos */}
-          <NavItem
-            view="daily"
-            icon={<Clock className="w-5 h-5" />}
-            label="Tus Indicadores"
-          />
-          <NavItem
-            view="mis-reportes"
-            icon={<ClipboardList className="w-5 h-5" />}
-            label="Mis Reportes"
-          />
-
-          {/* Solo Admin y Jefe */}
-          {(rol === 1 || rol === 2) && (
-            <NavItem
-              view="reports"
-              icon={<FileBarChart className="w-5 h-5" />}
-              label="Auditoría y Reportes"
-            />
-          )}
-
-          {/* Solo Admin */}
+          {/* ========================================================= */}
+          {/* VISTAS EXCLUSIVAS DEL ADMINISTRADOR (Rol 1) */}
+          {/* ========================================================= */}
           {rol === 1 && (
             <>
+              <NavItem
+                view="dashboard"
+                icon={<LayoutDashboard className="w-5 h-5" />}
+                label="Subir KPIs"
+              />
+              <NavItem
+                view="escoger-kpi"
+                icon={<CalendarCheck className="w-5 h-5" />}
+                label="Selección Semanal"
+              />
               <NavItem
                 view="historial"
                 icon={<History className="w-5 h-5" />}
@@ -128,7 +101,20 @@ export default function Sidebar({
             </>
           )}
 
-          {/* Solo Jefe de Área */}
+          {/* ========================================================= */}
+          {/* VISTAS COMPARTIDAS: Admin y Jefe (Roles 1 y 2) */}
+          {/* ========================================================= */}
+          {(rol === 1 || rol === 2) && (
+            <NavItem
+              view="reports"
+              icon={<FileBarChart className="w-5 h-5" />}
+              label="Auditoría y Reportes"
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* VISTAS EXCLUSIVAS DEL JEFE DE ÁREA (Rol 2) */}
+          {/* ========================================================= */}
           {rol === 2 && (
             <NavItem
               view="mi-equipo"
@@ -136,18 +122,36 @@ export default function Sidebar({
               label="Mi Equipo"
             />
           )}
+
+          {/* ========================================================= */}
+          {/* VISTAS OPERATIVAS: Jefe y Trabajador (Roles 2 y 3) */}
+          {/* ========================================================= */}
+          {(rol === 2 || rol === 3) && (
+            <>
+              <NavItem
+                view="daily"
+                icon={<Clock className="w-5 h-5" />}
+                label="Tus Indicadores"
+              />
+              <NavItem
+                view="mis-reportes"
+                icon={<ClipboardList className="w-5 h-5" />}
+                label="Mis Reportes"
+              />
+            </>
+          )}
         </nav>
 
         {/* Footer: Logout + Info usuario */}
         <div className="p-4 border-t border-slate-100 bg-slate-50/50">
           <button
             onClick={onLogout}
-            className="w-full mb-4 flex items-center justify-center gap-2 px-3 py-3 bg-rojo-persa/10 text-rojo-persa rounded-xl text-xs font-black hover:bg-rojo-persa hover:text-white transition-all"
+            className="w-full mb-4 flex items-center justify-center gap-2 px-3 py-3 bg-red-50 text-red-600 rounded-xl text-xs font-black hover:bg-red-600 hover:text-white transition-all"
           >
             <LogOut className="w-4 h-4" /> CERRAR SESIÓN
           </button>
           <div className="bg-white p-3 rounded-2xl flex items-center gap-3 border border-slate-100 shadow-sm">
-            <div className="w-10 h-10 rounded-full bg-azul/10 text-azul flex items-center justify-center font-bold text-sm border-2 border-azul/10 shrink-0">
+            <div className="w-10 h-10 rounded-full bg-[#123498]/10 text-[#123498] flex items-center justify-center font-bold text-sm border-2 border-[#123498]/10 shrink-0">
               {user?.name?.charAt(0)?.toUpperCase() || "U"}
             </div>
             <div className="flex-1 min-w-0">

@@ -29,27 +29,10 @@ export default function EscogerKPI() {
   const [modalSide, setModalSide] = useState({ open: false, kpi: null });
   const [formData, setFormData] = useState({ fecha_inicio: "", fecha_fin: "" });
 
-  // ── 1. Cargar Áreas y sus Estadísticas ──
   const cargarAreasConStats = async () => {
     setLoadingAreas(true);
     try {
-      const areasList = await kpiService.getAreas();
-
-      const areasConStats = await Promise.all(
-        areasList.map(async (area) => {
-          try {
-            const stats = await kpiService.getKpisSemanales(area.id);
-            return {
-              ...area,
-              total: stats.kpis.length,
-              activos: stats.activos_count,
-              max: stats.max_activos,
-            };
-          } catch (error) {
-            return { ...area, total: 0, activos: 0, max: 3 };
-          }
-        }),
-      );
+      const areasConStats = await kpiService.getAreasStats();
       setAreas(areasConStats);
     } catch (err) {
       setFeedback({ tipo: "error", mensaje: "Error al cargar las áreas." });

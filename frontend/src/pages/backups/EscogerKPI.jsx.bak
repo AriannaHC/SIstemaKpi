@@ -22,7 +22,7 @@ export default function EscogerKPI() {
   // 1. Cargar áreas al inicio
   useEffect(() => {
     kpiService
-      .getAreas()
+      .getAreasStats()
       .then(setAreas)
       .catch(() =>
         setFeedback({ tipo: "error", mensaje: "Error al cargar áreas" }),

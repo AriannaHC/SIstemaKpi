@@ -173,10 +173,7 @@ export default function MisReportes() {
                   {stat.icon}
                 </div>
               </div>
-              <p
-                className="text-2xl font-black"
-                style={{ color: stat.color }}
-              >
+              <p className="text-2xl font-black" style={{ color: stat.color }}>
                 {stat.value}
               </p>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">
@@ -210,7 +207,7 @@ export default function MisReportes() {
             return (
               <div
                 key={reporte.id}
-                className={`rounded-[2rem] border overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col ${
+                className={`rounded-4xl border overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col ${
                   esOmision
                     ? "bg-rose-50/70 border-rose-200"
                     : "bg-white border-slate-200"
@@ -220,13 +217,13 @@ export default function MisReportes() {
                 <div
                   className={`h-1.5 ${
                     esOmision
-                      ? "bg-gradient-to-r from-rose-400 to-rose-600"
+                      ? "bg-linear-to-r from-rose-400 to-rose-600"
                       : reporte.alerta === "verde"
-                        ? "bg-gradient-to-r from-emerald-400 to-emerald-600"
+                        ? "bg-linear-to-r from-emerald-400 to-emerald-600"
                         : reporte.alerta === "amarillo"
-                          ? "bg-gradient-to-r from-amber-400 to-amber-500"
+                          ? "bg-linear-to-r from-amber-400 to-amber-500"
                           : reporte.alerta === "rojo"
-                            ? "bg-gradient-to-r from-rose-400 to-rose-600"
+                            ? "bg-linear-to-r from-rose-400 to-rose-600"
                             : "bg-slate-200"
                   }`}
                 />

@@ -2,7 +2,7 @@ import os, re
 import openpyxl
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import text
 from typing import List, Optional
 from datetime import datetime
@@ -116,23 +116,52 @@ def _extract_kpi_fields_from_sheet(ws) -> dict:
 #  1. ESTRUCTURA DINÁMICA — selects encadenados Area → KPI → Campos
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/areas")
-def get_areas(
+@router.get("/areas/stats")
+def get_areas_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Retorna la lista de áreas con sus estadísticas de KPIs activos y totales
+    en 1 sola petición, eliminando el efecto cascada (N+1) del frontend.
+    """
     es_admin = current_user.kpi_rol_id == 1
-    if es_admin:
-        areas = db.query(Area).filter(Area.activo == True).order_by(Area.nombre).all()
-    else:
-        if not current_user.kpi_area_id:
-            return []
-        areas = (
-            db.query(Area)
-            .filter(Area.id == current_user.kpi_area_id, Area.activo == True)
-            .all()
-        )
-    return [{"id": a.id, "nombre": a.nombre} for a in areas]
+    _cerrar_kpis_vencidos_interno(db, system_user_id=current_user.id)
+    now = datetime.now()
+
+    # 1. Traer áreas permitidas
+    query_areas = db.query(Area).filter(Area.activo == True)
+    if not es_admin and current_user.kpi_area_id:
+        query_areas = query_areas.filter(Area.id == current_user.kpi_area_id)
+    areas = query_areas.order_by(Area.nombre).all()
+
+    # 2. Traer KPIs y programaciones activas (1 solo query cada uno)
+    kpis = db.query(Kpi).filter(Kpi.activo == True).all()
+    programaciones = db.query(KpiProgramado).join(Kpi).filter(
+        KpiProgramado.fecha_inicio <= now,
+        KpiProgramado.fecha_fin >= now
+    ).all()
+
+    # 3. Contar en memoria (Super rápido, sin saturar la DB)
+    prog_area_count = {}
+    for p in programaciones:
+        prog_area_count[p.kpi.area_id] = prog_area_count.get(p.kpi.area_id, 0) + 1
+        
+    kpi_area_count = {}
+    for k in kpis:
+        kpi_area_count[k.area_id] = kpi_area_count.get(k.area_id, 0) + 1
+
+    # 4. Formatear salida
+    res = []
+    for a in areas:
+        res.append({
+            "id": a.id,
+            "nombre": a.nombre,
+            "total": kpi_area_count.get(a.id, 0),
+            "activos": prog_area_count.get(a.id, 0),
+            "max": 3
+        })
+    return res
 
 
 @router.get("/area/{area_id:int}")
@@ -200,7 +229,6 @@ def get_configuracion(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Solo el Administrador (rol 1) puede ver la configuración de KPIs
     if current_user.kpi_rol_id != 1:
         raise HTTPException(status_code=403, detail="Solo el administrador puede ver la configuración de KPIs.")
 
@@ -237,7 +265,6 @@ def save_configuracion(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Solo el Administrador (rol 1) puede guardar configuración de KPIs
     if current_user.kpi_rol_id != 1:
         raise HTTPException(status_code=403, detail="Solo el administrador puede configurar KPIs.")
 
@@ -262,6 +289,8 @@ def save_configuracion(
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  3. DASHBOARD
+#  FIX: Optimización N+1 resuelta en memoria mediante diccionarios para no 
+#  depender de 'Area.kpis' en models.py. (1 query para áreas, 1 para KPIs).
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/dashboard_data")
@@ -271,25 +300,31 @@ def get_dashboard_data(
 ):
     es_admin = current_user.kpi_rol_id == 1
 
-    if es_admin:
-        areas = db.query(Area).filter(Area.activo == True).order_by(Area.nombre).all()
-    else:
+    # 1. Obtener áreas permitidas
+    query_areas = db.query(Area).filter(Area.activo == True)
+    if not es_admin:
         if not current_user.kpi_area_id:
             return []
-        areas = (
-            db.query(Area)
-            .filter(Area.id == current_user.kpi_area_id, Area.activo == True)
-            .all()
-        )
+        query_areas = query_areas.filter(Area.id == current_user.kpi_area_id)
+        
+    areas = query_areas.order_by(Area.nombre).all()
+    area_ids = [a.id for a in areas]
 
+    # 2. Obtener TODOS los KPIs de esas áreas en 1 sola consulta
+    if not area_ids:
+        return []
+        
+    todos_kpis = db.query(Kpi).filter(Kpi.area_id.in_(area_ids)).all()
+    
+    # 3. Agrupar en memoria (Súper rápido y elimina el N+1)
+    kpis_por_area = {a_id: [] for a_id in area_ids}
+    for k in todos_kpis:
+        kpis_por_area[k.area_id].append(k)
+
+    # 4. Formatear la respuesta
     result = []
     for area in areas:
-        kpis = (
-            db.query(Kpi)
-            .filter(Kpi.area_id == area.id)
-            .order_by(Kpi.id)
-            .all()
-        )
+        kpis_ordenados = sorted(kpis_por_area[area.id], key=lambda k: k.id)
         result.append(
             {
                 "id": area.id,
@@ -302,15 +337,14 @@ def get_dashboard_data(
                         "tipo_kpi": getattr(k, "tipo_kpi", "Positivo") or "Positivo",
                         "activo_semanal": k.activo_semanal,
                     }
-                    for k in kpis
+                    for k in kpis_ordenados
                 ],
             }
         )
     return result
 
-
 # ══════════════════════════════════════════════════════════════════════════════
-#  3b. NUEVO — KPIs semanales por área (para el panel de gestión semanal)
+#  3b. KPIs semanales por área (panel de gestión semanal)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/semanales/{area_id:int}")
@@ -319,6 +353,8 @@ def get_kpis_semanales_por_area(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # ✅ FIX: El Admin (1) y el Jefe (2) pueden LEER esto. 
+    # (El Jefe lo necesita en la pantalla "Mi Equipo" para poder repartirlos).
     if current_user.kpi_rol_id not in [1, 2]:
         raise HTTPException(status_code=403, detail="Sin permisos para gestionar KPIs semanales.")
 
@@ -334,15 +370,13 @@ def get_kpis_semanales_por_area(
     _cerrar_kpis_vencidos_interno(db, system_user_id=current_user.id)
 
     now = datetime.now()
-    
-    # Buscar programaciones activas (vigentes hoy y no completadas)
+
     programaciones = db.query(KpiProgramado).join(Kpi).filter(
         Kpi.area_id == area_id,
         KpiProgramado.fecha_inicio <= now,
         KpiProgramado.fecha_fin >= now,
     ).all()
 
-    # Diccionario para saber rápidamente qué KPIs están programados
     prog_dict = {p.kpi_id: p for p in programaciones}
 
     return {
@@ -363,9 +397,12 @@ def get_kpis_semanales_por_area(
             for k in kpis
         ],
     }
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  4. OPERACIÓN DIARIA
+#  FIX (🔴 Alto): Se elimina N+1 en serialización agregando joinedload anidado.
+#  Antes: 1 query para programados + 1 query por p.kpi + 1 query por p.kpi.responsable
+#         = hasta 2N queries adicionales (con N=50 → ~100 queries extra).
+#  Ahora: 1 solo query con joinedload(kpi) + joinedload(kpi.responsable).
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/diario", response_model=List[KpiResponse])
@@ -377,10 +414,16 @@ def obtener_kpis_diarios(
     _cerrar_kpis_vencidos_interno(db, system_user_id=current_user.id)
     now = datetime.now()
 
-    # Buscamos en auditoría: los que están en fecha y NO están completados
-    query = db.query(KpiProgramado).join(Kpi).filter(
-        KpiProgramado.fecha_inicio <= now,
-        KpiProgramado.fecha_fin >= now,
+    query = (
+        db.query(KpiProgramado)
+        .options(
+            joinedload(KpiProgramado.kpi).joinedload(Kpi.responsable)
+        )
+        .join(Kpi)
+        .filter(
+            KpiProgramado.fecha_inicio <= now,
+            KpiProgramado.fecha_fin >= now,
+        )
     )
 
     if not es_admin:
@@ -390,7 +433,7 @@ def obtener_kpis_diarios(
 
     programados = query.all()
 
-    # Formateamos la respuesta extrayendo el KPI de la auditoría
+    # p.kpi y p.kpi.responsable ya están en memoria — sin queries adicionales
     resultado = [
         KpiResponse(
             id=p.kpi.id,
@@ -416,14 +459,14 @@ def programar_kpi_semanal(
     current_user: User = Depends(get_current_user),
 ):
     """Programa un KPI con fecha y hora de inicio y fin en la tabla de auditoría."""
-    if current_user.kpi_rol_id not in [1, 2]:
-        raise HTTPException(status_code=403, detail="Sin permisos para configurar KPIs.")
+    # 🔴 FIX: Solo el Administrador (Rol 1) puede ejecutar la acción de programar
+    if current_user.kpi_rol_id != 1:
+        raise HTTPException(status_code=403, detail="Solo el administrador puede programar KPIs.")
 
     kpi = db.query(Kpi).filter(Kpi.id == kpi_id).first()
     if not kpi:
         raise HTTPException(status_code=404, detail="KPI no encontrado.")
 
-    # NUEVA VALIDACIÓN: Contar cuántos KPIs del área se cruzan/solapan en este rango de fechas
     activos_count = db.query(KpiProgramado).join(Kpi).filter(
         Kpi.area_id == kpi.area_id,
         KpiProgramado.fecha_inicio <= payload.fecha_fin,
@@ -433,7 +476,6 @@ def programar_kpi_semanal(
     if activos_count >= 3:
         raise HTTPException(status_code=400, detail="El área ya tiene el máximo de 3 KPIs programados en este rango de fechas.")
 
-    # Registramos la auditoría (ya no usamos 'semana')
     nuevo_programado = KpiProgramado(
         kpi_id=kpi_id,
         fecha_inicio=payload.fecha_inicio,
@@ -443,6 +485,7 @@ def programar_kpi_semanal(
     db.add(nuevo_programado)
     db.commit()
     return {"message": "KPI programado exitosamente."}
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  5. REGISTRO DE VALORES
 # ══════════════════════════════════════════════════════════════════════════════
@@ -553,6 +596,10 @@ def registrar_llenado(
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  6. GESTIÓN DE ÁREAS Y KPIs (CRUD admin)
+#  FIX (🟡 Medio): Se eliminan las materializaciones innecesarias de ORM.
+#  Antes: .all() cargaba objetos completos a RAM solo para extraer su .id
+#  Ahora: se extrae directamente la columna ID con db.query(Model.id).filter(...)
+#         y se usa .scalar_subquery() para el DELETE en cascada, sin tocar RAM.
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.delete("/areas/{area_id:int}")
@@ -569,23 +616,37 @@ def delete_area(
         raise HTTPException(status_code=404, detail="Área no encontrada.")
 
     try:
-        kpis_ids = [k.id for k in db.query(Kpi).filter(Kpi.area_id == area_id).all()]
-        if kpis_ids:
-            registros_ids = [
-                r.id
-                for r in db.query(RegistroKpi).filter(RegistroKpi.kpi_id.in_(kpis_ids)).all()
-            ]
-            if registros_ids:
-                db.query(RegistroValores).filter(
-                    RegistroValores.registro_id.in_(registros_ids)
-                ).delete(synchronize_session=False)
-            db.query(RegistroKpi).filter(RegistroKpi.kpi_id.in_(kpis_ids)).delete(
-                synchronize_session=False
-            )
-            db.query(KpiCampo).filter(KpiCampo.kpi_id.in_(kpis_ids)).delete(
-                synchronize_session=False
-            )
-            db.query(Kpi).filter(Kpi.area_id == area_id).delete(synchronize_session=False)
+        # Subquery: IDs de KPIs del área (no materializa objetos ORM)
+        kpis_subq = (
+            db.query(Kpi.id)
+            .filter(Kpi.area_id == area_id)
+            .scalar_subquery()
+        )
+
+        # Subquery: IDs de registros asociados a esos KPIs
+        registros_subq = (
+            db.query(RegistroKpi.id)
+            .filter(RegistroKpi.kpi_id.in_(kpis_subq))
+            .scalar_subquery()
+        )
+
+        # Borrado en cascada usando subqueries — solo opera en BD, sin cargar RAM
+        db.query(RegistroValores).filter(
+            RegistroValores.registro_id.in_(registros_subq)
+        ).delete(synchronize_session=False)
+
+        db.query(RegistroKpi).filter(
+            RegistroKpi.kpi_id.in_(kpis_subq)
+        ).delete(synchronize_session=False)
+
+        db.query(KpiCampo).filter(
+            KpiCampo.kpi_id.in_(kpis_subq)
+        ).delete(synchronize_session=False)
+
+        db.query(Kpi).filter(
+            Kpi.area_id == area_id
+        ).delete(synchronize_session=False)
+
         db.delete(area)
         db.commit()
         return {"success": True, "message": "Área y todos sus KPIs eliminados correctamente."}
@@ -600,7 +661,6 @@ def delete_kpi(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Solo el Administrador (rol 1) puede eliminar KPIs
     if current_user.kpi_rol_id != 1:
         raise HTTPException(status_code=403, detail="Solo el administrador puede eliminar KPIs.")
 
@@ -609,19 +669,26 @@ def delete_kpi(
         raise HTTPException(status_code=404, detail="KPI no encontrado.")
 
     try:
-        registros_ids = [
-            r.id for r in db.query(RegistroKpi).filter(RegistroKpi.kpi_id == kpi_id).all()
-        ]
-        if registros_ids:
-            db.query(RegistroValores).filter(
-                RegistroValores.registro_id.in_(registros_ids)
-            ).delete(synchronize_session=False)
-        db.query(RegistroKpi).filter(RegistroKpi.kpi_id == kpi_id).delete(
-            synchronize_session=False
+        # Subquery: IDs de registros del KPI (no materializa objetos ORM)
+        registros_subq = (
+            db.query(RegistroKpi.id)
+            .filter(RegistroKpi.kpi_id == kpi_id)
+            .scalar_subquery()
         )
-        db.query(KpiCampo).filter(KpiCampo.kpi_id == kpi_id).delete(
-            synchronize_session=False
-        )
+
+        # Borrado en cascada usando subqueries — solo opera en BD, sin cargar RAM
+        db.query(RegistroValores).filter(
+            RegistroValores.registro_id.in_(registros_subq)
+        ).delete(synchronize_session=False)
+
+        db.query(RegistroKpi).filter(
+            RegistroKpi.kpi_id == kpi_id
+        ).delete(synchronize_session=False)
+
+        db.query(KpiCampo).filter(
+            KpiCampo.kpi_id == kpi_id
+        ).delete(synchronize_session=False)
+
         db.delete(kpi)
         db.commit()
         return {"success": True, "message": "KPI eliminado correctamente."}
@@ -641,11 +708,6 @@ def asignar_responsable_kpi(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Asigna un trabajador como responsable de un KPI semanal.
-    Solo el Jefe de Área (rol 2) puede hacerlo, y únicamente para KPIs de su área.
-    El Administrador (rol 1) también puede hacerlo sin restricción de área.
-    """
     if current_user.kpi_rol_id not in [1, 2]:
         raise HTTPException(status_code=403, detail="Sin permisos para asignar responsables.")
 
@@ -653,7 +715,6 @@ def asignar_responsable_kpi(
     if not kpi:
         raise HTTPException(status_code=404, detail="KPI no encontrado.")
 
-    # Jefe de área solo puede asignar en su propia área
     if current_user.kpi_rol_id == 2 and kpi.area_id != current_user.kpi_area_id:
         raise HTTPException(status_code=403, detail="Solo puedes asignar responsables en tu área.")
 
@@ -664,15 +725,12 @@ def asignar_responsable_kpi(
         db.commit()
         return {"success": True, "message": f"KPI '{kpi.nombre}' desasignado."}
 
-    # --- INICIO DE BLOQUE MODIFICADO ---
     trabajador = db.query(User).filter(User.id == responsable_id).first()
     if not trabajador:
         raise HTTPException(status_code=404, detail="Trabajador no encontrado.")
-    
-    # Validar área EXCEPTO si el que se asigna es Administrador (rol 1)
+
     if trabajador.kpi_rol_id != 1 and trabajador.kpi_area_id != kpi.area_id:
         raise HTTPException(status_code=400, detail="El trabajador no pertenece al área de este KPI.")
-    # --- FIN DE BLOQUE MODIFICADO ---
 
     kpi.responsable_id = responsable_id
     db.commit()
@@ -904,26 +962,33 @@ def _process_smart_excel(filepath: str, db: Session) -> int:
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  8. CIERRE AUTOMÁTICO DE KPIs — FUNCIÓN INTERNA + ENDPOINT MANUAL
+#  FIX (🔴 Alto): Se elimina el N+1 implícito en el loop.
+#  Antes: p.kpi.responsable_id dentro del loop disparaba 1 query extra por
+#         cada KPI vencido para cargar la relación lazy `kpi` (y potencialmente
+#         otra para `kpi.responsable`). Con 50 vencidos = ~100 queries extra.
+#  Ahora: joinedload(KpiProgramado.kpi) trae toda la relación en 1 solo query.
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _cerrar_kpis_vencidos_interno(db: Session, system_user_id: str | None = None) -> int:
-    """
-    Función interna que cierra los KPIs cuya fecha_fin ya pasó y no fueron completados. 
-    Genera un RegistroKpi de omisión en rojo. Se invoca automáticamente (lazy closure).
-    """
     now = datetime.now()
 
-    vencidos = db.query(KpiProgramado).filter(
-        KpiProgramado.fecha_fin < now,
-        KpiProgramado.completado == False,
-    ).all()
+    # joinedload precarga kpi (y su responsable_id) en el mismo query inicial
+    vencidos = (
+        db.query(KpiProgramado)
+        .options(joinedload(KpiProgramado.kpi))
+        .filter(
+            KpiProgramado.fecha_fin < now,
+            KpiProgramado.completado == False,
+        )
+        .all()
+    )
 
     if not vencidos:
         return 0
 
     cerrados_count = 0
     for p in vencidos:
-        # Prioridad para asignar el castigo: 1. Responsable 2. Quien lo asignó 3. Usuario actual
+        # p.kpi ya está en memoria — sin query adicional
         responsable_omision = p.kpi.responsable_id or p.asignado_por or system_user_id
 
         if not responsable_omision:
@@ -982,23 +1047,17 @@ def obtener_alertas_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Endpoint para el Módulo 3: Retorna KPIs pendientes, registros en riesgo (rojos/amarillos) 
-    y el porcentaje de participación por área.
-    """
-    # 1. Seguridad: Solo Admin (1) y Jefe de Área (2)
     if current_user.kpi_rol_id not in [1, 2]:
         raise HTTPException(status_code=403, detail="Sin permisos para ver el panel de alertas.")
 
-    # 2. Lazy Closure: Asegurarnos de que no haya KPIs vencidos flotando antes de calcular
     _cerrar_kpis_vencidos_interno(db, system_user_id=current_user.id)
-    
+
     now = datetime.now()
     es_admin = current_user.kpi_rol_id == 1
     filtro_area = current_user.kpi_area_id if not es_admin else None
 
     # -------------------------------------------------------------------------
-    # BLOQUE 1: PENDIENTES DE LLENADO (Vigentes pero completado == False)
+    # BLOQUE 1: PENDIENTES DE LLENADO
     # -------------------------------------------------------------------------
     query_pendientes = db.query(KpiProgramado, Kpi, User, Area).join(Kpi, KpiProgramado.kpi_id == Kpi.id)\
         .outerjoin(User, Kpi.responsable_id == User.id)\
@@ -1008,10 +1067,10 @@ def obtener_alertas_dashboard(
             KpiProgramado.fecha_fin >= now,
             KpiProgramado.completado == False
         )
-    
+
     if filtro_area:
         query_pendientes = query_pendientes.filter(Kpi.area_id == filtro_area)
-        
+
     pendientes_raw = query_pendientes.all()
     pendientes = []
     for p, k, u, a in pendientes_raw:
@@ -1024,7 +1083,7 @@ def obtener_alertas_dashboard(
         })
 
     # -------------------------------------------------------------------------
-    # BLOQUE 2: REGISTROS EN RIESGO (Alertas Rojas y Amarillas recientes)
+    # BLOQUE 2: REGISTROS EN RIESGO
     # -------------------------------------------------------------------------
     query_riesgo = db.query(RegistroKpi, Kpi, User, Area).join(Kpi, RegistroKpi.kpi_id == Kpi.id)\
         .join(User, RegistroKpi.usuario_id == User.id)\
@@ -1035,7 +1094,7 @@ def obtener_alertas_dashboard(
     if filtro_area:
         query_riesgo = query_riesgo.filter(Kpi.area_id == filtro_area)
 
-    riesgo_raw = query_riesgo.limit(10).all() # Traemos los 10 más recientes para no saturar
+    riesgo_raw = query_riesgo.limit(10).all()
     en_riesgo = []
     for r, k, u, a in riesgo_raw:
         en_riesgo.append({
@@ -1045,12 +1104,12 @@ def obtener_alertas_dashboard(
             "responsable": u.name,
             "alerta": r.alerta,
             "valor_registrado": r.valor_semanal,
-            "estado": r.estado, # Clave: Ayudará a Jesús a saber si fue 'enviado' o 'no_reportado' (omisión)
+            "estado": r.estado,
             "fecha": r.periodo_fin
         })
 
     # -------------------------------------------------------------------------
-    # BLOQUE 3: PARTICIPACIÓN (% Completados vs Programados en la semana actual)
+    # BLOQUE 3: PARTICIPACIÓN
     # -------------------------------------------------------------------------
     query_participacion = db.query(KpiProgramado, Kpi, Area).join(Kpi, KpiProgramado.kpi_id == Kpi.id)\
         .join(Area, Kpi.area_id == Area.id)\
@@ -1058,12 +1117,12 @@ def obtener_alertas_dashboard(
             KpiProgramado.fecha_inicio <= now,
             KpiProgramado.fecha_fin >= now
         )
-    
+
     if filtro_area:
         query_participacion = query_participacion.filter(Kpi.area_id == filtro_area)
 
     part_raw = query_participacion.all()
-    
+
     stats_por_area = {}
     for p, k, a in part_raw:
         if a.nombre not in stats_por_area:
@@ -1098,10 +1157,6 @@ def obtener_mis_reportes(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Retorna todos los RegistroKpi del usuario autenticado, ordenados por fecha
-    descendente. Incluye el nombre del KPI mediante JOIN.
-    """
     registros = (
         db.query(RegistroKpi, Kpi)
         .join(Kpi, RegistroKpi.kpi_id == Kpi.id)
@@ -1136,10 +1191,6 @@ def obtener_historial_general(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Retorna el historial absoluto de registros de la empresa.
-    JOIN con User, Kpi y Area. Solo accesible por Administrador (rol 1).
-    """
     if current_user.kpi_rol_id != 1:
         raise HTTPException(status_code=403, detail="Solo el administrador puede ver el historial general.")
 
@@ -1162,8 +1213,15 @@ def obtener_historial_general(
             "responsable": u.name,
             "valor_semanal": r.valor_semanal,
             "cumplimiento": r.cumplimiento,
+            "productividad": r.productividad,
+            "eficiencia": r.eficiencia,
+            "eficacia": r.eficacia,
+            "efectividad": r.efectividad,
+            "rendimiento": r.rendimiento,
             "estado": r.estado,
             "alerta": r.alerta,
+            "observaciones": r.observaciones,
+            "acciones_correctivas": r.acciones_correctivas,
             "enviado_en": r.enviado_en,
         }
         for r, k, u, a in registros
