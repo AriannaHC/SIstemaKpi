@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useRef } from "react";
 import { BarChart2, Download, Calendar, Users, Building2 } from "lucide-react";
 import {
   BarChart,
@@ -11,10 +10,24 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { toPng } from "html-to-image";
+import { jsPDF } from "jspdf";
 
 import { analyticsService } from "../services/analyticsService";
 import { kpiService } from "../services/kpiService";
 import { userService } from "../services/userService";
+
+// --- MOCK DATA METRICAS ---
+const METRICAS = ["Cumplimiento", "Eficacia", "Eficiencia", "Rendimiento"];
+
+// helper: convierte un dataURL PNG a dimensiones reales del canvas
+function pngDataUrlDimensions(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.src = dataUrl;
+  });
+}
 
 export default function Comparativas() {
   const [tipoComparacion, setTipoComparacion] = useState("areas");
@@ -31,6 +44,10 @@ export default function Comparativas() {
   const [chartData, setChartData] = useState([]);
   const [nombres, setNombres] = useState({ A: "Entidad A", B: "Entidad B" });
   const [loading, setLoading] = useState(true);
+
+  // Referencias y estados para Exportación
+  const [isExporting, setIsExporting] = useState(false);
+  const dashboardRef = useRef(null);
 
   const isAreas = tipoComparacion === "areas";
 
@@ -125,13 +142,67 @@ export default function Comparativas() {
       ).toFixed(1)
     : 0;
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // EXPORTAR A PDF (Con html-to-image y silenciador de CORS)
+  // ─────────────────────────────────────────────────────────────────────────
+  const exportarPDF = async () => {
+    if (!dashboardRef.current || chartData.length === 0) return;
+    setIsExporting(true);
+
+    const originalConsoleError = console.error;
+    console.error = (...args) => {
+      const msg = String(args[0] || "");
+      if (
+        msg.includes("Error inlining remote css file") ||
+        msg.includes("Error while reading CSS rules")
+      ) {
+        return;
+      }
+      originalConsoleError.apply(console, args);
+    };
+
+    const toPngOpts = {
+      pixelRatio: 2,
+      skipFonts: false,
+      backgroundColor: "#f8fafc",
+    };
+
+    try {
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pageHeightMm = pdf.internal.pageSize.getHeight();
+
+      const dashImgData = await toPng(dashboardRef.current, toPngOpts);
+      const { w: dw, h: dh } = await pngDataUrlDimensions(dashImgData);
+      const dashHeightMm = (dh * pdfWidth) / dw;
+
+      if (dashHeightMm <= pageHeightMm) {
+        pdf.addImage(dashImgData, "PNG", 0, 0, pdfWidth, dashHeightMm);
+      } else {
+        let yOffset = 0;
+        while (yOffset < dashHeightMm) {
+          if (yOffset > 0) pdf.addPage();
+          pdf.addImage(dashImgData, "PNG", 0, -yOffset, pdfWidth, dashHeightMm);
+          yOffset += pageHeightMm;
+        }
+      }
+
+      pdf.save(
+        `Reporte_Comparativa_${entidadANombre.replace(/\s+/g, "_")}_vs_${entidadBNombre.replace(/\s+/g, "_")}.pdf`,
+      );
+    } catch (error) {
+      originalConsoleError("Error al exportar PDF:", error);
+      alert(
+        "Hubo un problema al generar el PDF. Revisa la consola para más detalles.",
+      );
+    } finally {
+      console.error = originalConsoleError;
+      setIsExporting(false);
+    }
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="space-y-8 max-w-7xl mx-auto"
-    >
+    <div className="space-y-8 max-w-7xl mx-auto">
       {/* Cabecera */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
@@ -142,13 +213,18 @@ export default function Comparativas() {
             Enfrenta métricas entre áreas o trabajadores.
           </p>
         </div>
-        <button className="flex items-center gap-2 bg-emerald-50 text-emerald-600 border border-emerald-200 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-100 shadow-sm transition-colors">
-          <Download className="w-4 h-4" /> Exportar Excel
+        <button
+          onClick={exportarPDF}
+          disabled={isExporting || loading || chartData.length === 0}
+          className="flex items-center gap-2 bg-[#123498] text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#0c2473] hover:shadow-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Download className="w-4 h-4" />
+          {isExporting ? "Generando Reporte..." : "Exportar a PDF"}
         </button>
       </div>
 
       {/* Filtro de Fechas */}
-      <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center">
+      <div className="bg-white p-5 rounded-4xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center">
         <div className="flex items-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest px-2">
           <Calendar className="w-4 h-4" /> Rango de Fechas:
         </div>
@@ -177,7 +253,7 @@ export default function Comparativas() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white p-2 rounded-[2rem] border border-slate-100 shadow-sm inline-flex gap-2">
+      <div className="bg-white p-2 rounded-4xl border border-slate-100 shadow-sm inline-flex gap-2">
         <button
           onClick={() => setTipoComparacion("areas")}
           className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
@@ -203,7 +279,7 @@ export default function Comparativas() {
       </div>
 
       {/* Selectores de Entidad A y B */}
-      <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center">
+      <div className="bg-white p-6 rounded-4xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center">
         <div className="flex items-center gap-3 w-full md:w-auto">
           <select
             value={entidadAId}
@@ -245,7 +321,10 @@ export default function Comparativas() {
           </p>
         </div>
       ) : (
-        <>
+        <div
+          ref={dashboardRef}
+          className="space-y-8 p-1 rounded-3xl bg-transparent"
+        >
           {/* Resumen del Enfrentamiento */}
           <div className="bg-white rounded-[2.5rem] border border-slate-100 p-6 shadow-sm">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-center">
@@ -307,8 +386,13 @@ export default function Comparativas() {
             <h3 className="font-black text-lg text-[#123498] text-center mb-8 uppercase tracking-widest">
               {entidadANombre} vs {entidadBNombre}
             </h3>
-            <div className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="w-full h-[400px]">
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={0}
+                minHeight={0}
+              >
                 <BarChart
                   data={chartData}
                   margin={{ top: 20, right: 30, left: -20, bottom: 5 }}
@@ -435,8 +519,8 @@ export default function Comparativas() {
               </table>
             </div>
           </div>
-        </>
+        </div>
       )}
-    </motion.div>
+    </div>
   );
 }

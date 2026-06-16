@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Download,
   Filter,
@@ -24,7 +24,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 
 import { analyticsService } from "../services/analyticsService";
@@ -43,85 +43,12 @@ const mockPerfilArea = {
   default: [85, 90, 78, 82, 80],
 };
 
-// Utilidad: elimina colores CSS modernos (oklch, oklab, color-mix, etc.)
-function sanitizeModernColors(clonedDoc) {
-  const MODERN_FN =
-    /\b(oklch|oklab|color-mix|lch|lab|hwb|display-p3|color)\s*\(/gi;
-
-  function replaceModernFunctions(str) {
-    let result = str;
-    let match;
-    MODERN_FN.lastIndex = 0;
-    while ((match = MODERN_FN.exec(str)) !== null) {
-      let depth = 1;
-      let i = match.index + match[0].length;
-      while (i < str.length && depth > 0) {
-        if (str[i] === "(") depth++;
-        else if (str[i] === ")") depth--;
-        i++;
-      }
-      const fullMatch = str.slice(match.index, i);
-      result = result.replace(fullMatch, "transparent");
-      MODERN_FN.lastIndex = 0;
-      str = result;
-    }
-    return result;
-  }
-
-  clonedDoc.querySelectorAll("style").forEach((tag) => {
-    tag.textContent = replaceModernFunctions(tag.textContent);
-  });
-
-  clonedDoc.querySelectorAll("[style]").forEach((el) => {
-    const s = el.getAttribute("style");
-    if (MODERN_FN.test(s)) {
-      MODERN_FN.lastIndex = 0;
-      el.setAttribute("style", replaceModernFunctions(s));
-    }
-  });
-
-  const COLOR_PROPS = [
-    "color",
-    "background-color",
-    "border-color",
-    "outline-color",
-    "border-top-color",
-    "border-right-color",
-    "border-bottom-color",
-    "border-left-color",
-    "text-decoration-color",
-    "fill",
-    "stroke",
-    "box-shadow",
-    "text-shadow",
-  ];
-  clonedDoc.querySelectorAll("*").forEach((el) => {
-    const cs = el.style;
-    COLOR_PROPS.forEach((prop) => {
-      const val = cs.getPropertyValue(prop);
-      if (val && MODERN_FN.test(val)) {
-        MODERN_FN.lastIndex = 0;
-        cs.setProperty(prop, "transparent");
-      }
-    });
-  });
-
-  Array.from(clonedDoc.styleSheets || []).forEach((sheet) => {
-    try {
-      Array.from(sheet.cssRules || []).forEach((rule) => {
-        if (rule.style) {
-          Array.from(rule.style).forEach((prop) => {
-            const val = rule.style.getPropertyValue(prop);
-            if (MODERN_FN.test(val)) {
-              MODERN_FN.lastIndex = 0;
-              rule.style.setProperty(prop, "transparent");
-            }
-          });
-        }
-      });
-    } catch {
-      // Cross-origin sheets — skip silently
-    }
+// helper: convierte un dataURL PNG a dimensiones reales del canvas
+function pngDataUrlDimensions(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.src = dataUrl;
   });
 }
 
@@ -138,6 +65,8 @@ export default function Analitica() {
 
   // Estados Modal
   const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState("top");
+
   const [isExporting, setIsExporting] = useState(false);
   const dashboardRef = useRef(null);
   const rankingPdfRef = useRef(null);
@@ -186,9 +115,11 @@ export default function Analitica() {
     return [...participacion].sort((a, b) => b.score - a.score);
   }, [participacion]);
 
-  const topRanking = rankingCompleto.slice(0, 5); // Mostramos los top 5 en la tarjeta principal
+  const topRanking = rankingCompleto.slice(0, 5);
 
-  // Actualizado con los nuevos rangos: >=60 Verde, >=30 Amarillo, <30 Rojo
+  const rankingModal =
+    modalType === "top" ? rankingCompleto : [...rankingCompleto].reverse();
+
   const estadoGeneralData = useMemo(() => {
     let cumplido = 0,
       enRiesgo = 0,
@@ -219,77 +150,111 @@ export default function Analitica() {
     ];
   }, [participacion]);
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // EXPORTAR A PDF (Con silenciador de advertencias CORS para Google Fonts)
+  // ─────────────────────────────────────────────────────────────────────────
   const exportarPDF = async () => {
     if (!dashboardRef.current) return;
     setIsExporting(true);
+
+    // --- INICIO: SILENCIADOR DE CONSOLA PARA ERRORES DE FUENTES ---
+    const originalConsoleError = console.error;
+    console.error = (...args) => {
+      const msg = String(args[0] || "");
+      if (
+        msg.includes("Error inlining remote css file") ||
+        msg.includes("Error while reading CSS rules")
+      ) {
+        return; // Ignoramos este falso error en consola para mantenerla limpia
+      }
+      originalConsoleError.apply(console, args);
+    };
+    // --- FIN: SILENCIADOR DE CONSOLA ---
+
+    const toPngOpts = {
+      pixelRatio: 2,
+      skipFonts: false,
+      filter: (node) => {
+        if (node.nodeType !== 1) return true;
+        const el = /** @type {HTMLElement} */ (node);
+        const style = el.getAttribute?.("style") || "";
+        if (style.includes("-9999px")) return false;
+        return true;
+      },
+    };
+
     try {
-      const canvas = await html2canvas(dashboardRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: "#f8fafc",
-        logging: false,
-        windowWidth: document.documentElement.offsetWidth,
-        onclone: (_clonedDoc, clonedEl) => {
-          sanitizeModernColors(_clonedDoc);
-          clonedEl.style.backgroundColor = "#f8fafc";
-          clonedEl.style.padding = "16px";
-        },
-      });
-
-      const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
-
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const imgHeightMm = (canvas.height * pdfWidth) / canvas.width;
       const pageHeightMm = pdf.internal.pageSize.getHeight();
 
-      if (imgHeightMm <= pageHeightMm) {
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, imgHeightMm);
+      // ── Página 1: Dashboard con gráficos ──────────────────────────────
+      const dashImgData = await toPng(dashboardRef.current, {
+        ...toPngOpts,
+        backgroundColor: "#f8fafc",
+      });
+
+      const { w: dw, h: dh } = await pngDataUrlDimensions(dashImgData);
+      const dashHeightMm = (dh * pdfWidth) / dw;
+
+      if (dashHeightMm <= pageHeightMm) {
+        pdf.addImage(dashImgData, "PNG", 0, 0, pdfWidth, dashHeightMm);
       } else {
         let yOffset = 0;
-        while (yOffset < imgHeightMm) {
+        while (yOffset < dashHeightMm) {
           if (yOffset > 0) pdf.addPage();
-          pdf.addImage(imgData, "PNG", 0, -yOffset, pdfWidth, imgHeightMm);
+          pdf.addImage(dashImgData, "PNG", 0, -yOffset, pdfWidth, dashHeightMm);
           yOffset += pageHeightMm;
         }
       }
 
+      // ── Página 2: Tabla de ranking completo ───────────────────────────
       if (rankingPdfRef.current) {
-        const rankingCanvas = await html2canvas(rankingPdfRef.current, {
-          scale: 2,
-          useCORS: true,
+        const rankImgData = await toPng(rankingPdfRef.current, {
+          pixelRatio: 2,
           backgroundColor: "#ffffff",
-          onclone: (_clonedDoc) => sanitizeModernColors(_clonedDoc),
         });
 
-        const rankingImg = rankingCanvas.toDataURL("image/png");
-        const rankingHeightMm =
-          (rankingCanvas.height * pdfWidth) / rankingCanvas.width;
+        const { w: rw, h: rh } = await pngDataUrlDimensions(rankImgData);
+        const rankHeightMm = (rh * pdfWidth) / rw;
 
         pdf.addPage();
-        pdf.addImage(rankingImg, "PNG", 0, 0, pdfWidth, rankingHeightMm);
+
+        if (rankHeightMm <= pageHeightMm) {
+          pdf.addImage(rankImgData, "PNG", 0, 0, pdfWidth, rankHeightMm);
+        } else {
+          let yOffset = 0;
+          while (yOffset < rankHeightMm) {
+            if (yOffset > 0) pdf.addPage();
+            pdf.addImage(
+              rankImgData,
+              "PNG",
+              0,
+              -yOffset,
+              pdfWidth,
+              rankHeightMm,
+            );
+            yOffset += pageHeightMm;
+          }
+        }
       }
 
       pdf.save(`Reporte_Analitica_${areaSelNombre.replace(/\s+/g, "_")}.pdf`);
     } catch (error) {
-      console.error("Error al exportar PDF:", error);
+      originalConsoleError("Error al exportar PDF:", error);
       alert(
         "Hubo un problema al generar el PDF. Revisa la consola para más detalles.",
       );
     } finally {
+      // Devolvemos la consola a la normalidad
+      console.error = originalConsoleError;
       setIsExporting(false);
     }
   };
 
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="space-y-8 max-w-7xl mx-auto"
-      >
+      <div className="space-y-8 max-w-7xl mx-auto">
         {/* Cabecera */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
@@ -311,7 +276,7 @@ export default function Analitica() {
         </div>
 
         {/* Filtros */}
-        <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center">
+        <div className="bg-white p-5 rounded-4xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center">
           <div className="flex items-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest px-2">
             <Filter className="w-4 h-4" /> Segmentar por:
           </div>
@@ -385,8 +350,8 @@ export default function Analitica() {
                     </p>
                   </div>
                 </div>
-                <div style={{ width: "100%", minWidth: 0, height: 350 }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="w-full mt-4">
+                  <ResponsiveContainer width="100%" height={350}>
                     <AreaChart
                       data={dataEvolucion}
                       margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
@@ -482,8 +447,8 @@ export default function Analitica() {
                     </p>
                   </div>
                 </div>
-                <div style={{ width: "100%", minWidth: 0, height: 340 }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="w-full mt-4">
+                  <ResponsiveContainer width="100%" height={340}>
                     <BarChart
                       data={perfilData}
                       margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
@@ -552,7 +517,7 @@ export default function Analitica() {
               {/* Row 2: Donut + Ranking Global */}
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                 {/* DonutChart — Estado General */}
-                <div className="lg:col-span-2 min-w-0 bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm flex flex-col">
+                <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm flex flex-col">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-3 bg-[#123498]/10 rounded-2xl">
                       <PieChart className="w-6 h-6 text-[#123498]" />
@@ -566,11 +531,8 @@ export default function Analitica() {
                       </p>
                     </div>
                   </div>
-                  <div
-                    className="flex-1"
-                    style={{ width: "100%", minWidth: 0, minHeight: 300 }}
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="w-full mt-4 flex-1">
+                    <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie
                           data={estadoGeneralData}
@@ -600,10 +562,10 @@ export default function Analitica() {
                   </div>
                 </div>
 
-                {/* Única Tarjeta: TOP RENDIMIENTO (Clickeable a todo lo ancho) */}
+                {/* Única Tarjeta: TOP RENDIMIENTO */}
                 <div
                   onClick={() => setShowModal(true)}
-                  className="lg:col-span-3 min-w-0 bg-white rounded-[2.5rem] border border-emerald-100 shadow-sm p-8 flex flex-col hover:shadow-lg transition-all cursor-pointer group"
+                  className="lg:col-span-3 bg-white rounded-[2.5rem] border border-emerald-100 shadow-sm p-8 flex flex-col hover:shadow-lg transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -642,7 +604,6 @@ export default function Analitica() {
                               </p>
                             </div>
                           </div>
-                          {/* Aplicando la nueva regla de colores a las píldoras */}
                           <span
                             className={`font-black px-4 py-2 rounded-xl text-sm ${
                               user.score >= 60
@@ -673,7 +634,7 @@ export default function Analitica() {
             </>
           )}
         </div>
-      </motion.div>
+      </div>
 
       {/* ── TABLA OCULTA PARA EXPORTACIÓN DEL RANKING EN PDF ── */}
       <div className="absolute left-[-9999px] top-[-9999px]">
@@ -748,7 +709,7 @@ export default function Analitica() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden"
+              className="bg-white rounded-4xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden"
             >
               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <div className="flex items-center gap-3">
@@ -791,7 +752,7 @@ export default function Analitica() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {rankingCompleto.map((user, idx) => (
+                    {rankingModal.map((user, idx) => (
                       <tr
                         key={user.id}
                         className="hover:bg-slate-50 transition-colors"
@@ -820,7 +781,7 @@ export default function Analitica() {
                         </td>
                       </tr>
                     ))}
-                    {rankingCompleto.length === 0 && (
+                    {rankingModal.length === 0 && (
                       <tr>
                         <td
                           colSpan="4"
