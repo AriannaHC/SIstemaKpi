@@ -105,7 +105,7 @@ function ejecutarMotor(campos, valores) {
       if (canCalculate) {
         // SEGURIDAD: Expresión regular que solo permite matemáticas válidas (Números, operadores y Math.max/min)
         // Bloquea cualquier inyección de código JavaScript (XSS).
-        if (!/[^0-9+\-*/().,\sMathmaxin]/.test(formula)) {
+        if (!/[^0-9+\-*/().,\sMathmaxinul=<>?!|&:]/i.test(formula)) {
           try {
             // Usamos new Function en lugar de eval() por ser más restrictivo
             const evaluador = new Function("return " + formula);

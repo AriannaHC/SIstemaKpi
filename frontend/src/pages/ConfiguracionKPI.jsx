@@ -3,12 +3,14 @@ import { kpiService } from "../services/kpiService";
 import {
   Settings,
   ChevronLeft,
+  ChevronDown,
   Folder,
   Activity,
   Calculator,
   AlertTriangle,
   CheckCircle2,
   Database,
+  Copy,
 } from "lucide-react";
 import Toast from "../components/Toast";
 
@@ -18,16 +20,13 @@ const ORIGEN_OPTIONS = [
   { value: "sistema", label: "Sistema" },
 ];
 
-const DEFAULT_FORMULA = "N/A";
-
 export default function ConfiguracionKPI() {
   const [areas, setAreas] = useState([]);
   const [kpis, setKpis] = useState([]);
   const [campos, setCampos] = useState([]);
-  const [formulaOriginal, setFormulaOriginal] = useState("");
 
-  const [selectedArea, setSelectedArea] = useState(null); // Guardará el objeto área
-  const [selectedKpi, setSelectedKpi] = useState(null); // Guardará el objeto KPI
+  const [selectedArea, setSelectedArea] = useState(null);
+  const [selectedKpi, setSelectedKpi] = useState(null);
 
   const [isLoadingAreas, setIsLoadingAreas] = useState(true);
   const [isLoadingCampos, setIsLoadingCampos] = useState(false);
@@ -35,34 +34,35 @@ export default function ConfiguracionKPI() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
+  // Estado para el Acordeón de Fórmulas
+  const [isFormulasOpen, setIsFormulasOpen] = useState(false);
+
+  const COLOR_AZUL = "#123498";
+  const COLOR_NARANJA = "#F46F0B";
+
   useEffect(() => {
     const initConfiguracion = async () => {
       setIsLoadingAreas(true);
       setFeedback(null);
       try {
-        // 1. Cargar las áreas primero
         const dataAreas = await kpiService.getAreasStats();
         setAreas(dataAreas);
 
-        // 2. Revisar si venimos redirigidos del Dashboard
         const kpiToConfigStr = sessionStorage.getItem("kpiToConfig");
 
         if (kpiToConfigStr) {
           const kpiToConfig = JSON.parse(kpiToConfigStr);
-          sessionStorage.removeItem("kpiToConfig"); // Limpiar para que no se quede pegado en futuros ingresos
+          sessionStorage.removeItem("kpiToConfig");
 
-          // 3. Seleccionar el área automáticamente
           const areaObj = dataAreas.find((a) => a.id === kpiToConfig.area_id);
           if (areaObj) {
             setSelectedArea(areaObj);
 
-            // 4. Cargar los KPIs de esa área en el selector central
             setIsLoadingKpis(true);
             const dataKpis = await kpiService.getKpisPorArea(areaObj.id);
             setKpis(dataKpis);
             setIsLoadingKpis(false);
 
-            // 5. ¡Abrir el editor del KPI automáticamente!
             const fullKpi =
               dataKpis.find((k) => k.id === kpiToConfig.id) || kpiToConfig;
             loadKpiConfiguration(fullKpi);
@@ -109,12 +109,11 @@ export default function ConfiguracionKPI() {
     setSelectedKpi(kpi);
     setFeedback(null);
     setCampos([]);
-    setFormulaOriginal("");
+    setIsFormulasOpen(false); // Cerramos el acordeón al cambiar de KPI por limpieza
     setIsLoadingCampos(true);
 
     try {
       const data = await kpiService.getConfiguracion(kpi.id);
-      setFormulaOriginal(data.formula_original ?? DEFAULT_FORMULA);
       setCampos(data.campos ?? []);
     } catch (err) {
       setFeedback({
@@ -143,6 +142,15 @@ export default function ConfiguracionKPI() {
         return nextCampo;
       }),
     );
+  };
+
+  const copiarVariable = (label) => {
+    const textoConCorchetes = `[${label}]`;
+    navigator.clipboard.writeText(textoConCorchetes);
+    setFeedback({
+      tipo: "ok",
+      mensaje: `Copiado al portapapeles: ${textoConCorchetes}`,
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -185,8 +193,8 @@ export default function ConfiguracionKPI() {
       sistema: "bg-slate-100 text-slate-500 border-slate-200",
     };
     const colors = {
-      usuario: "#F46F0B",
-      calculado: "#123498",
+      usuario: COLOR_NARANJA,
+      calculado: COLOR_AZUL,
       sistema: "#64748b",
     };
     const labels = {
@@ -234,9 +242,9 @@ export default function ConfiguracionKPI() {
         <div>
           <h1
             className="text-3xl font-extrabold font-heading"
-            style={{ color: "#123498" }}
+            style={{ color: COLOR_AZUL }}
           >
-            Modelador de <span style={{ color: "#F46F0B" }}>KPIs</span>
+            Modelador de <span style={{ color: COLOR_NARANJA }}>KPIs</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">
             Configura las fórmulas y orígenes de datos de los indicadores.
@@ -253,17 +261,17 @@ export default function ConfiguracionKPI() {
           <div className="p-6 md:p-8 border-b border-slate-50 bg-slate-50/30 flex flex-col md:flex-row gap-4 lg:gap-6 justify-between items-center">
             <h2
               className="text-xl font-bold flex items-center gap-2 shrink-0 self-start md:self-center"
-              style={{ color: "#123498" }}
+              style={{ color: COLOR_AZUL }}
             >
-              <Folder className="w-6 h-6" style={{ color: "#F46F0B" }} /> Área a
-              Configurar
+              <Folder className="w-6 h-6" style={{ color: COLOR_NARANJA }} />{" "}
+              Área a Configurar
             </h2>
 
             <div className="w-full md:w-80 relative">
               <Folder className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <select
                 className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none transition-all shadow-sm cursor-pointer disabled:opacity-50"
-                style={{ borderColor: "#123498" }}
+                style={{ borderColor: COLOR_AZUL }}
                 value={selectedArea ? selectedArea.id : ""}
                 onChange={handleAreaChange}
                 disabled={isLoadingAreas}
@@ -285,7 +293,7 @@ export default function ConfiguracionKPI() {
                 <Database className="w-14 h-14 text-slate-200 mb-4" />
                 <p
                   className="font-black text-lg uppercase tracking-widest font-heading"
-                  style={{ color: "#123498" }}
+                  style={{ color: COLOR_AZUL }}
                 >
                   Sin Selección
                 </p>
@@ -297,7 +305,10 @@ export default function ConfiguracionKPI() {
               <div className="flex justify-center py-20">
                 <div
                   className="w-10 h-10 border-4 rounded-full animate-spin"
-                  style={{ borderColor: "#123498", borderTopColor: "#F46F0B" }}
+                  style={{
+                    borderColor: COLOR_AZUL,
+                    borderTopColor: COLOR_NARANJA,
+                  }}
                 ></div>
               </div>
             ) : kpis.length === 0 ? (
@@ -305,7 +316,7 @@ export default function ConfiguracionKPI() {
                 <Activity className="w-14 h-14 text-slate-200 mb-4" />
                 <p
                   className="font-black text-lg uppercase tracking-widest font-heading"
-                  style={{ color: "#123498" }}
+                  style={{ color: COLOR_AZUL }}
                 >
                   Sin KPIs
                 </p>
@@ -324,8 +335,8 @@ export default function ConfiguracionKPI() {
                       <div
                         className="w-12 h-12 rounded-2xl flex items-center justify-center transition-colors"
                         style={{
-                          backgroundColor: "#123498/5",
-                          color: "#123498",
+                          backgroundColor: `${COLOR_AZUL}10`, // 10% opacity hex hack
+                          color: COLOR_AZUL,
                         }}
                       >
                         <Settings className="w-6 h-6" />
@@ -339,14 +350,17 @@ export default function ConfiguracionKPI() {
                       <h3
                         className="text-sm font-black line-clamp-2 mb-3 leading-tight"
                         title={kpi.nombre}
-                        style={{ color: "#123498" }}
+                        style={{ color: COLOR_AZUL }}
                       >
                         {kpi.nombre}
                       </h3>
                       <button
                         onClick={() => loadKpiConfiguration(kpi)}
-                        className="w-full bg-slate-100 font-black text-[10px] uppercase tracking-widest py-2.5 rounded-xl transition-colors"
-                        style={{ color: "#123498", backgroundColor: "#f1f5f9" }}
+                        className="w-full bg-slate-100 font-black text-[10px] uppercase tracking-widest py-2.5 rounded-xl transition-colors hover:opacity-80"
+                        style={{
+                          color: COLOR_AZUL,
+                          backgroundColor: "#f1f5f9",
+                        }}
                       >
                         Configurar
                       </button>
@@ -363,13 +377,12 @@ export default function ConfiguracionKPI() {
       {/* VISTA 2: EDITOR DEL KPI SELECCIONADO                      */}
       {/* ───────────────────────────────────────────────────────── */}
       {selectedKpi && (
-        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden animate-in slide-in-from-right-8 duration-500">
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden animate-in slide-in-from-right-8 duration-500 flex flex-col">
           {/* Cabecera del Editor */}
           <div className="p-6 md:p-8 border-b border-slate-50 bg-white relative">
             <button
               onClick={volverAKpis}
-              className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest"
-              style={{ "--hover-color": "#123498" }}
+              className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest transition-colors hover:text-[#123498]"
             >
               <ChevronLeft className="w-4 h-4" /> Volver
             </button>
@@ -377,222 +390,355 @@ export default function ConfiguracionKPI() {
             <div className="pr-24">
               <span
                 className="text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest mb-3 inline-block"
-                style={{ backgroundColor: "#F46F0B/10", color: "#F46F0B" }}
+                style={{
+                  backgroundColor: `${COLOR_NARANJA}10`,
+                  color: COLOR_NARANJA,
+                }}
               >
                 Configurando Estructura
               </span>
               <h2
                 className="text-2xl md:text-3xl font-black font-heading leading-tight"
-                style={{ color: "#123498" }}
+                style={{ color: COLOR_AZUL }}
               >
                 {selectedKpi.nombre}
               </h2>
             </div>
           </div>
 
-          <div className="p-6 md:p-8 bg-slate-50/50">
+          <div className="p-6 md:p-8 bg-slate-50/50 flex-1">
             {isLoadingCampos ? (
               <div className="text-center py-20">
                 <div
                   className="w-10 h-10 border-4 rounded-full animate-spin mx-auto mb-4"
-                  style={{ borderColor: "#123498", borderTopColor: "#F46F0B" }}
+                  style={{
+                    borderColor: COLOR_AZUL,
+                    borderTopColor: COLOR_NARANJA,
+                  }}
                 ></div>
                 <p className="text-gray-500 font-semibold text-sm">
                   Cargando estructura...
                 </p>
               </div>
             ) : (
-              <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-                {/* Columna Izquierda: Editor de Campos */}
-                <div className="space-y-6">
-                  {/* Banner de Fórmula Original */}
-                  <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <Calculator
-                          className="w-5 h-5"
-                          style={{ color: "#F46F0B" }}
-                        />
-                        <h4 className="text-sm font-black uppercase tracking-widest text-slate-700">
-                          Fórmula Excel Original
-                        </h4>
+              <div className="space-y-6">
+                {/* ACORDEÓN DE FÓRMULAS */}
+                <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden transition-all">
+                  <button
+                    type="button"
+                    onClick={() => setIsFormulasOpen(!isFormulasOpen)}
+                    className="w-full flex items-center justify-between p-6 bg-slate-50 hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Calculator
+                        className="w-5 h-5"
+                        style={{ color: COLOR_NARANJA }}
+                      />
+                      <h4 className="text-sm font-black uppercase tracking-widest text-slate-700">
+                        Diccionario de Fórmulas (Referencia)
+                      </h4>
+                    </div>
+                    <ChevronDown
+                      className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${isFormulasOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {isFormulasOpen && (
+                    <div className="p-6 border-t border-slate-100 bg-white grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
+                      {/* KPIs Positivos */}
+                      <div className="space-y-4">
+                        <h5 className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg inline-block">
+                          1. KPIs Positivos (Más es mejor)
+                        </h5>
+                        <div className="space-y-3">
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-700 mb-1">
+                              Cumplimiento (%)
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-mono mb-2">
+                              =Valor_Semanal / Meta_KPI
+                            </p>
+                            <code className="block text-[10px] font-mono bg-blue-50 text-blue-800 p-2 rounded-lg break-all">
+                              ([Meta KPI] === 0 || [Meta KPI] === null) ? 0 :
+                              ([Valor semanal] / [Meta KPI])
+                            </code>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-700 mb-1">
+                              Eficacia (%)
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-mono mb-2">
+                              =SI(Valor {">="} Meta; 100%; Valor / Meta)
+                            </p>
+                            <code className="block text-[10px] font-mono bg-blue-50 text-blue-800 p-2 rounded-lg break-all">
+                              [Cumplimiento (%)] &gt; 1 ? 1 : [Cumplimiento (%)]
+                            </code>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-700 mb-1">
+                              Rendimiento (%)
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-mono mb-2">
+                              =Productividad / Meta_Prod
+                            </p>
+                            <code className="block text-[10px] font-mono bg-blue-50 text-blue-800 p-2 rounded-lg break-all">
+                              ([Meta Producción] === 0 || [Meta Producción] ===
+                              null) ? 0 : ([Productividad] / [Meta Producción])
+                            </code>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* KPIs Negativos */}
+                      <div className="space-y-4">
+                        <h5 className="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg inline-block">
+                          2. KPIs Negativos (Menos es mejor)
+                        </h5>
+                        <div className="space-y-3">
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-700 mb-1">
+                              Cumplimiento (%)
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-mono mb-2">
+                              =SI(Valor {"<="} Meta; 100%; Meta / Valor)
+                            </p>
+                            <code className="block text-[10px] font-mono bg-blue-50 text-blue-800 p-2 rounded-lg break-all">
+                              ([Meta KPI] === 0 || [Meta KPI] === null) ?
+                              ([Valor semanal] === 0 ? 1 : 0) : Math.max(0, 1 -
+                              ([Valor semanal] / [Meta KPI]))
+                            </code>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-700 mb-1">
+                              Eficacia (%)
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-mono mb-2">
+                              =SI(Valor {"<="} Meta; 100%; 0%)
+                            </p>
+                            <code className="block text-[10px] font-mono bg-blue-50 text-blue-800 p-2 rounded-lg break-all">
+                              [Valor semanal] &lt;= [Meta KPI] ? 1 : 0
+                            </code>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-700 mb-1">
+                              Rendimiento (%)
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-mono mb-2">
+                              Fórmula anti-bodrio
+                            </p>
+                            <code className="block text-[10px] font-mono bg-blue-50 text-blue-800 p-2 rounded-lg break-all">
+                              ([Productividad] === 0 || [Productividad] ===
+                              null) ? 1 : ([Productividad] &lt;= [Meta
+                              Producción] ? 1 : ([Meta Producción] /
+                              [Productividad]))
+                            </code>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* KPIs Generales */}
+                      <div className="space-y-4">
+                        <h5 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg inline-block">
+                          3. Fórmulas Generales
+                        </h5>
+                        <div className="space-y-3">
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-700 mb-1">
+                              Eficiencia (%)
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-mono mb-2">
+                              =Horas_Plan / Horas_Reales
+                            </p>
+                            <code className="block text-[10px] font-mono bg-blue-50 text-blue-800 p-2 rounded-lg break-all">
+                              ([Horas planificadas] / [Horas reales])
+                            </code>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-700 mb-1">
+                              Efectividad (%)
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-mono mb-2">
+                              =Eficacia * Eficiencia
+                            </p>
+                            <code className="block text-[10px] font-mono bg-blue-50 text-blue-800 p-2 rounded-lg break-all">
+                              ([Eficiencia (%)] * [Eficacia (%)])
+                            </code>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-700 mb-1">
+                              Productividad (Num)
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-mono mb-2">
+                              =Dato_Principal / Horas_Reales
+                            </p>
+                            <code className="block text-[10px] font-mono bg-blue-50 text-blue-800 p-2 rounded-lg break-all">
+                              ([Variable Principal] / [Horas reales])
+                            </code>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <code className="block font-mono text-xs text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100 overflow-x-auto">
-                      {formulaOriginal}
-                    </code>
-                    <p className="text-[11px] font-semibold text-slate-400 mt-3">
-                      Referencia para replicar la lógica en las variables de
-                      abajo usando{" "}
-                      <span style={{ color: "#123498" }}>[Corchetes]</span>.
-                    </p>
-                  </div>
-
-                  {/* Tabla de Configuración */}
-                  <form
-                    id="config-form"
-                    onSubmit={handleSubmit}
-                    className="rounded-3xl border border-slate-200 shadow-sm bg-white"
-                  >
-                    <table className="w-full text-left">
-                      <thead className="bg-slate-50 border-b border-slate-200">
-                        <tr>
-                          <th
-                            className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-1/3"
-                            style={{ color: "#123498" }}
-                          >
-                            Nombre de Variable
-                          </th>
-                          <th
-                            className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-24"
-                            style={{ color: "#123498" }}
-                          >
-                            Origen de Datos
-                          </th>
-                          <th
-                            className="px-6 py-4 text-[10px] font-black uppercase tracking-widest"
-                            style={{ color: "#123498" }}
-                          >
-                            Lógica / Valor
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {campos.map((c, index) => (
-                          <tr
-                            key={c.id}
-                            className={`transition-colors hover:bg-slate-50 ${c.origen === "calculado" && !c.formula_personalizada ? "bg-red-50/50" : ""}`}
-                          >
-                            <td className="px-6 py-4">
-                              <div className="font-bold text-slate-800 text-sm mb-2">
-                                {c.campo_label}
-                              </div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-mono font-bold tracking-wider">
-                                  {c.campo_key}
-                                </span>
-                                {origenBadge(c.origen)}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <select
-                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-2.5 px-3 outline-none transition-all cursor-pointer hover:bg-white"
-                                style={{ "--focus-color": "#123498" }}
-                                value={c.origen}
-                                onChange={(e) =>
-                                  updateCampo(index, "origen", e.target.value)
-                                }
-                              >
-                                {ORIGEN_OPTIONS.map((opt) => (
-                                  <option key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="px-6 py-4">
-                              {c.origen === "calculado" ? (
-                                <input
-                                  type="text"
-                                  placeholder="Ej: ([Numerador] / [Denominador])"
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-mono text-slate-700 transition-all outline-none"
-                                  style={{ "--focus-color": "#123498" }}
-                                  value={c.formula_personalizada || ""}
-                                  onChange={(e) =>
-                                    updateCampo(
-                                      index,
-                                      "formula_personalizada",
-                                      e.target.value,
-                                    )
-                                  }
-                                  required
-                                />
-                              ) : (
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">
-                                  {c.origen === "sistema"
-                                    ? "Valor de Base de Datos"
-                                    : "Ingresado por Usuario"}
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </form>
+                  )}
                 </div>
 
-                {/* Columna Derecha: Insights & Guardar */}
-                <aside className="space-y-6">
-                  <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
-                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">
-                      <span>Análisis de Estructura</span>
-                      <Activity
-                        className="w-4 h-4"
-                        style={{ color: "#123498" }}
-                      />
+                {/* TABLA DE CONFIGURACIÓN A TODO ANCHO */}
+                <form
+                  id="config-form"
+                  onSubmit={handleSubmit}
+                  className="rounded-3xl border border-slate-200 shadow-sm bg-white overflow-x-auto w-full"
+                >
+                  <table className="w-full text-left min-w-[700px]">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th
+                          className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-1/4"
+                          style={{ color: COLOR_AZUL }}
+                        >
+                          Nombre de Variable
+                        </th>
+                        <th
+                          className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-1/4"
+                          style={{ color: COLOR_AZUL }}
+                        >
+                          Origen de Datos
+                        </th>
+                        <th
+                          className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-1/2"
+                          style={{ color: COLOR_AZUL }}
+                        >
+                          Lógica / Valor
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {campos.map((c, index) => (
+                        <tr
+                          key={c.id}
+                          className={`transition-colors hover:bg-slate-50 ${c.origen === "calculado" && !c.formula_personalizada ? "bg-red-50/50" : ""}`}
+                        >
+                          <td className="px-6 py-4">
+                            {/* Variable Click-to-Copy */}
+                            <div
+                              onClick={() => copiarVariable(c.campo_label)}
+                              className="font-bold text-slate-800 text-sm mb-2 cursor-pointer group flex items-center gap-2 w-max"
+                              title="Clic para copiar con corchetes"
+                            >
+                              {c.campo_label}
+                              <Copy className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#123498] transition-colors" />
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-mono font-bold tracking-wider">
+                                {c.campo_key}
+                              </span>
+                              {origenBadge(c.origen)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <select
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-2.5 px-3 outline-none transition-all cursor-pointer hover:bg-white focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/20"
+                              value={c.origen}
+                              onChange={(e) =>
+                                updateCampo(index, "origen", e.target.value)
+                              }
+                            >
+                              {ORIGEN_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-6 py-4">
+                            {c.origen === "calculado" ? (
+                              <input
+                                type="text"
+                                placeholder="Ej: ([Numerador] / [Denominador])"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-mono text-slate-700 transition-all outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/20"
+                                value={c.formula_personalizada || ""}
+                                onChange={(e) =>
+                                  updateCampo(
+                                    index,
+                                    "formula_personalizada",
+                                    e.target.value,
+                                  )
+                                }
+                                required
+                              />
+                            ) : (
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">
+                                {c.origen === "sistema"
+                                  ? "Valor de Base de Datos"
+                                  : "Ingresado por Usuario"}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </form>
+
+                {/* BARRA INFERIOR HORIZONTAL: INSIGHTS & GUARDAR */}
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                  {/* Left Side: Stats */}
+                  <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex-1 md:w-48 flex flex-col justify-center">
+                      <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">
+                        Variables Calculadas
+                      </p>
+                      <p
+                        className="mt-1 text-2xl font-black"
+                        style={{ color: COLOR_AZUL }}
+                      >
+                        {resumenCampos.calculado}
+                      </p>
                     </div>
 
-                    <div className="space-y-4">
-                      {/* Cajas de info */}
-                      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">
-                          Variables Calculadas
-                        </p>
-                        <p
-                          className="mt-1 text-2xl font-black"
-                          style={{ color: "#123498" }}
-                        >
-                          {resumenCampos.calculado}
-                        </p>
-                      </div>
-
-                      <div
-                        className={`rounded-2xl border p-4 ${resumenCampos.formulasFaltantes ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}
+                    <div
+                      className={`rounded-2xl border p-4 flex-1 md:w-56 flex flex-col justify-center ${resumenCampos.formulasFaltantes ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}
+                    >
+                      <p
+                        className={`text-[10px] uppercase font-black tracking-widest ${resumenCampos.formulasFaltantes ? "text-red-600" : "text-green-600"}`}
                       >
-                        <p
-                          className={`text-[10px] uppercase font-black tracking-widest ${resumenCampos.formulasFaltantes ? "text-red-600" : "text-green-600"}`}
-                        >
-                          Integridad Lógica
-                        </p>
-                        <p
-                          className={`mt-1 text-xl font-black flex items-center gap-2 ${resumenCampos.formulasFaltantes ? "text-rojo-persa" : "text-green-700"}`}
-                        >
-                          {resumenCampos.formulasFaltantes ? (
-                            <>
-                              <AlertTriangle className="w-5 h-5" />{" "}
-                              {resumenCampos.formulasFaltantes} Incompleta(s)
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="w-5 h-5" /> Fórmulas
-                              Listas
-                            </>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-8 pt-6 border-t border-slate-100">
-                      <button
-                        form="config-form"
-                        type="submit"
-                        disabled={
-                          isSubmitting || resumenCampos.formulasFaltantes > 0
-                        }
-                        className="w-full text-white font-black py-4 rounded-xl uppercase tracking-widest transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{ backgroundColor: "#F46F0B" }}
+                        Integridad Lógica
+                      </p>
+                      <p
+                        className={`mt-1 text-xl font-black flex items-center gap-2 ${resumenCampos.formulasFaltantes ? "text-rojo-persa" : "text-green-700"}`}
                       >
-                        {isSubmitting ? "Guardando..." : "Guardar Estructura"}
-                      </button>
-                      {resumenCampos.formulasFaltantes > 0 && (
-                        <p className="text-[10px] text-rojo-persa text-center font-bold mt-3">
-                          Rellena las fórmulas faltantes para guardar.
-                        </p>
-                      )}
+                        {resumenCampos.formulasFaltantes ? (
+                          <>
+                            <AlertTriangle className="w-5 h-5" />{" "}
+                            {resumenCampos.formulasFaltantes} Incompleta(s)
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-5 h-5" /> Fórmulas Listas
+                          </>
+                        )}
+                      </p>
                     </div>
                   </div>
-                </aside>
+
+                  {/* Right Side: Button */}
+                  <div className="w-full md:w-1/3 min-w-[250px]">
+                    <button
+                      form="config-form"
+                      type="submit"
+                      disabled={
+                        isSubmitting || resumenCampos.formulasFaltantes > 0
+                      }
+                      className="w-full text-white font-black py-4 rounded-xl uppercase tracking-widest transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none hover:shadow-xl hover:opacity-90"
+                      style={{ backgroundColor: COLOR_NARANJA }}
+                    >
+                      {isSubmitting ? "Guardando..." : "Guardar Estructura"}
+                    </button>
+                    {resumenCampos.formulasFaltantes > 0 && (
+                      <p className="text-[10px] text-rojo-persa text-center font-bold mt-3">
+                        Rellena las fórmulas faltantes para guardar.
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
