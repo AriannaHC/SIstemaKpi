@@ -1,4 +1,4 @@
-// App.jsx
+// src/App.jsx
 import { useState, useEffect } from "react";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
@@ -13,29 +13,31 @@ import Reportes from "./pages/Reportes";
 import MisReportes from "./pages/MisReportes";
 import HistorialKPIs from "./pages/HistorialKPIs";
 
+// NUEVAS PÁGINAS
+import Analitica from "./pages/Analitica";
+import Comparativas from "./pages/Comparativas";
+import Backups from "./pages/Backups";
+
 export default function App() {
   const { user, logout } = useAuth();
 
-  // 1. Función para determinar la página inicial según el rol
   const getDefaultPage = (rol) => {
     switch (rol) {
       case 1:
-        return "settings"; // Admin -> Configuración KPI
+        return "settings";
       case 2:
-        return "mi-equipo"; // Jefe de Área -> Mi Equipo
+        return "mi-equipo";
       case 3:
-        return "daily"; // Trabajador -> Ingreso Diario
+        return "daily";
       default:
         return "daily";
     }
   };
 
-  // 2. Inicializamos el estado con la función
   const [activePage, setActivePage] = useState(() =>
     getDefaultPage(user?.kpi_rol_id),
   );
 
-  // 3. Efecto clave: Si el usuario inicia sesión o cambia de cuenta, forzamos la redirección
   useEffect(() => {
     if (user) {
       setActivePage(getDefaultPage(user.kpi_rol_id));
@@ -64,6 +66,15 @@ export default function App() {
         return <HistorialKPIs />;
       case "mi-equipo":
         return <MiEquipo />;
+
+      // RUTAS NUEVAS
+      case "analitica":
+        return <Analitica />;
+      case "comparativas":
+        return <Comparativas />;
+      case "backups":
+        return <Backups />;
+
       default:
         return <LlenadoKPI />;
     }

@@ -11,6 +11,9 @@ import {
   CalendarCheck,
   ClipboardList,
   History,
+  LineChart, // Nuevo
+  BarChart2, // Nuevo
+  HardDriveDownload, // Nuevo
 } from "lucide-react";
 
 export default function Sidebar({
@@ -67,7 +70,7 @@ export default function Sidebar({
         </div>
 
         {/* Navegación */}
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto pb-4">
           {/* ========================================================= */}
           {/* VISTAS EXCLUSIVAS DEL ADMINISTRADOR (Rol 1) */}
           {/* ========================================================= */}
@@ -76,7 +79,7 @@ export default function Sidebar({
               <NavItem
                 view="dashboard"
                 icon={<LayoutDashboard className="w-5 h-5" />}
-                label="Subir KPIs"
+                label="Dashboard Global"
               />
               <NavItem
                 view="escoger-kpi"
@@ -87,6 +90,11 @@ export default function Sidebar({
                 view="historial"
                 icon={<History className="w-5 h-5" />}
                 label="Historial General"
+              />
+              <NavItem
+                view="backups"
+                icon={<HardDriveDownload className="w-5 h-5" />}
+                label="Respaldos de BD"
               />
               <NavItem
                 view="settings"
@@ -105,11 +113,28 @@ export default function Sidebar({
           {/* VISTAS COMPARTIDAS: Admin y Jefe (Roles 1 y 2) */}
           {/* ========================================================= */}
           {(rol === 1 || rol === 2) && (
-            <NavItem
-              view="reports"
-              icon={<FileBarChart className="w-5 h-5" />}
-              label="Auditoría y Reportes"
-            />
+            <>
+              <div className="pt-4 pb-1">
+                <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Business Intelligence
+                </p>
+              </div>
+              <NavItem
+                view="analitica"
+                icon={<LineChart className="w-5 h-5" />}
+                label="Analítica y Metas"
+              />
+              <NavItem
+                view="comparativas"
+                icon={<BarChart2 className="w-5 h-5" />}
+                label="Comparativas"
+              />
+              <NavItem
+                view="reports"
+                icon={<FileBarChart className="w-5 h-5" />}
+                label="Auditoría de Llenado"
+              />
+            </>
           )}
 
           {/* ========================================================= */}
@@ -128,6 +153,11 @@ export default function Sidebar({
           {/* ========================================================= */}
           {(rol === 2 || rol === 3) && (
             <>
+              <div className="pt-4 pb-1">
+                <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Operativo
+                </p>
+              </div>
               <NavItem
                 view="daily"
                 icon={<Clock className="w-5 h-5" />}
@@ -142,7 +172,7 @@ export default function Sidebar({
           )}
         </nav>
 
-        {/* Footer: Logout + Info usuario */}
+        {/* Footer: Logout */}
         <div className="p-4 border-t border-slate-100 bg-slate-50/50">
           <button
             onClick={onLogout}
