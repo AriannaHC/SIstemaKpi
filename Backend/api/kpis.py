@@ -11,6 +11,7 @@ from db.database import get_db
 from db.models import User, Kpi, RegistroKpi, KpiCampo, RegistroValores, Area, KpiProgramado
 from schemas.kpi_schema import KpiResponse, RegistroCreate, KpiProgramar
 from api.deps import get_current_user
+from services.notification_service import crear_notificacion
 
 router = APIRouter(prefix="/api/kpis", tags=["Gestión de KPIs"])
 
@@ -484,6 +485,18 @@ def programar_kpi_semanal(
     )
     db.add(nuevo_programado)
     db.commit()
+
+    try:
+        crear_notificacion(
+            db=db,
+            title="🎯 Nueva Tarea de Área",
+            body=f"Se ha habilitado el KPI '{kpi.nombre}' para tu área. Límite para registro: {payload.fecha_fin.strftime('%d/%m %I:%M %p')}.",
+            audience="area",
+            audience_value=str(kpi.area_id),
+            created_by=current_user.id      
+        )
+    except Exception as e:
+        print(f"Error al enviar notificación: {e}")
     return {"message": "KPI programado exitosamente."}
 
 # ══════════════════════════════════════════════════════════════════════════════

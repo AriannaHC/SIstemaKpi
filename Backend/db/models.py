@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, Float, Integer, String, Boolean, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship
 from db.database import Base
+import uuid
 
 class Area(Base):
     __tablename__ = "areas"
@@ -108,3 +109,26 @@ class KpiProgramado(Base):
 
     kpi = relationship("Kpi")
     asignador = relationship("User", foreign_keys=[asignado_por])
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    # El id es un varchar(36), usaremos uuid4 para generarlo automáticamente
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    title = Column(String(200), nullable=False)
+    body = Column(String(500), nullable=True) # Lo tratamos como string largo
+    image_url = Column(String(500), nullable=True)
+    pdf_url = Column(String(500), nullable=True)
+    audience = Column(String(50), default='all')
+    audience_value = Column(String(150), nullable=True)
+    created_by = Column(String(36), nullable=False)
+    idempotency_key = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class NotificationRead(Base):
+    __tablename__ = "notification_reads"
+    id = Column(Integer, primary_key=True, index=True)
+    notification_id = Column(String(36), nullable=False)
+    user_id = Column(String(36), nullable=False)
+    read_at = Column(DateTime, default=datetime.utcnow)
