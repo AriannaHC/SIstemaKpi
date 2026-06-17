@@ -1,8 +1,124 @@
 // frontend/src/pages/Usuarios.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { userService } from "../services/userService";
 import { kpiService } from "../services/kpiService";
-import { Search, Filter, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { Search, Filter, ChevronDown, ChevronLeft, ChevronRight, Users } from "lucide-react";
+
+const ROLES = [
+  { value: 1, label: "Administrador", color: "#123498" },
+  { value: 2, label: "Jefe de Área", color: "#F46F0B" },
+  { value: 3, label: "Trabajador", color: "#41C4C0" },
+];
+
+function RoleDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selected = ROLES.find((r) => r.value === value);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold outline-none transition-all cursor-pointer hover:bg-white"
+      >
+        {selected ? (
+          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: selected.color }} />
+        ) : (
+          <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-gray-300" />
+        )}
+        <span className="flex-1 text-left truncate" style={{ color: selected?.color || "#94a3b8" }}>
+          {selected ? selected.label : "Sin Acceso"}
+        </span>
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => { onChange(null); setOpen(false); }}
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors text-left"
+          >
+            <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-gray-300" />
+            <span className="text-gray-400">Sin Acceso</span>
+          </button>
+          {ROLES.map((rol) => (
+            <button
+              key={rol.value}
+              type="button"
+              onClick={() => { onChange(rol.value); setOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors text-left"
+            >
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: rol.color }} />
+              <span style={{ color: rol.color }}>{rol.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AreaDropdown({ areas, value, onChange, disabled }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selected = areas.find((a) => a.id === value);
+  const isDisabled = disabled;
+
+  return (
+    <div className={`relative ${isDisabled ? "opacity-50" : ""}`} ref={ref}>
+      <button
+        type="button"
+        onClick={() => !isDisabled && setOpen(!open)}
+        className={`w-full flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold outline-none transition-all cursor-pointer hover:bg-white text-left ${isDisabled ? "cursor-not-allowed" : ""}`}
+        disabled={isDisabled}
+      >
+        <span className="flex-1 truncate text-slate-700">
+          {selected ? selected.nombre : "-- Sin área --"}
+        </span>
+        <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+      </button>
+      {open && !isDisabled && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => { onChange(null); setOpen(false); }}
+            className="w-full text-left px-3 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors text-gray-400"
+          >
+            -- Sin área --
+          </button>
+          {areas.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => { onChange(a.id); setOpen(false); }}
+              className="w-full text-left px-3 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors text-slate-700"
+            >
+              {a.nombre}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const LIMIT = 10;
 
@@ -16,6 +132,8 @@ export default function Usuarios() {
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("");
+  const [filterRol, setFilterRol] = useState("");
+  const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -72,7 +190,10 @@ export default function Usuarios() {
     const matchesArea = filterArea
       ? u.kpi_area_id?.toString() === filterArea
       : true;
-    return matchesName && matchesArea;
+    const matchesRol = filterRol
+      ? u.kpi_rol_id?.toString() === filterRol
+      : true;
+    return matchesName && matchesArea && matchesRol;
   });
 
   const totalPages = Math.ceil(filteredUsuarios.length / LIMIT) || 1;
@@ -139,12 +260,29 @@ export default function Usuarios() {
                   ))}
                 </select>
               </div>
+
+              {/* Filtro Rol */}
+              <div className="relative w-full sm:w-48">
+                <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <select
+                  value={filterRol}
+                  onChange={(e) => { setFilterRol(e.target.value); setPage(1); }}
+                  className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none focus:border-azul appearance-none transition-all shadow-sm cursor-pointer"
+                >
+                  <option value="">TODOS LOS ROLES</option>
+                  {ROLES.map((r) => (
+                    <option key={r.value} value={r.value.toString()}>
+                      {r.label.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Tabla */}
-        <div className="overflow-x-auto min-h-[400px]">
+        {/* Tabla — Desktop */}
+        <div className="hidden md:block overflow-x-auto min-h-[400px]">
           <table className="w-full text-left">
             <thead className="bg-slate-50/80 border-b border-slate-100">
               <tr>
@@ -198,45 +336,24 @@ export default function Usuarios() {
 
                     {/* Rol */}
                     <td className="px-8 py-5">
-                      <select
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-2.5 px-3 focus:ring-2 focus:ring-azul/20 focus:border-azul outline-none transition-all cursor-pointer hover:bg-white"
-                        value={u.kpi_rol_id || ""}
-                        onChange={(e) =>
-                          handleRoleChange(
-                            u.id,
-                            parseInt(e.target.value) || null,
-                            u.kpi_area_id,
-                          )
+                      <RoleDropdown
+                        value={u.kpi_rol_id}
+                        onChange={(nuevoRolId) =>
+                          handleRoleChange(u.id, nuevoRolId, u.kpi_area_id)
                         }
-                      >
-                        <option value="">-- Sin Acceso --</option>
-                        <option value="1">Administrador</option>
-                        <option value="2">Jefe de Área</option>
-                        <option value="3">Trabajador</option>
-                      </select>
+                      />
                     </td>
 
                     {/* Área */}
                     <td className="px-8 py-5">
-                      <select
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-2.5 px-3 focus:ring-2 focus:ring-azul/20 focus:border-azul outline-none transition-all cursor-pointer hover:bg-white disabled:opacity-50 disabled:bg-slate-100 disabled:cursor-not-allowed"
-                        value={u.kpi_area_id || ""}
-                        onChange={(e) =>
-                          handleAreaChange(
-                            u.id,
-                            u.kpi_rol_id,
-                            parseInt(e.target.value),
-                          )
+                      <AreaDropdown
+                        areas={areas}
+                        value={u.kpi_area_id}
+                        onChange={(nuevaAreaId) =>
+                          handleAreaChange(u.id, u.kpi_rol_id, nuevaAreaId)
                         }
                         disabled={!u.kpi_rol_id || u.kpi_rol_id === 1}
-                      >
-                        <option value="">-- Seleccionar Área --</option>
-                        {areas.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.nombre}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </td>
                   </tr>
                 ))
@@ -260,6 +377,66 @@ export default function Usuarios() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Tabla — Mobile */}
+        <div className="md:hidden space-y-3 p-4">
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-8 h-8 border-4 border-azul border-t-naranja rounded-full animate-spin" />
+            </div>
+          ) : (
+            currentUsuarios.length === 0 ? (
+              <div className="flex flex-col items-center py-16">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4 border border-slate-100">
+                  <Users className="w-8 h-8" />
+                </div>
+                <p className="text-azul font-black uppercase tracking-widest text-sm">No se encontraron usuarios</p>
+                <p className="text-gray-500 text-xs mt-1">Intenta con otros términos de búsqueda.</p>
+              </div>
+            ) : (
+              currentUsuarios.map((u) => (
+                <div key={u.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+                  <button
+                    onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}
+                    className="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-azul/10 text-azul flex items-center justify-center font-bold text-sm border-2 border-azul/10 shrink-0">
+                      {u.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="flex-1 text-left text-sm font-bold text-slate-800 truncate">
+                      Colaborador: {u.name}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${expandedId === u.id ? "rotate-180" : ""}`} />
+                  </button>
+                  {expandedId === u.id && (
+                    <div className="px-4 pb-4 space-y-3 border-t border-slate-50 pt-3">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Correo</p>
+                        <p className="text-xs font-semibold text-gray-600">{u.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Nivel de Acceso</p>
+                        <RoleDropdown
+                          value={u.kpi_rol_id}
+                          onChange={(nuevoRolId) => handleRoleChange(u.id, nuevoRolId, u.kpi_area_id)}
+                        />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Asignación de Área</p>
+                        <AreaDropdown
+                          areas={areas}
+                          value={u.kpi_area_id}
+                          onChange={(nuevaAreaId) => handleAreaChange(u.id, u.kpi_rol_id, nuevaAreaId)}
+                          disabled={!u.kpi_rol_id || u.kpi_rol_id === 1}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )
+          )}
         </div>
 
         {/* Paginación */}
