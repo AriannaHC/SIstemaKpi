@@ -5,6 +5,7 @@ import {
   Clock,
   User,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   Target,
 } from "lucide-react";
@@ -148,6 +149,8 @@ export default function LlenadoKPI() {
   const [contexto, setContexto] = useState({});
   const [isLoadingCampos, setIsLoadingCampos] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [verResultados, setVerResultados] = useState(false);
+  const [textoExpandido, setTextoExpandido] = useState({});
   const [feedback, setFeedback] = useState(null);
 
   // Colores Corporativos
@@ -245,6 +248,10 @@ export default function LlenadoKPI() {
 
   const handleChange = useCallback((e) => {
     setValores((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }, []);
+
+  const toggleTexto = useCallback((key) => {
+    setTextoExpandido((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
   const cumplimientoValue = (() => {
@@ -605,8 +612,8 @@ export default function LlenadoKPI() {
           <ChevronLeft className="w-4 h-4" /> Volver a mis KPIs
         </button>
 
-        <div className="bg-white rounded-4xl shadow-xl border border-slate-100 p-6 md:p-8">
-          <div className="mb-8">
+          <div className="bg-white rounded-4xl shadow-xl border border-slate-100 p-4 md:p-6">
+          <div className="mb-4 md:mb-8">
             <span
               className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.24em] text-white"
               style={{ backgroundColor: COLOR_AZUL }}
@@ -614,12 +621,12 @@ export default function LlenadoKPI() {
               Ingreso Semanal
             </span>
             <h2
-              className="mt-4 text-3xl font-extrabold tracking-tight font-heading"
+              className="mt-4 text-2xl md:text-3xl font-extrabold tracking-tight font-heading"
               style={{ color: COLOR_AZUL }}
             >
               {kpiSeleccionado.nombre}
             </h2>
-            <p className="mt-3 text-sm text-slate-500 max-w-2xl leading-6">
+            <p className="mt-1 md:mt-3 text-xs md:text-sm text-slate-500 max-w-2xl leading-6">
               Completa los datos clave para este KPI.
             </p>
           </div>
@@ -632,14 +639,14 @@ export default function LlenadoKPI() {
           ) : (
             <form
               onSubmit={handleSubmit}
-              className="grid gap-8 lg:grid-cols-[1.75fr_1.1fr]"
+              className="grid gap-4 md:gap-8 lg:grid-cols-[1.75fr_1.1fr]"
             >
               <div className="space-y-8">
-                <div className="rounded-4xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
-                  <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="rounded-4xl border border-slate-200 bg-slate-50 p-4 md:p-6 shadow-sm">
+                  <div className="mb-3 md:mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h3
-                        className="text-lg font-bold"
+                        className="text-base md:text-lg font-bold"
                         style={{ color: COLOR_AZUL }}
                       >
                         Datos a completar
@@ -652,7 +659,7 @@ export default function LlenadoKPI() {
                       {camposUsuario.length} campos
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0 overflow-y-auto pr-2 pb-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 flex-1 min-h-0 overflow-y-auto pr-2 pb-1 md:pb-3">
                     {camposUsuario.map((c) => {
                       const esTextoLargo =
                         c.campo_label.toLowerCase().includes("observaciones") ||
@@ -662,28 +669,63 @@ export default function LlenadoKPI() {
                           key={c.id}
                           className={esTextoLargo ? "md:col-span-2" : ""}
                         >
-                          <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-[0.18em]">
-                            {c.campo_label}{" "}
-                            <span className="text-red-600">*</span>
-                          </label>
                           {esTextoLargo ? (
-                            <textarea
-                              name={c.campo_key}
-                              value={valores[c.campo_key] || ""}
-                              onChange={handleChange}
-                              rows={4}
-                              className="w-full rounded-3xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/10 transition-all resize-none"
-                            />
+                            <>
+                              {/* Mobile: toggle button */}
+                              <button
+                                type="button"
+                                onClick={() => toggleTexto(c.campo_key)}
+                                className="lg:hidden w-full flex items-center justify-between rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all"
+                              >
+                                <span>{c.campo_label}</span>
+                                <ChevronDown
+                                  className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${
+                                    textoExpandido[c.campo_key] ? "rotate-180" : ""
+                                  }`}
+                                />
+                              </button>
+                              {textoExpandido[c.campo_key] && (
+                                <div className="lg:hidden mt-2">
+                                  <textarea
+                                    name={c.campo_key}
+                                    value={valores[c.campo_key] || ""}
+                                    onChange={handleChange}
+                                    rows={4}
+                                    className="w-full rounded-3xl border border-slate-200 bg-white px-3 py-2 md:py-3 text-sm text-slate-700 outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/10 transition-all resize-none"
+                                  />
+                                </div>
+                              )}
+                              {/* Desktop: label + textarea siempre visible */}
+                              <div className="hidden lg:block">
+                                <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-[0.18em]">
+                                  {c.campo_label}{" "}
+                                  <span className="text-red-600">*</span>
+                                </label>
+                                <textarea
+                                  name={c.campo_key}
+                                  value={valores[c.campo_key] || ""}
+                                  onChange={handleChange}
+                                  rows={4}
+                                  className="w-full rounded-3xl border border-slate-200 bg-white px-3 py-2 md:py-3 text-sm text-slate-700 outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/10 transition-all resize-none"
+                                />
+                              </div>
+                            </>
                           ) : (
-                            <input
-                              type={c.tipo === "numero" ? "number" : "text"}
-                              step="any"
-                              name={c.campo_key}
-                              value={valores[c.campo_key] || ""}
-                              onChange={handleChange}
-                              required
-                              className="w-full rounded-3xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/10 transition-all"
-                            />
+                            <>
+                              <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-[0.18em]">
+                                {c.campo_label}{" "}
+                                <span className="text-red-600">*</span>
+                              </label>
+                              <input
+                                type={c.tipo === "numero" ? "number" : "text"}
+                                step="any"
+                                name={c.campo_key}
+                                value={valores[c.campo_key] || ""}
+                                onChange={handleChange}
+                                required
+                                className="w-full rounded-3xl border border-slate-200 bg-white px-3 py-2 md:py-3 text-sm text-slate-700 outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/10 transition-all"
+                              />
+                            </>
                           )}
                         </div>
                       );
@@ -694,7 +736,7 @@ export default function LlenadoKPI() {
                 <button
                   type="submit"
                   disabled={isSubmitting || !isFormValid}
-                  className="w-full rounded-3xl text-white font-black text-sm uppercase tracking-[0.3em] py-4 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-100"
+                  className="w-full rounded-3xl text-white font-black text-sm uppercase tracking-[0.3em] py-3 md:py-4 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-100"
                   style={{
                     backgroundColor:
                       !isFormValid || isSubmitting
@@ -715,15 +757,31 @@ export default function LlenadoKPI() {
                 </button>
               </div>
 
+              {/* Botón toggle solo en mobile */}
               {camposResultado.length > 0 && (
-                <div className="lg:sticky lg:top-6 lg:self-start">
-                  <div className="rounded-4xl border border-slate-200 bg-linear-to-br from-[#123498]/5 via-slate-50 to-[#F46F0B]/5 p-6 shadow-sm">
-                    <div className="mb-6">
+                <button
+                  type="button"
+                  onClick={() => setVerResultados(!verResultados)}
+                  className="lg:hidden w-full flex items-center justify-between gap-2 px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 hover:bg-white transition-all"
+                >
+                  <span>Ver resultados en vivo</span>
+                  <ChevronDown
+                    className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${
+                      verResultados ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              )}
+
+              {camposResultado.length > 0 && (
+                <div className={`${verResultados ? "block" : "hidden"} lg:block lg:sticky lg:top-6 lg:self-start`}>
+                  <div className="rounded-4xl border border-slate-200 bg-linear-to-br from-[#123498]/5 via-slate-50 to-[#F46F0B]/5 p-4 md:p-6 shadow-sm">
+                    <div className="mb-3 md:mb-6">
                       <p className="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mb-3">
                         Resultados en tiempo real
                       </p>
                       <h3
-                        className="text-2xl font-extrabold"
+                        className="text-lg md:text-2xl font-extrabold"
                         style={{ color: COLOR_AZUL }}
                       >
                         Estado de tu KPI
@@ -731,14 +789,14 @@ export default function LlenadoKPI() {
                     </div>
 
                     <div className="space-y-4">
-                      <div className="rounded-3xl bg-white border border-slate-200 p-5">
-                        <p className="text-xs uppercase tracking-[0.3em] text-slate-400 font-black mb-2">
+                      <div className="rounded-3xl bg-white border border-slate-200 p-3 md:p-5">
+                        <p className="text-xs uppercase tracking-[0.3em] text-slate-400 font-black mb-1 md:mb-2">
                           Semáforo de cumplimiento
                         </p>
                         <div className="flex items-center justify-between gap-4">
                           <div>
                             <p
-                              className="text-4xl font-black"
+                              className="text-2xl md:text-4xl font-black"
                               style={{ color: COLOR_AZUL }}
                             >
                               {cumplimientoValue !== null &&
@@ -752,7 +810,7 @@ export default function LlenadoKPI() {
                           </div>
                           <SemaforoDisplay cumplimiento={cumplimientoValue} />
                         </div>
-                        <div className="mt-4 h-3 rounded-full bg-slate-200 overflow-hidden">
+                        <div className="mt-4 h-2 md:h-3 rounded-full bg-slate-200 overflow-hidden">
                           <div
                             className="h-full rounded-full bg-linear-to-r from-[#123498] to-[#3b82f6]"
                             style={{
@@ -764,8 +822,8 @@ export default function LlenadoKPI() {
                         </div>
                       </div>
 
-                      <div className="rounded-3xl bg-white border border-slate-200 p-5 space-y-4">
-                        <div className="grid grid-cols-1 gap-4">
+                      <div className="rounded-3xl bg-white border border-slate-200 p-3 md:p-5 space-y-2 md:space-y-4">
+                        <div className="grid grid-cols-1 gap-2 md:gap-4">
                           {resumenLabels.map((label) => (
                             <div
                               key={label}

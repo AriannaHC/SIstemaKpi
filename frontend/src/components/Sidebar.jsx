@@ -11,9 +11,9 @@ import {
   CalendarCheck,
   ClipboardList,
   History,
-  LineChart, // Nuevo
-  BarChart2, // Nuevo
-  HardDriveDownload, // Nuevo
+  HardDriveDownload,
+  BarChart3,
+  ArrowLeftRight,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -106,6 +106,23 @@ export default function Sidebar({
                 icon={<Users className="w-5 h-5" />}
                 label="Gestión de Usuarios"
               />
+
+              {/* ── Business Intelligence ── */}
+              <div className="pt-4 pb-1">
+                <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                  Business Intelligence
+                </p>
+              </div>
+              <NavItem
+                view="analitica"
+                icon={<BarChart3 className="w-5 h-5" />}
+                label="Analítica"
+              />
+              <NavItem
+                view="comparativas"
+                icon={<ArrowLeftRight className="w-5 h-5" />}
+                label="Comparativas"
+              />
             </>
           )}
 
@@ -113,28 +130,11 @@ export default function Sidebar({
           {/* VISTAS COMPARTIDAS: Admin y Jefe (Roles 1 y 2) */}
           {/* ========================================================= */}
           {(rol === 1 || rol === 2) && (
-            <>
-              <div className="pt-4 pb-1">
-                <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Business Intelligence
-                </p>
-              </div>
-              <NavItem
-                view="analitica"
-                icon={<LineChart className="w-5 h-5" />}
-                label="Analítica y Metas"
-              />
-              <NavItem
-                view="comparativas"
-                icon={<BarChart2 className="w-5 h-5" />}
-                label="Comparativas"
-              />
-              <NavItem
-                view="reports"
-                icon={<FileBarChart className="w-5 h-5" />}
-                label="Auditoría de Llenado"
-              />
-            </>
+            <NavItem
+              view="reports"
+              icon={<FileBarChart className="w-5 h-5" />}
+              label="Auditoría de Llenado"
+            />
           )}
 
           {/* ========================================================= */}
@@ -153,11 +153,6 @@ export default function Sidebar({
           {/* ========================================================= */}
           {(rol === 2 || rol === 3) && (
             <>
-              <div className="pt-4 pb-1">
-                <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Operativo
-                </p>
-              </div>
               <NavItem
                 view="daily"
                 icon={<Clock className="w-5 h-5" />}

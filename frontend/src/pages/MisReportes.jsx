@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { kpiService } from "../services/kpiService";
+import mockReportes from "../services/mockReportes";
 import {
   FileText,
   AlertTriangle,
@@ -72,6 +73,8 @@ export default function MisReportes() {
   const [reportes, setReportes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState(null);
+  const [mostrarTodos, setMostrarTodos] = useState(false);
+  const [filtroEstado, setFiltroEstado] = useState("todos");
 
   const COLOR_AZUL = "#123498";
   const COLOR_NARANJA = "#F46F0B";
@@ -84,17 +87,27 @@ export default function MisReportes() {
     setLoading(true);
     try {
       const data = await kpiService.getMisReportes();
-      setReportes(data);
+      if (Array.isArray(data) && data.length === 0) {
+        setReportes(mockReportes);
+      } else {
+        setReportes(data);
+      }
     } catch (err) {
-      console.error(err);
+      console.warn("API no disponible, usando datos mock");
+      setReportes(mockReportes);
       setFeedback({
-        tipo: "error",
-        mensaje: "Error al cargar tu historial de reportes.",
+        tipo: "ok",
+        mensaje: "Usando datos de prueba — conexión con backend no disponible.",
       });
     } finally {
       setLoading(false);
     }
   };
+
+  const reportesFiltrados = useMemo(() => {
+    if (filtroEstado === "todos") return reportes;
+    return reportes.filter((r) => r.estado === filtroEstado);
+  }, [reportes, filtroEstado]);
 
   if (loading) {
     return (
@@ -184,8 +197,39 @@ export default function MisReportes() {
         </div>
       )}
 
+      {/* ── Filtros por estado ── */}
+      {reportes.length > 0 && (
+        <div className="flex-wrap gap-2">
+          {[
+            { key: "todos", label: "Todos" },
+            { key: "enviado", label: "Enviados" },
+            { key: "no_reportado", label: "Omisiones" },
+          ].map((f) => (
+            <button
+              key={f.key}
+              onClick={() => {
+                setFiltroEstado(f.key);
+                setMostrarTodos(false);
+              }}
+              className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all ${
+                filtroEstado === f.key
+                  ? "text-white shadow-md"
+                  : "bg-white text-slate-500 border border-slate-200 hover:border-slate-300"
+              }`}
+              style={
+                filtroEstado === f.key
+                  ? { backgroundColor: COLOR_AZUL }
+                  : {}
+              }
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── Lista de Reportes ── */}
-      {reportes.length === 0 ? (
+      {reportesFiltrados.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm">
           <Inbox className="w-14 h-14 text-slate-200 mb-4" />
           <p
@@ -200,7 +244,7 @@ export default function MisReportes() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {reportes.map((reporte) => {
+          {reportesFiltrados.slice(0, mostrarTodos ? reportesFiltrados.length : 4).map((reporte) => {
             const esOmision = reporte.estado === "no_reportado";
             const cfg = alertaConfig(reporte.alerta);
 
@@ -325,6 +369,24 @@ export default function MisReportes() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {reportesFiltrados.length > 4 && (
+        <div className="flex flex-col items-center gap-2">
+          <button
+            onClick={() => setMostrarTodos((prev) => !prev)}
+            style={{ backgroundColor: COLOR_AZUL }}
+            className="rounded-3xl text-white font-black text-xs uppercase tracking-[0.3em] px-8 py-3 transition-all hover:shadow-lg"
+          >
+            {mostrarTodos
+              ? "Ver menos"
+              : `Ver más (${reportesFiltrados.length - 4} restantes)`}
+          </button>
+          <span className="text-[11px] text-slate-400 font-medium">
+            Mostrando {mostrarTodos ? reportesFiltrados.length : 4} de{" "}
+            {reportesFiltrados.length} reportes
+          </span>
         </div>
       )}
     </div>

@@ -24,7 +24,7 @@ export default function App() {
   const getDefaultPage = (rol) => {
     switch (rol) {
       case 1:
-        return "settings";
+        return "escoger-kpi";
       case 2:
         return "mi-equipo";
       case 3:

@@ -34,7 +34,7 @@ export default function Layout({ children, activePage, setActivePage, onLogout, 
         setSidebarOpen={setSidebarOpen}
       />
 
-      <main className={`flex-1 min-w-0 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
+      <main className={`flex-1 min-w-0 overflow-x-hidden transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
         <Header
           userName={user?.name || 'Usuario'}
           sidebarOpen={sidebarOpen}
