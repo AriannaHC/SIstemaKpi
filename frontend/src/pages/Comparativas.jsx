@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { BarChart2, Download, Calendar, Users, Building2 } from "lucide-react";
+import {
+  BarChart2,
+  Download,
+  Calendar,
+  Users,
+  Building2,
+  CalendarDays,
+} from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -17,10 +24,6 @@ import { analyticsService } from "../services/analyticsService";
 import { kpiService } from "../services/kpiService";
 import { userService } from "../services/userService";
 
-// --- MOCK DATA METRICAS ---
-const METRICAS = ["Cumplimiento", "Eficacia", "Eficiencia", "Rendimiento"];
-
-// helper: convierte un dataURL PNG a dimensiones reales del canvas
 function pngDataUrlDimensions(dataUrl) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -30,7 +33,7 @@ function pngDataUrlDimensions(dataUrl) {
 }
 
 export default function Comparativas() {
-  const [tipoComparacion, setTipoComparacion] = useState("areas");
+  const [tipoComparacion, setTipoComparacion] = useState("areas"); // 'areas', 'trabajadores', 'meses'
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [periodo, setPeriodo] = useState("30");
@@ -38,27 +41,23 @@ export default function Comparativas() {
   const [entidadAId, setEntidadAId] = useState("");
   const [entidadBId, setEntidadBId] = useState("");
 
-  // Estados de datos reales
   const [areasList, setAreasList] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [nombres, setNombres] = useState({ A: "Entidad A", B: "Entidad B" });
   const [loading, setLoading] = useState(true);
 
-  // Referencias y estados para Exportación
   const [isExporting, setIsExporting] = useState(false);
   const dashboardRef = useRef(null);
 
   const isAreas = tipoComparacion === "areas";
+  const isMeses = tipoComparacion === "meses";
 
-  // 1. Cargar las listas iniciales (Áreas y Usuarios)
   useEffect(() => {
     Promise.all([kpiService.getAreasStats(), userService.getUsers()])
       .then(([resAreas, resUsers]) => {
         setAreasList(resAreas);
         setUsersList(resUsers);
-
-        // Auto-seleccionar los dos primeros para que el gráfico no esté vacío
         if (resAreas.length > 1) {
           setEntidadAId(resAreas[0].id.toString());
           setEntidadBId(resAreas[1].id.toString());
@@ -67,30 +66,47 @@ export default function Comparativas() {
       .catch(console.error);
   }, []);
 
-  // 2. Si cambia de "areas" a "trabajadores", auto-seleccionar los primeros de la nueva lista
   useEffect(() => {
     if (isAreas && areasList.length > 1) {
       setEntidadAId(areasList[0].id.toString());
       setEntidadBId(areasList[1].id.toString());
-    } else if (!isAreas && usersList.length > 1) {
+    } else if (tipoComparacion === "trabajadores" && usersList.length > 1) {
       setEntidadAId(usersList[0].id.toString());
       setEntidadBId(usersList[1].id.toString());
+    } else if (isMeses) {
+      setEntidadAId("todas"); // Para meses, la entidadAId servirá como filtro de área
+      setEntidadBId("");
     }
-  }, [tipoComparacion]); // Solo depende de tipoComparacion, omitimos las listas para evitar re-renders infinitos
+  }, [tipoComparacion]);
 
-  // 3. Ejecutar la comparación en el backend
   useEffect(() => {
-    if (!entidadAId || !entidadBId) return;
+    // Solo detenemos si faltan datos en áreas/trabajadores
+    if (!isMeses && (!entidadAId || !entidadBId)) return;
 
     setLoading(true);
-    const fetchAnalitica = isAreas
-      ? analyticsService.compararAreas(entidadAId, entidadBId)
-      : analyticsService.compararTrabajadores(entidadAId, entidadBId);
+    let fetchAnalitica;
+
+    if (isMeses) {
+      fetchAnalitica = analyticsService.compararMeses(entidadAId);
+    } else if (isAreas) {
+      fetchAnalitica = analyticsService.compararAreas(
+        entidadAId,
+        entidadBId,
+        fechaDesde,
+        fechaHasta,
+      );
+    } else {
+      fetchAnalitica = analyticsService.compararTrabajadores(
+        entidadAId,
+        entidadBId,
+        fechaDesde,
+        fechaHasta,
+      );
+    }
 
     fetchAnalitica
       .then((data) => {
         if (data && data.length > 0) {
-          // Mapear los datos para que Recharts los entienda usando "entidadA" y "entidadB"
           const mappedData = data.map((item) => ({
             metrica: item.metrica,
             entidadA: item.entidadA_valor,
@@ -107,7 +123,7 @@ export default function Comparativas() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [tipoComparacion, entidadAId, entidadBId, periodo]);
+  }, [tipoComparacion, entidadAId, entidadBId, fechaDesde, fechaHasta]); // Ahora SI reacciona a las fechas
 
   const handlePeriodoChange = (dias) => {
     setPeriodo(dias);
@@ -122,7 +138,6 @@ export default function Comparativas() {
   const entidadANombre = nombres.A;
   const entidadBNombre = nombres.B;
 
-  // Estadísticas Automáticas
   const metricasGanadasA = chartData.filter(
     (r) => r.entidadA > r.entidadB,
   ).length;
@@ -142,29 +157,18 @@ export default function Comparativas() {
       ).toFixed(1)
     : 0;
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // EXPORTAR A PDF (Con html-to-image y silenciador de CORS)
-  // ─────────────────────────────────────────────────────────────────────────
   const exportarPDF = async () => {
     if (!dashboardRef.current || chartData.length === 0) return;
     setIsExporting(true);
-
     const originalConsoleError = console.error;
     console.error = (...args) => {
       const msg = String(args[0] || "");
       if (
         msg.includes("Error inlining remote css file") ||
         msg.includes("Error while reading CSS rules")
-      ) {
+      )
         return;
-      }
       originalConsoleError.apply(console, args);
-    };
-
-    const toPngOpts = {
-      pixelRatio: 2,
-      skipFonts: false,
-      backgroundColor: "#f8fafc",
     };
 
     try {
@@ -172,7 +176,15 @@ export default function Comparativas() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pageHeightMm = pdf.internal.pageSize.getHeight();
 
-      const dashImgData = await toPng(dashboardRef.current, toPngOpts);
+      const dashImgData = await toPng(dashboardRef.current, {
+        pixelRatio: 2,
+        backgroundColor: "#f8fafc",
+        filter: (node) =>
+          node.nodeType === 1
+            ? !(node.getAttribute?.("style") || "").includes("-9999px")
+            : true,
+      });
+
       const { w: dw, h: dh } = await pngDataUrlDimensions(dashImgData);
       const dashHeightMm = (dh * pdfWidth) / dw;
 
@@ -192,9 +204,7 @@ export default function Comparativas() {
       );
     } catch (error) {
       originalConsoleError("Error al exportar PDF:", error);
-      alert(
-        "Hubo un problema al generar el PDF. Revisa la consola para más detalles.",
-      );
+      alert("Hubo un problema al generar el PDF.");
     } finally {
       console.error = originalConsoleError;
       setIsExporting(false);
@@ -203,14 +213,13 @@ export default function Comparativas() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Cabecera */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-[#123498] font-heading">
             Centro de <span className="text-[#F46F0B]">Comparativas</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">
-            Enfrenta métricas entre áreas o trabajadores.
+            Enfrenta métricas entre áreas, trabajadores o periodos.
           </p>
         </div>
         <button
@@ -223,7 +232,6 @@ export default function Comparativas() {
         </button>
       </div>
 
-      {/* Filtro de Fechas */}
       <div className="bg-white p-5 rounded-4xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center">
         <div className="flex items-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest px-2">
           <Calendar className="w-4 h-4" /> Rango de Fechas:
@@ -231,7 +239,8 @@ export default function Comparativas() {
         <select
           value={periodo}
           onChange={(e) => handlePeriodoChange(e.target.value)}
-          className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] focus:ring-2 transition-all"
+          disabled={isMeses}
+          className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] focus:ring-2 transition-all disabled:opacity-50"
         >
           <option value="30">Últimos 30 días</option>
           <option value="90">Últimos 3 meses</option>
@@ -241,19 +250,20 @@ export default function Comparativas() {
           type="date"
           value={fechaDesde}
           onChange={(e) => setFechaDesde(e.target.value)}
-          className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] transition-all"
+          disabled={isMeses}
+          className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] transition-all disabled:opacity-50"
         />
         <span className="text-xs font-black text-slate-300 uppercase">─</span>
         <input
           type="date"
           value={fechaHasta}
           onChange={(e) => setFechaHasta(e.target.value)}
-          className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] transition-all"
+          disabled={isMeses}
+          className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] transition-all disabled:opacity-50"
         />
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white p-2 rounded-4xl border border-slate-100 shadow-sm inline-flex gap-2">
+      <div className="bg-white p-2 rounded-4xl border border-slate-100 shadow-sm inline-flex flex-wrap gap-2">
         <button
           onClick={() => setTipoComparacion("areas")}
           className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
@@ -262,51 +272,82 @@ export default function Comparativas() {
               : "bg-slate-100 text-slate-500 hover:bg-slate-200"
           }`}
         >
-          <Building2 className="w-4 h-4 inline mr-2" />
-          Área vs Área
+          <Building2 className="w-4 h-4 inline mr-2" /> Área vs Área
         </button>
         <button
           onClick={() => setTipoComparacion("trabajadores")}
           className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-            !isAreas
+            tipoComparacion === "trabajadores"
               ? "bg-[#123498] text-white shadow-md shadow-[#123498]/20"
               : "bg-slate-100 text-slate-500 hover:bg-slate-200"
           }`}
         >
-          <Users className="w-4 h-4 inline mr-2" />
-          Trabajador vs Trabajador
+          <Users className="w-4 h-4 inline mr-2" /> Trabajador vs Trabajador
+        </button>
+        {/* NUEVO BOTÓN: MES ACTUAL VS MES ANTERIOR */}
+        <button
+          onClick={() => setTipoComparacion("meses")}
+          className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            isMeses
+              ? "bg-[#123498] text-white shadow-md shadow-[#123498]/20"
+              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+          }`}
+        >
+          <CalendarDays className="w-4 h-4 inline mr-2" /> Mes Actual vs Mes
+          Anterior
         </button>
       </div>
 
-      {/* Selectores de Entidad A y B */}
       <div className="bg-white p-6 rounded-4xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <select
-            value={entidadAId}
-            onChange={(e) => setEntidadAId(e.target.value)}
-            className="flex-1 bg-white border border-[#123498]/30 text-[#123498] text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] focus:ring-2 transition-all"
-          >
-            {entidadesSelect.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.nombre || e.name} {!isAreas && e.area ? ` — ${e.area}` : ""}
-              </option>
-            ))}
-          </select>
-          <span className="text-xs font-black text-slate-300 uppercase shrink-0">
-            VS
-          </span>
-          <select
-            value={entidadBId}
-            onChange={(e) => setEntidadBId(e.target.value)}
-            className="flex-1 bg-white border border-[#F46F0B]/30 text-[#F46F0B] text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#F46F0B] focus:ring-2 transition-all"
-          >
-            {entidadesSelect.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.nombre || e.name} {!isAreas && e.area ? ` — ${e.area}` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
+        {isMeses ? (
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <span className="text-xs font-black text-slate-400 uppercase">
+              Filtrar por Área:
+            </span>
+            <select
+              value={entidadAId}
+              onChange={(e) => setEntidadAId(e.target.value)}
+              className="flex-1 bg-white border border-[#123498]/30 text-[#123498] text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] focus:ring-2 transition-all"
+            >
+              <option value="todas">Todas las Áreas</option>
+              {areasList.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <select
+              value={entidadAId}
+              onChange={(e) => setEntidadAId(e.target.value)}
+              className="flex-1 bg-white border border-[#123498]/30 text-[#123498] text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] focus:ring-2 transition-all"
+            >
+              {entidadesSelect.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.nombre || e.name}{" "}
+                  {!isAreas && e.area ? ` — ${e.area}` : ""}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs font-black text-slate-300 uppercase shrink-0">
+              VS
+            </span>
+            <select
+              value={entidadBId}
+              onChange={(e) => setEntidadBId(e.target.value)}
+              className="flex-1 bg-white border border-[#F46F0B]/30 text-[#F46F0B] text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#F46F0B] focus:ring-2 transition-all"
+            >
+              {entidadesSelect.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.nombre || e.name}{" "}
+                  {!isAreas && e.area ? ` — ${e.area}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -317,7 +358,7 @@ export default function Comparativas() {
         <div className="bg-white rounded-[2.5rem] border border-slate-100 p-12 text-center shadow-sm">
           <BarChart2 className="w-16 h-16 mx-auto mb-4 text-slate-300" />
           <p className="font-bold text-slate-500">
-            No hay datos suficientes para comparar estas entidades.
+            No hay datos suficientes para generar comparativas en este periodo.
           </p>
         </div>
       ) : (
@@ -325,7 +366,6 @@ export default function Comparativas() {
           ref={dashboardRef}
           className="space-y-8 p-1 rounded-3xl bg-transparent"
         >
-          {/* Resumen del Enfrentamiento */}
           <div className="bg-white rounded-[2.5rem] border border-slate-100 p-6 shadow-sm">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-center">
               <div className="md:col-span-2 text-center md:text-left">
@@ -381,7 +421,6 @@ export default function Comparativas() {
             </div>
           </div>
 
-          {/* Gráfico Comparativo */}
           <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
             <h3 className="font-black text-lg text-[#123498] text-center mb-8 uppercase tracking-widest">
               {entidadANombre} vs {entidadBNombre}
@@ -422,6 +461,7 @@ export default function Comparativas() {
                       border: "none",
                       boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
                     }}
+                    formatter={(v) => `${v}%`}
                   />
                   <Legend
                     wrapperStyle={{
@@ -449,7 +489,6 @@ export default function Comparativas() {
             </div>
           </div>
 
-          {/* Tabla de Datos */}
           <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-50 bg-slate-50/50">
               <h3 className="font-black text-sm text-slate-700 uppercase tracking-widest">

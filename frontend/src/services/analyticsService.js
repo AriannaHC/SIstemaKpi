@@ -16,6 +16,13 @@ export const analyticsService = {
     return response.data;
   },
 
+  // Agregar debajo de getEvolucion:
+  getPerfil: async (areaId = "") => {
+    const params = areaId && areaId !== "todas" ? `?area_id=${areaId}` : "";
+    const response = await apiClient.get(`/analytics/perfil${params}`);
+    return response.data;
+  },
+
   // 3. Comparativa entre dos Áreas (Para Comparativas)
   compararAreas: async (areaA, areaB) => {
     if (!areaA || !areaB) return [];
@@ -31,6 +38,12 @@ export const analyticsService = {
     const response = await apiClient.get(
       `/analytics/comparar-trabajadores?user_a=${userA}&user_b=${userB}`,
     );
+    return response.data;
+  },
+
+  compararMeses: async (areaId = "") => {
+    const params = areaId && areaId !== "todas" ? `?area_id=${areaId}` : "";
+    const response = await apiClient.get(`/analytics/comparar-meses${params}`);
     return response.data;
   },
 };

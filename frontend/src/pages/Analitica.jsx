@@ -30,18 +30,13 @@ import { jsPDF } from "jspdf";
 import { analyticsService } from "../services/analyticsService";
 import { kpiService } from "../services/kpiService";
 
-// --- MOCK DATA PARA GRÁFICOS AÚN NO SOPORTADOS POR BACKEND ---
+// --- YA NO USAMOS EL MOCK COMPLETO, SOLO LOS NOMBRES DE LAS MÉTRICAS ---
 const metricasPerfil = [
   "Cumplimiento",
   "Eficacia",
   "Eficiencia",
   "Rendimiento",
-  "Calidad",
 ];
-const mockPerfilArea = {
-  promedioGral: [80, 83, 82, 81, 77],
-  default: [85, 90, 78, 82, 80],
-};
 
 // helper: convierte un dataURL PNG a dimensiones reales del canvas
 function pngDataUrlDimensions(dataUrl) {
@@ -61,6 +56,10 @@ export default function Analitica() {
   const [areas, setAreas] = useState([]);
   const [participacion, setParticipacion] = useState([]);
   const [dataEvolucion, setDataEvolucion] = useState([]);
+  const [dataPerfilApi, setDataPerfilApi] = useState({
+    promedioGral: [0, 0, 0, 0],
+    areaValor: [],
+  });
   const [loading, setLoading] = useState(true);
 
   // Estados Modal
@@ -80,10 +79,13 @@ export default function Analitica() {
     Promise.all([
       analyticsService.getParticipacion(filtroArea),
       analyticsService.getEvolucion(filtroArea),
+      analyticsService.getPerfil(filtroArea),
     ])
-      .then(([resPart, resEvo]) => {
+      // FIX: Agregamos resPerf al destructuring de la promesa
+      .then(([resPart, resEvo, resPerf]) => {
         setParticipacion(resPart);
         setDataEvolucion(resEvo);
+        setDataPerfilApi(resPerf);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -106,10 +108,11 @@ export default function Analitica() {
   const perfilData = useMemo(() => {
     return metricasPerfil.map((metrica, i) => ({
       metrica,
-      valor: mockPerfilArea.default[i],
-      promedio: mockPerfilArea.promedioGral[i],
+      promedio: dataPerfilApi.promedioGral[i] || 0,
+      valor:
+        dataPerfilApi.areaValor.length > 0 ? dataPerfilApi.areaValor[i] : 0,
     }));
-  }, [filtroArea]);
+  }, [dataPerfilApi]);
 
   const rankingCompleto = useMemo(() => {
     return [...participacion].sort((a, b) => b.score - a.score);
@@ -151,13 +154,12 @@ export default function Analitica() {
   }, [participacion]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // EXPORTAR A PDF (Con silenciador de advertencias CORS para Google Fonts)
+  // EXPORTAR A PDF
   // ─────────────────────────────────────────────────────────────────────────
   const exportarPDF = async () => {
     if (!dashboardRef.current) return;
     setIsExporting(true);
 
-    // --- INICIO: SILENCIADOR DE CONSOLA PARA ERRORES DE FUENTES ---
     const originalConsoleError = console.error;
     console.error = (...args) => {
       const msg = String(args[0] || "");
@@ -165,11 +167,10 @@ export default function Analitica() {
         msg.includes("Error inlining remote css file") ||
         msg.includes("Error while reading CSS rules")
       ) {
-        return; // Ignoramos este falso error en consola para mantenerla limpia
+        return;
       }
       originalConsoleError.apply(console, args);
     };
-    // --- FIN: SILENCIADOR DE CONSOLA ---
 
     const toPngOpts = {
       pixelRatio: 2,
@@ -246,7 +247,6 @@ export default function Analitica() {
         "Hubo un problema al generar el PDF. Revisa la consola para más detalles.",
       );
     } finally {
-      // Devolvemos la consola a la normalidad
       console.error = originalConsoleError;
       setIsExporting(false);
     }
@@ -350,8 +350,8 @@ export default function Analitica() {
                     </p>
                   </div>
                 </div>
-                <div className="w-full mt-4">
-                  <ResponsiveContainer width="100%" height={350}>
+                <div style={{ width: "100%", height: 350 }}>
+                  <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
                       data={dataEvolucion}
                       margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
@@ -447,8 +447,8 @@ export default function Analitica() {
                     </p>
                   </div>
                 </div>
-                <div className="w-full mt-4">
-                  <ResponsiveContainer width="100%" height={340}>
+                <div style={{ width: "100%", height: 340 }}>
+                  <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={perfilData}
                       margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
@@ -531,8 +531,11 @@ export default function Analitica() {
                       </p>
                     </div>
                   </div>
-                  <div className="w-full mt-4 flex-1">
-                    <ResponsiveContainer width="100%" height={300}>
+                  <div
+                    className="flex-1"
+                    style={{ width: "100%", minHeight: 300 }}
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={estadoGeneralData}
@@ -752,7 +755,7 @@ export default function Analitica() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {rankingModal.map((user, idx) => (
+                    {rankingCompleto.map((user, idx) => (
                       <tr
                         key={user.id}
                         className="hover:bg-slate-50 transition-colors"
@@ -781,7 +784,7 @@ export default function Analitica() {
                         </td>
                       </tr>
                     ))}
-                    {rankingModal.length === 0 && (
+                    {rankingCompleto.length === 0 && (
                       <tr>
                         <td
                           colSpan="4"

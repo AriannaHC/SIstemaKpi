@@ -460,13 +460,16 @@ def programar_kpi_semanal(
     current_user: User = Depends(get_current_user),
 ):
     """Programa un KPI con fecha y hora de inicio y fin en la tabla de auditoría."""
-    # 🔴 FIX: Solo el Administrador (Rol 1) puede ejecutar la acción de programar
     if current_user.kpi_rol_id != 1:
         raise HTTPException(status_code=403, detail="Solo el administrador puede programar KPIs.")
 
     kpi = db.query(Kpi).filter(Kpi.id == kpi_id).first()
     if not kpi:
         raise HTTPException(status_code=404, detail="KPI no encontrado.")
+
+    # 🔴 NUEVO: Buscamos el nombre exacto del área en la BD para que PHP lo entienda
+    area = db.query(Area).filter(Area.id == kpi.area_id).first()
+    nombre_area_texto = area.nombre if area else ""
 
     activos_count = db.query(KpiProgramado).join(Kpi).filter(
         Kpi.area_id == kpi.area_id,
@@ -492,12 +495,14 @@ def programar_kpi_semanal(
             title="🎯 Nueva Tarea de Área",
             body=f"Se ha habilitado el KPI '{kpi.nombre}' para tu área. Límite para registro: {payload.fecha_fin.strftime('%d/%m %I:%M %p')}.",
             audience="area",
-            audience_value=str(kpi.area_id),
+            audience_value=nombre_area_texto, # 🔴 FIX: Enviamos "DESARROLLO Y PROGRAMACIÓN WEB" en vez de "17"
             created_by=current_user.id      
         )
     except Exception as e:
         print(f"Error al enviar notificación: {e}")
+        
     return {"message": "KPI programado exitosamente."}
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  5. REGISTRO DE VALORES
