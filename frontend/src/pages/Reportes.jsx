@@ -154,8 +154,10 @@ export default function Reportes() {
     const participacion = alertasData?.participacion || [];
     const promedio = participacion.length
       ? Math.round(
-          participacion.reduce((acc, item) => acc + Number(item.porcentaje || 0), 0) /
-            participacion.length,
+          participacion.reduce(
+            (acc, item) => acc + Number(item.porcentaje || 0),
+            0,
+          ) / participacion.length,
         )
       : 0;
 
@@ -201,8 +203,9 @@ export default function Reportes() {
     const query = normalizar(busqueda);
     return auditoriaItems.filter((item) => {
       const coincideFiltro = filtro === "todos" || item.tipo === filtro;
-      const coincideBusqueda = [item.titulo, item.area, item.responsable]
-        .some((value) => normalizar(value).includes(query));
+      const coincideBusqueda = [item.titulo, item.area, item.responsable].some(
+        (value) => normalizar(value).includes(query),
+      );
       return coincideFiltro && coincideBusqueda;
     });
   }, [auditoriaItems, busqueda, filtro]);
@@ -228,7 +231,8 @@ export default function Reportes() {
       setExporting(false);
       setFeedback({
         tipo: "ok",
-        mensaje: "Informe listo. Guardalo como PDF desde la ventana de impresion.",
+        mensaje:
+          "Informe listo. Guardalo como PDF desde la ventana de impresion.",
       });
     }, 350);
   };
@@ -264,7 +268,8 @@ export default function Reportes() {
             Panel de <span style={{ color: COLOR_NARANJA }}>Alertas</span>
           </h1>
           <p className="text-gray-500 mt-1 text-sm">
-            Vista compacta para revisar todos los KPIs activos y exportar el informe.
+            Vista compacta para revisar todos los KPIs activos y exportar el
+            informe.
           </p>
         </div>
         <button
@@ -280,10 +285,34 @@ export default function Reportes() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label: "KPIs revisados", value: resumen.total, icon: FileText, color: "text-azul", bg: "bg-azul/10" },
-          { label: "Pendientes", value: resumen.pendientes, icon: Clock, color: "text-naranja", bg: "bg-naranja/10" },
-          { label: "Criticos", value: resumen.criticos, icon: AlertTriangle, color: "text-rojo-persa", bg: "bg-rojo-persa/10" },
-          { label: "Participacion", value: `${resumen.promedio}%`, icon: Activity, color: "text-turquesa", bg: "bg-turquesa/10" },
+          {
+            label: "KPIs revisados",
+            value: resumen.total,
+            icon: FileText,
+            color: "text-azul",
+            bg: "bg-azul/10",
+          },
+          {
+            label: "Pendientes",
+            value: resumen.pendientes,
+            icon: Clock,
+            color: "text-naranja",
+            bg: "bg-naranja/10",
+          },
+          {
+            label: "Criticos",
+            value: resumen.criticos,
+            icon: AlertTriangle,
+            color: "text-rojo-persa",
+            bg: "bg-rojo-persa/10",
+          },
+          {
+            label: "Participacion",
+            value: `${resumen.promedio}%`,
+            icon: Activity,
+            color: "text-turquesa",
+            bg: "bg-turquesa/10",
+          },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -298,7 +327,9 @@ export default function Reportes() {
                   {stat.value}
                 </p>
               </div>
-              <div className={`w-12 h-12 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center`}>
+              <div
+                className={`w-12 h-12 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center`}
+              >
                 <stat.icon className="w-6 h-6" />
               </div>
             </div>
@@ -314,9 +345,6 @@ export default function Reportes() {
                 <h2 className="text-xl font-black text-azul font-heading">
                   KPIs de seguimiento
                 </h2>
-                <p className="text-sm text-slate-500 font-medium mt-1">
-                  Lista preparada para revisar alrededor de 30 KPIs sin perder orden.
-                </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative">
@@ -450,7 +478,8 @@ export default function Reportes() {
                     />
                   </div>
                   <p className="text-[10px] text-slate-400 mt-3 font-black uppercase tracking-widest">
-                    {part.completados} de {part.total_programados} tareas completadas
+                    {part.completados} de {part.total_programados} tareas
+                    completadas
                   </p>
                 </div>
               ))

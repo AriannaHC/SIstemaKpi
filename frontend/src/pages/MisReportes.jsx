@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { kpiService } from "../services/kpiService";
-import mockReportes from "../services/mockReportes";
 import {
   FileText,
   AlertTriangle,
@@ -86,19 +85,16 @@ export default function MisReportes() {
   const cargarReportes = async () => {
     setLoading(true);
     try {
+      // Llamada 100% real al backend, ya no hay datos falsos
       const data = await kpiService.getMisReportes();
-      if (Array.isArray(data) && data.length === 0) {
-        setReportes(mockReportes);
-      } else {
-        setReportes(data);
-      }
+      setReportes(data || []);
     } catch (err) {
-      console.warn("API no disponible, usando datos mock");
-      setReportes(mockReportes);
+      console.error("Error cargando mis reportes:", err);
       setFeedback({
-        tipo: "ok",
-        mensaje: "Usando datos de prueba — conexión con backend no disponible.",
+        tipo: "error",
+        mensaje: "Error de conexión con el servidor. Inténtalo más tarde.",
       });
+      setReportes([]); // En caso de error, mostramos la bandeja vacía
     } finally {
       setLoading(false);
     }
@@ -217,9 +213,7 @@ export default function MisReportes() {
                   : "bg-white text-slate-500 border border-slate-200 hover:border-slate-300"
               }`}
               style={
-                filtroEstado === f.key
-                  ? { backgroundColor: COLOR_AZUL }
-                  : {}
+                filtroEstado === f.key ? { backgroundColor: COLOR_AZUL } : {}
               }
             >
               {f.label}
@@ -244,131 +238,133 @@ export default function MisReportes() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {reportesFiltrados.slice(0, mostrarTodos ? reportesFiltrados.length : 4).map((reporte) => {
-            const esOmision = reporte.estado === "no_reportado";
-            const cfg = alertaConfig(reporte.alerta);
+          {reportesFiltrados
+            .slice(0, mostrarTodos ? reportesFiltrados.length : 4)
+            .map((reporte) => {
+              const esOmision = reporte.estado === "no_reportado";
+              const cfg = alertaConfig(reporte.alerta);
 
-            return (
-              <div
-                key={reporte.id}
-                className={`rounded-4xl border overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col ${
-                  esOmision
-                    ? "bg-rose-50/70 border-rose-200"
-                    : "bg-white border-slate-200"
-                }`}
-              >
-                {/* Barra superior de alerta */}
+              return (
                 <div
-                  className={`h-1.5 ${
+                  key={reporte.id}
+                  className={`rounded-4xl border overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col ${
                     esOmision
-                      ? "bg-linear-to-r from-rose-400 to-rose-600"
-                      : reporte.alerta === "verde"
-                        ? "bg-linear-to-r from-emerald-400 to-emerald-600"
-                        : reporte.alerta === "amarillo"
-                          ? "bg-linear-to-r from-amber-400 to-amber-500"
-                          : reporte.alerta === "rojo"
-                            ? "bg-linear-to-r from-rose-400 to-rose-600"
-                            : "bg-slate-200"
+                      ? "bg-rose-50/70 border-rose-200"
+                      : "bg-white border-slate-200"
                   }`}
-                />
+                >
+                  {/* Barra superior de alerta */}
+                  <div
+                    className={`h-1.5 ${
+                      esOmision
+                        ? "bg-linear-to-r from-rose-400 to-rose-600"
+                        : reporte.alerta === "verde"
+                          ? "bg-linear-to-r from-emerald-400 to-emerald-600"
+                          : reporte.alerta === "amarillo"
+                            ? "bg-linear-to-r from-amber-400 to-amber-500"
+                            : reporte.alerta === "rojo"
+                              ? "bg-linear-to-r from-rose-400 to-rose-600"
+                              : "bg-slate-200"
+                    }`}
+                  />
 
-                <div className="p-5 flex-1 flex flex-col">
-                  {/* KPI Name + Estado */}
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <h3
-                      className="text-sm font-black leading-tight flex-1"
-                      style={{ color: esOmision ? "#991b1b" : COLOR_AZUL }}
-                    >
-                      {reporte.kpi_nombre}
-                    </h3>
-                    {esOmision ? (
-                      <span className="shrink-0 inline-flex items-center gap-1.5 bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest">
-                        <XCircle className="w-3 h-3" /> Omisión
-                      </span>
-                    ) : (
-                      <span className="shrink-0 inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest">
-                        <CheckCircle2 className="w-3 h-3" /> Enviado
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Datos */}
-                  <div className="space-y-3 flex-1">
-                    {/* Periodo */}
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <Clock className="w-3.5 h-3.5 shrink-0" />
-                      <span className="font-medium">
-                        {formatFecha(reporte.periodo_inicio)} →{" "}
-                        {formatFecha(reporte.periodo_fin)}
-                      </span>
-                    </div>
-
-                    {/* Métricas */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                          Valor Semanal
-                        </p>
-                        <p
-                          className="text-lg font-black"
-                          style={{ color: COLOR_AZUL }}
-                        >
-                          {reporte.valor_semanal !== null &&
-                          reporte.valor_semanal !== undefined
-                            ? Number(reporte.valor_semanal).toFixed(2)
-                            : "—"}
-                        </p>
-                      </div>
-                      <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                          Cumplimiento
-                        </p>
-                        <p
-                          className="text-lg font-black"
-                          style={{ color: COLOR_AZUL }}
-                        >
-                          {formatCumplimiento(reporte.cumplimiento)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer: Semáforo */}
-                  <div className="mt-4 pt-3 border-t border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`inline-flex items-center gap-2 ${cfg.bg} ${cfg.border} border px-3 py-1.5 rounded-full`}
+                  <div className="p-5 flex-1 flex flex-col">
+                    {/* KPI Name + Estado */}
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <h3
+                        className="text-sm font-black leading-tight flex-1"
+                        style={{ color: esOmision ? "#991b1b" : COLOR_AZUL }}
                       >
-                        <span
-                          className={`h-2.5 w-2.5 rounded-full ${cfg.dot}`}
-                        />
-                        <span
-                          className={`text-[10px] font-black uppercase tracking-widest ${cfg.text}`}
-                        >
-                          {cfg.label}
+                        {reporte.kpi_nombre}
+                      </h3>
+                      {esOmision ? (
+                        <span className="shrink-0 inline-flex items-center gap-1.5 bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest">
+                          <XCircle className="w-3 h-3" /> Omisión
                         </span>
-                      </span>
-                      {reporte.enviado_en && (
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          {formatFecha(reporte.enviado_en)}
+                      ) : (
+                        <span className="shrink-0 inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest">
+                          <CheckCircle2 className="w-3 h-3" /> Enviado
                         </span>
                       )}
                     </div>
-                  </div>
-                </div>
 
-                {/* Etiqueta especial para omisiones */}
-                {esOmision && (
-                  <div className="bg-rose-100 border-t border-rose-200 px-5 py-3">
-                    <p className="text-[10px] font-black text-rose-700 uppercase tracking-widest flex items-center gap-2">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      Cerrado por sistema — Fecha vencida sin llenado
-                    </p>
+                    {/* Datos */}
+                    <div className="space-y-3 flex-1">
+                      {/* Periodo */}
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <Clock className="w-3.5 h-3.5 shrink-0" />
+                        <span className="font-medium">
+                          {formatFecha(reporte.periodo_inicio)} →{" "}
+                          {formatFecha(reporte.periodo_fin)}
+                        </span>
+                      </div>
+
+                      {/* Métricas */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                            Valor Semanal
+                          </p>
+                          <p
+                            className="text-lg font-black"
+                            style={{ color: COLOR_AZUL }}
+                          >
+                            {reporte.valor_semanal !== null &&
+                            reporte.valor_semanal !== undefined
+                              ? Number(reporte.valor_semanal).toFixed(2)
+                              : "—"}
+                          </p>
+                        </div>
+                        <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                            Cumplimiento
+                          </p>
+                          <p
+                            className="text-lg font-black"
+                            style={{ color: COLOR_AZUL }}
+                          >
+                            {formatCumplimiento(reporte.cumplimiento)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer: Semáforo */}
+                    <div className="mt-4 pt-3 border-t border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`inline-flex items-center gap-2 ${cfg.bg} ${cfg.border} border px-3 py-1.5 rounded-full`}
+                        >
+                          <span
+                            className={`h-2.5 w-2.5 rounded-full ${cfg.dot}`}
+                          />
+                          <span
+                            className={`text-[10px] font-black uppercase tracking-widest ${cfg.text}`}
+                          >
+                            {cfg.label}
+                          </span>
+                        </span>
+                        {reporte.enviado_en && (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {formatFecha(reporte.enviado_en)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+
+                  {/* Etiqueta especial para omisiones */}
+                  {esOmision && (
+                    <div className="bg-rose-100 border-t border-rose-200 px-5 py-3">
+                      <p className="text-[10px] font-black text-rose-700 uppercase tracking-widest flex items-center gap-2">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Cerrado por sistema — Fecha vencida sin llenado
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
         </div>
       )}
 

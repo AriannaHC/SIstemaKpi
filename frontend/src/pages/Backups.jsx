@@ -116,12 +116,8 @@ export default function Backups() {
                   Respaldo manual
                 </p>
                 <h2 className="mt-2 text-2xl md:text-3xl font-black text-azul font-heading leading-tight">
-                  Generar nuevo archivo de seguridad
+                  Generar nuevo archivo para backup
                 </h2>
-                <p className="mt-3 text-sm leading-6 text-slate-500 font-medium max-w-2xl">
-                  Crea un volcado SQL con la informacion actual del sistema para
-                  conservarlo como copia de respaldo.
-                </p>
               </div>
             </div>
 
@@ -204,9 +200,6 @@ export default function Backups() {
               Historial de Respaldos
             </h2>
           </div>
-          <p className="text-sm font-bold text-slate-500 max-w-md">
-            Cada respaldo queda listado con su fecha, peso y boton de descarga.
-          </p>
         </div>
 
         <div className="p-4 md:p-6 bg-slate-50/70 space-y-4 min-h-[200px]">
