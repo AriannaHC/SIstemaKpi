@@ -10,6 +10,7 @@ import {
   Search,
 } from "lucide-react";
 import Toast from "../components/Toast";
+import SelectCustom from "../components/SelectCustom";
 
 const COLOR_AZUL = "#123498";
 const COLOR_NARANJA = "#F46F0B";
@@ -356,16 +357,16 @@ export default function Reportes() {
                     className="w-full sm:w-72 h-11 rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-azul focus:ring-4 focus:ring-azul/10"
                   />
                 </div>
-                <select
+                <SelectCustom
                   value={filtro}
-                  onChange={(e) => setFiltro(e.target.value)}
-                  className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-black text-azul outline-none focus:border-azul"
-                >
-                  <option value="todos">Todos</option>
-                  <option value="pendiente">Pendientes</option>
-                  <option value="riesgo">Riesgo</option>
-                  <option value="critico">Criticos</option>
-                </select>
+                  onChange={setFiltro}
+                  options={[
+                    { value: "todos", label: "Todos" },
+                    { value: "pendiente", label: "Pendientes" },
+                    { value: "riesgo", label: "Riesgo" },
+                    { value: "critico", label: "Criticos" },
+                  ]}
+                />
               </div>
             </div>
           </div>

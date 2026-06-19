@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SelectCustom from "./SelectCustom";
 
 export const workers = [
   { id: 'u1', name: 'Carlos Martinez', area: 'Planeamiento', role: 'usuario' },
@@ -302,9 +303,7 @@ export function SettingsView({ kpis, setKpis }) {
         <h3 className="text-xl font-bold text-azul-profundo mt-3">Configuracion general de KPIs</h3>
         <form onSubmit={createKpi} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mt-6">
           <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre del KPI" className="rounded-lg border border-azul/15 px-3 py-2 text-sm" />
-          <select value={form.assigneeId} onChange={(e) => setForm({ ...form, assigneeId: e.target.value })} className="rounded-lg border border-azul/15 px-3 py-2 text-sm">
-            {workers.map((worker) => <option key={worker.id} value={worker.id}>{worker.name}</option>)}
-          </select>
+          <SelectCustom value={form.assigneeId} onChange={(v) => setForm({ ...form, assigneeId: v })} options={workers.map((w) => ({ value: w.id, label: w.name }))} />
           <input type="number" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} className="rounded-lg border border-azul/15 px-3 py-2 text-sm" />
           <button className="bg-naranja hover:bg-naranja-oscuro text-white rounded-lg px-4 py-2 text-sm font-bold">Crear KPI</button>
         </form>

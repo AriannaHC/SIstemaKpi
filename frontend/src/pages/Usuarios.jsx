@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { userService } from "../services/userService";
 import { kpiService } from "../services/kpiService";
 import { Search, Filter, ChevronDown, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import SelectCustom from "../components/SelectCustom";
 
 const ROLES = [
   { value: 1, label: "Administrador", color: "#123498" },
@@ -180,8 +181,8 @@ export default function Usuarios() {
     setPage(1);
   };
 
-  const handleAreaFilterChange = (e) => {
-    setFilterArea(e.target.value);
+  const handleAreaFilterChange = (value) => {
+    setFilterArea(value);
     setPage(1);
   };
 
@@ -245,37 +246,37 @@ export default function Usuarios() {
               </div>
 
               {/* Filtro Área */}
-              <div className="relative w-full sm:w-64">
-                <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <select
+              <div className="w-full sm:w-64">
+                <SelectCustom
                   value={filterArea}
                   onChange={handleAreaFilterChange}
-                  className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none focus:border-azul appearance-none transition-all shadow-sm cursor-pointer"
-                >
-                  <option value="">TODAS LAS ÁREAS</option>
-                  {areas.map((a) => (
-                    <option key={a.id} value={a.id.toString()}>
-                      {a.nombre.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: "", label: "TODAS LAS ÁREAS" },
+                    ...areas.map((a) => ({
+                      value: a.id.toString(),
+                      label: a.nombre.toUpperCase(),
+                    })),
+                  ]}
+                  placeholder="TODAS LAS ÁREAS"
+                  icon={<Filter className="w-4 h-4" />}
+                />
               </div>
 
               {/* Filtro Rol */}
-              <div className="relative w-full sm:w-48">
-                <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <select
+              <div className="w-full sm:w-48">
+                <SelectCustom
                   value={filterRol}
-                  onChange={(e) => { setFilterRol(e.target.value); setPage(1); }}
-                  className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none focus:border-azul appearance-none transition-all shadow-sm cursor-pointer"
-                >
-                  <option value="">TODOS LOS ROLES</option>
-                  {ROLES.map((r) => (
-                    <option key={r.value} value={r.value.toString()}>
-                      {r.label.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => { setFilterRol(v); setPage(1); }}
+                  options={[
+                    { value: "", label: "TODOS LOS ROLES" },
+                    ...ROLES.map((r) => ({
+                      value: r.value.toString(),
+                      label: r.label.toUpperCase(),
+                    })),
+                  ]}
+                  placeholder="TODOS LOS ROLES"
+                  icon={<Users className="w-4 h-4" />}
+                />
               </div>
             </div>
           </div>

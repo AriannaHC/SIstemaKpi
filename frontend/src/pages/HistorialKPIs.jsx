@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { kpiService } from "../services/kpiService";
+import SelectCustom from "../components/SelectCustom";
 import {
   Database,
   Download,
@@ -207,17 +208,17 @@ export default function HistorialKPIs() {
             className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 text-sm outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/10 transition-all"
           />
         </div>
-        <select
+        <SelectCustom
           value={filtroAlerta}
-          onChange={(e) => setFiltroAlerta(e.target.value)}
-          className="px-4 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-700 outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/10 transition-all bg-white cursor-pointer"
-        >
-          <option value="todos">Todas las alertas</option>
-          <option value="verde">🟢 Verde</option>
-          <option value="amarillo">🟡 Amarillo</option>
-          <option value="rojo">🔴 Rojo</option>
-          <option value="gris">⚪ Gris</option>
-        </select>
+          onChange={setFiltroAlerta}
+          options={[
+            { value: "todos", label: "Todas las alertas" },
+            { value: "verde", label: "🟢 Verde" },
+            { value: "amarillo", label: "🟡 Amarillo" },
+            { value: "rojo", label: "🔴 Rojo" },
+            { value: "gris", label: "⚪ Gris" },
+          ]}
+        />
       </div>
 
       {/* ── Tabla ── */}

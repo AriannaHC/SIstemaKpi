@@ -10,6 +10,7 @@ import {
   Activity,
 } from "lucide-react";
 import { kpiService } from "../services/kpiService";
+import SelectCustom from "../components/SelectCustom";
 import apiClient from "../services/apiClient";
 import { useAuth } from "../context/AuthContext";
 import Toast from "../components/Toast";
@@ -305,27 +306,15 @@ export default function MiEquipo() {
                 {/* Botón Selector Agregar */}
                 <div className="mt-5 relative z-10">
                   {kpisActivos.length > 0 && puedeAsignarMas ? (
-                    <div className="relative">
-                      <select
-                        value=""
-                        onChange={(e) =>
-                          asignarKpi(trabajador.id, e.target.value)
-                        }
-                        disabled={saving === trabajador.id}
-                        className="w-full appearance-none px-4 py-3 text-xs font-black uppercase tracking-widest border border-slate-200 rounded-xl bg-white text-[#123498] hover:bg-[#123498]/5 focus:outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/20 cursor-pointer disabled:opacity-50 transition-all shadow-sm"
-                      >
-                        <option value="" disabled>
-                          + Asignar Tarea
-                        </option>
-                        {disponibles
-                          .filter((k) => k.responsable_id !== trabajador.id)
-                          .map((k) => (
-                            <option key={k.id} value={k.id}>
-                              {k.nombre}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
+                    <SelectCustom
+                      value=""
+                      onChange={(v) => asignarKpi(trabajador.id, v)}
+                      options={disponibles
+                        .filter((k) => k.responsable_id !== trabajador.id)
+                        .map((k) => ({ value: String(k.id), label: k.nombre }))}
+                      placeholder="+ Asignar Tarea"
+                      disabled={saving === trabajador.id}
+                    />
                   ) : asignados.length >= 3 ? (
                     <div className="bg-orange-50 border border-orange-100 text-[#F46F0B] px-4 py-3 rounded-xl text-center">
                       <p className="text-[10px] font-black uppercase tracking-widest">

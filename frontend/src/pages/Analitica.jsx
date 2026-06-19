@@ -29,6 +29,7 @@ import { jsPDF } from "jspdf";
 
 import { analyticsService } from "../services/analyticsService";
 import { kpiService } from "../services/kpiService";
+import SelectCustom from "../components/SelectCustom";
 
 // --- YA NO USAMOS EL MOCK COMPLETO, SOLO LOS NOMBRES DE LAS MÉTRICAS ---
 const metricasPerfil = [
@@ -49,9 +50,8 @@ function pngDataUrlDimensions(dataUrl) {
 
 export default function Analitica() {
   const [filtroArea, setFiltroArea] = useState("todas");
-  const [fechaDesde, setFechaDesde] = useState("");
-  const [fechaHasta, setFechaHasta] = useState("");
-  const [periodo, setPeriodo] = useState("30");
+  const [filtroMes, setFiltroMes] = useState("");
+  const [filtroAnio, setFiltroAnio] = useState("2026");
 
   const [areas, setAreas] = useState([]);
   const [participacion, setParticipacion] = useState([]);
@@ -77,11 +77,10 @@ export default function Analitica() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      analyticsService.getParticipacion(filtroArea),
-      analyticsService.getEvolucion(filtroArea),
-      analyticsService.getPerfil(filtroArea),
+      analyticsService.getParticipacion(filtroArea, filtroMes, filtroAnio),
+      analyticsService.getEvolucion(filtroArea, filtroMes, filtroAnio),
+      analyticsService.getPerfil(filtroArea, filtroMes, filtroAnio),
     ])
-      // FIX: Agregamos resPerf al destructuring de la promesa
       .then(([resPart, resEvo, resPerf]) => {
         setParticipacion(resPart);
         setDataEvolucion(resEvo);
@@ -89,16 +88,7 @@ export default function Analitica() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [filtroArea, periodo]);
-
-  const handlePeriodoChange = (dias) => {
-    setPeriodo(dias);
-    const hasta = new Date();
-    const desde = new Date();
-    desde.setDate(desde.getDate() - Number(dias));
-    setFechaDesde(desde.toISOString().split("T")[0]);
-    setFechaHasta(hasta.toISOString().split("T")[0]);
-  };
+  }, [filtroArea, filtroMes, filtroAnio]);
 
   const areaSelNombre =
     filtroArea === "todas"
@@ -281,45 +271,46 @@ export default function Analitica() {
             <Filter className="w-4 h-4" /> Segmentar por:
           </div>
 
-          <select
+          <SelectCustom
             value={filtroArea}
-            onChange={(e) => setFiltroArea(e.target.value)}
-            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-2.5 px-4 outline-none focus:border-[#123498] focus:ring-2 transition-all"
-          >
-            <option value="todas">Todas las Áreas</option>
-            {areas.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.nombre}
-              </option>
-            ))}
-          </select>
+            onChange={setFiltroArea}
+            options={[
+              { value: "todas", label: "Todas las Áreas" },
+              ...areas.map((a) => ({ value: String(a.id), label: a.nombre })),
+            ]}
+            className="w-44"
+          />
 
-          <select
-            value={periodo}
-            onChange={(e) => handlePeriodoChange(e.target.value)}
-            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-2.5 px-4 outline-none focus:border-[#123498] focus:ring-2 transition-all"
-          >
-            <option value="30">Últimos 30 días</option>
-            <option value="90">Últimos 3 meses</option>
-            <option value="180">Últimos 6 meses</option>
-          </select>
+          <SelectCustom
+            value={filtroMes}
+            onChange={setFiltroMes}
+            options={[
+              { value: "", label: "Todos los meses" },
+              { value: "1", label: "Enero" },
+              { value: "2", label: "Febrero" },
+              { value: "3", label: "Marzo" },
+              { value: "4", label: "Abril" },
+              { value: "5", label: "Mayo" },
+              { value: "6", label: "Junio" },
+              { value: "7", label: "Julio" },
+              { value: "8", label: "Agosto" },
+              { value: "9", label: "Septiembre" },
+              { value: "10", label: "Octubre" },
+              { value: "11", label: "Noviembre" },
+              { value: "12", label: "Diciembre" },
+            ]}
+            className="w-36"
+          />
 
           <div className="flex items-center gap-2 ml-auto">
             <Calendar className="w-4 h-4 text-slate-400" />
-            <input
-              type="date"
-              value={fechaDesde}
-              onChange={(e) => setFechaDesde(e.target.value)}
-              className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-2.5 px-4 outline-none focus:border-[#123498] transition-all"
-            />
-            <span className="text-xs font-black text-slate-300 uppercase">
-              ─
-            </span>
-            <input
-              type="date"
-              value={fechaHasta}
-              onChange={(e) => setFechaHasta(e.target.value)}
-              className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-2.5 px-4 outline-none focus:border-[#123498] transition-all"
+            <SelectCustom
+              value={filtroAnio}
+              onChange={setFiltroAnio}
+              options={[
+                { value: "2026", label: "2026" },
+              ]}
+              className="w-24"
             />
           </div>
         </div>
