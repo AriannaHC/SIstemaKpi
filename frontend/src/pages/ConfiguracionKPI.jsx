@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Toast from "../components/Toast";
 import SelectCustom from "../components/SelectCustom";
+import ModalTesterKPI from "../components/ModalTesterKPI";
 
 const ORIGEN_OPTIONS = [
   { value: "usuario", label: "Usuario" },
