@@ -23,6 +23,7 @@ import { jsPDF } from "jspdf";
 import { analyticsService } from "../services/analyticsService";
 import { kpiService } from "../services/kpiService";
 import { userService } from "../services/userService";
+import SelectCustom from "../components/SelectCustom";
 
 function pngDataUrlDimensions(dataUrl) {
   return new Promise((resolve) => {
@@ -33,10 +34,9 @@ function pngDataUrlDimensions(dataUrl) {
 }
 
 export default function Comparativas() {
-  const [tipoComparacion, setTipoComparacion] = useState("areas"); // 'areas', 'trabajadores', 'meses'
-  const [fechaDesde, setFechaDesde] = useState("");
-  const [fechaHasta, setFechaHasta] = useState("");
-  const [periodo, setPeriodo] = useState("30");
+  const [tipoComparacion, setTipoComparacion] = useState("areas");
+  const [filtroMes, setFiltroMes] = useState("");
+  const [filtroAnio, setFiltroAnio] = useState("2026");
 
   const [entidadAId, setEntidadAId] = useState("");
   const [entidadBId, setEntidadBId] = useState("");
@@ -80,27 +80,26 @@ export default function Comparativas() {
   }, [tipoComparacion]);
 
   useEffect(() => {
-    // Solo detenemos si faltan datos en áreas/trabajadores
     if (!isMeses && (!entidadAId || !entidadBId)) return;
 
     setLoading(true);
     let fetchAnalitica;
 
     if (isMeses) {
-      fetchAnalitica = analyticsService.compararMeses(entidadAId);
+      fetchAnalitica = analyticsService.compararMeses(entidadAId, filtroMes, filtroAnio);
     } else if (isAreas) {
       fetchAnalitica = analyticsService.compararAreas(
         entidadAId,
         entidadBId,
-        fechaDesde,
-        fechaHasta,
+        filtroMes,
+        filtroAnio,
       );
     } else {
       fetchAnalitica = analyticsService.compararTrabajadores(
         entidadAId,
         entidadBId,
-        fechaDesde,
-        fechaHasta,
+        filtroMes,
+        filtroAnio,
       );
     }
 
@@ -123,16 +122,7 @@ export default function Comparativas() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [tipoComparacion, entidadAId, entidadBId, fechaDesde, fechaHasta]); // Ahora SI reacciona a las fechas
-
-  const handlePeriodoChange = (dias) => {
-    setPeriodo(dias);
-    const hasta = new Date();
-    const desde = new Date();
-    desde.setDate(desde.getDate() - Number(dias));
-    setFechaDesde(desde.toISOString().split("T")[0]);
-    setFechaHasta(hasta.toISOString().split("T")[0]);
-  };
+  }, [tipoComparacion, entidadAId, entidadBId, filtroMes, filtroAnio]);
 
   const entidadesSelect = isAreas ? areasList : usersList;
   const entidadANombre = nombres.A;
@@ -234,32 +224,35 @@ export default function Comparativas() {
 
       <div className="bg-white p-5 rounded-4xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center">
         <div className="flex items-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest px-2">
-          <Calendar className="w-4 h-4" /> Rango de Fechas:
+          <Calendar className="w-4 h-4" /> Filtrar por Mes:
         </div>
-        <select
-          value={periodo}
-          onChange={(e) => handlePeriodoChange(e.target.value)}
-          disabled={isMeses}
-          className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] focus:ring-2 transition-all disabled:opacity-50"
-        >
-          <option value="30">Últimos 30 días</option>
-          <option value="90">Últimos 3 meses</option>
-          <option value="180">Últimos 6 meses</option>
-        </select>
-        <input
-          type="date"
-          value={fechaDesde}
-          onChange={(e) => setFechaDesde(e.target.value)}
-          disabled={isMeses}
-          className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] transition-all disabled:opacity-50"
+        <SelectCustom
+          value={filtroMes}
+          onChange={setFiltroMes}
+          options={[
+            { value: "", label: "Todos los meses" },
+            { value: "1", label: "Enero" },
+            { value: "2", label: "Febrero" },
+            { value: "3", label: "Marzo" },
+            { value: "4", label: "Abril" },
+            { value: "5", label: "Mayo" },
+            { value: "6", label: "Junio" },
+            { value: "7", label: "Julio" },
+            { value: "8", label: "Agosto" },
+            { value: "9", label: "Septiembre" },
+            { value: "10", label: "Octubre" },
+            { value: "11", label: "Noviembre" },
+            { value: "12", label: "Diciembre" },
+          ]}
+          className="w-36"
         />
-        <span className="text-xs font-black text-slate-300 uppercase">─</span>
-        <input
-          type="date"
-          value={fechaHasta}
-          onChange={(e) => setFechaHasta(e.target.value)}
-          disabled={isMeses}
-          className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] transition-all disabled:opacity-50"
+        <SelectCustom
+          value={filtroAnio}
+          onChange={setFiltroAnio}
+          options={[
+            { value: "2026", label: "2026" },
+          ]}
+          className="w-24"
         />
       </div>
 
@@ -304,48 +297,47 @@ export default function Comparativas() {
             <span className="text-xs font-black text-slate-400 uppercase">
               Filtrar por Área:
             </span>
-            <select
+            <SelectCustom
               value={entidadAId}
-              onChange={(e) => setEntidadAId(e.target.value)}
-              className="flex-1 bg-white border border-[#123498]/30 text-[#123498] text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] focus:ring-2 transition-all"
-            >
-              <option value="todas">Todas las Áreas</option>
-              {areasList.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.nombre}
-                </option>
-              ))}
-            </select>
+              onChange={setEntidadAId}
+              options={[
+                { value: "todas", label: "Todas las Áreas" },
+                ...areasList.map((e) => ({
+                  value: String(e.id),
+                  label: e.nombre,
+                })),
+              ]}
+              className="flex-1"
+            />
           </div>
         ) : (
           <div className="flex items-center gap-3 w-full md:w-auto">
-            <select
+            <SelectCustom
               value={entidadAId}
-              onChange={(e) => setEntidadAId(e.target.value)}
-              className="flex-1 bg-white border border-[#123498]/30 text-[#123498] text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#123498] focus:ring-2 transition-all"
-            >
-              {entidadesSelect.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.nombre || e.name}{" "}
-                  {!isAreas && e.area ? ` — ${e.area}` : ""}
-                </option>
-              ))}
-            </select>
+              onChange={setEntidadAId}
+              options={entidadesSelect.map((e) => ({
+                value: String(e.id),
+                label:
+                  (e.nombre || e.name) +
+                  (!isAreas && e.area ? ` — ${e.area}` : ""),
+              }))}
+              className="flex-1"
+            />
             <span className="text-xs font-black text-slate-300 uppercase shrink-0">
               VS
             </span>
-            <select
+            <SelectCustom
               value={entidadBId}
-              onChange={(e) => setEntidadBId(e.target.value)}
-              className="flex-1 bg-white border border-[#F46F0B]/30 text-[#F46F0B] text-xs font-bold rounded-xl py-3 px-4 outline-none focus:border-[#F46F0B] focus:ring-2 transition-all"
-            >
-              {entidadesSelect.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.nombre || e.name}{" "}
-                  {!isAreas && e.area ? ` — ${e.area}` : ""}
-                </option>
-              ))}
-            </select>
+              onChange={setEntidadBId}
+              options={entidadesSelect.map((e) => ({
+                value: String(e.id),
+                label:
+                  (e.nombre || e.name) +
+                  (!isAreas && e.area ? ` — ${e.area}` : ""),
+              }))}
+              className="flex-1"
+              accentColor="#F46F0B"
+            />
           </div>
         )}
       </div>

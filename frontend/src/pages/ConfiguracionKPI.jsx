@@ -14,7 +14,7 @@ import {
   Eye,
 } from "lucide-react";
 import Toast from "../components/Toast";
-import ModalTesterKPI from "../components/ModalTesterKPI";
+import SelectCustom from "../components/SelectCustom";
 
 const ORIGEN_OPTIONS = [
   { value: "usuario", label: "Usuario" },
@@ -84,9 +84,8 @@ export default function ConfiguracionKPI() {
     initConfiguracion();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAreaChange = async (e) => {
-    const areaId = e.target.value;
-    const areaObj = areas.find((a) => a.id.toString() === areaId);
+  const handleAreaChange = async (areaId) => {
+    const areaObj = areas.find((a) => String(a.id) === areaId);
     setSelectedArea(areaObj || null);
     setFeedback(null);
     setSelectedKpi(null);
@@ -270,22 +269,22 @@ export default function ConfiguracionKPI() {
               Área a Configurar
             </h2>
 
-            <div className="w-full md:w-80 relative">
-              <Folder className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <select
-                className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none transition-all shadow-sm cursor-pointer disabled:opacity-50"
-                style={{ borderColor: COLOR_AZUL }}
-                value={selectedArea ? selectedArea.id : ""}
+            <div className="w-full md:w-80">
+              <SelectCustom
+                value={selectedArea ? String(selectedArea.id) : ""}
                 onChange={handleAreaChange}
+                options={[
+                  { value: "", label: "-- Selecciona un área --" },
+                  ...areas.map((a) => ({
+                    value: String(a.id),
+                    label: a.nombre,
+                  })),
+                ]}
+                placeholder="-- Selecciona un área --"
                 disabled={isLoadingAreas}
-              >
-                <option value="">-- Selecciona un área --</option>
-                {areas.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.nombre}
-                  </option>
-                ))}
-              </select>
+                accentColor={COLOR_AZUL}
+                icon={<Folder className="w-4 h-4" />}
+              />
             </div>
           </div>
 
@@ -637,19 +636,14 @@ export default function ConfiguracionKPI() {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <select
-                              className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl py-2.5 px-3 outline-none transition-all cursor-pointer hover:bg-white focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/20"
+                            <SelectCustom
                               value={c.origen}
-                              onChange={(e) =>
-                                updateCampo(index, "origen", e.target.value)
-                              }
-                            >
-                              {ORIGEN_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
+                              onChange={(v) => updateCampo(index, "origen", v)}
+                              options={ORIGEN_OPTIONS.map((opt) => ({
+                                value: opt.value,
+                                label: opt.label,
+                              }))}
+                            />
                           </td>
                           <td className="px-6 py-4">
                             {c.origen === "calculado" ? (
