@@ -11,8 +11,10 @@ import {
   CheckCircle2,
   Database,
   Copy,
+  Eye,
 } from "lucide-react";
 import Toast from "../components/Toast";
+import ModalTesterKPI from "../components/ModalTesterKPI";
 
 const ORIGEN_OPTIONS = [
   { value: "usuario", label: "Usuario" },
@@ -36,6 +38,7 @@ export default function ConfiguracionKPI() {
 
   // Estado para el Acordeón de Fórmulas
   const [isFormulasOpen, setIsFormulasOpen] = useState(false);
+  const [isTesterOpen, setIsTesterOpen] = useState(false);
 
   const COLOR_AZUL = "#123498";
   const COLOR_NARANJA = "#F46F0B";
@@ -720,18 +723,27 @@ export default function ConfiguracionKPI() {
                   </div>
 
                   {/* Right Side: Button */}
-                  <div className="w-full md:w-1/3 min-w-[250px]">
-                    <button
-                      form="config-form"
-                      type="submit"
-                      disabled={
-                        isSubmitting || resumenCampos.formulasFaltantes > 0
-                      }
-                      className="w-full text-white font-black py-4 rounded-xl uppercase tracking-widest transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none hover:shadow-xl hover:opacity-90"
-                      style={{ backgroundColor: COLOR_NARANJA }}
-                    >
-                      {isSubmitting ? "Guardando..." : "Guardar Estructura"}
-                    </button>
+                  <div className="w-full md:w-1/2 lg:w-5/12 min-w-[350px]">
+                    <div className="flex gap-[5px]">
+                      <button
+                        type="button"
+                        onClick={() => setIsTesterOpen(true)}
+                        className="flex-1 text-[#123498] bg-[#123498]/10 hover:bg-[#123498]/20 font-black text-[10px] py-3.5 rounded-xl uppercase tracking-widest transition-all flex items-center justify-center gap-2 border border-[#123498]/20"
+                      >
+                        <Eye className="w-4 h-4" /> Probar
+                      </button>
+                      <button
+                        form="config-form"
+                        type="submit"
+                        disabled={
+                          isSubmitting || resumenCampos.formulasFaltantes > 0
+                        }
+                        className="flex-1 text-white font-black text-[10px] py-3.5 rounded-xl uppercase tracking-widest transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none hover:shadow-xl hover:opacity-90"
+                        style={{ backgroundColor: COLOR_NARANJA }}
+                      >
+                        {isSubmitting ? "Guardando..." : "Guardar Estructura"}
+                      </button>
+                    </div>
                     {resumenCampos.formulasFaltantes > 0 && (
                       <p className="text-[10px] text-rojo-persa text-center font-bold mt-3">
                         Rellena las fórmulas faltantes para guardar.
@@ -741,6 +753,12 @@ export default function ConfiguracionKPI() {
                 </div>
               </div>
             )}
+            <ModalTesterKPI
+              isOpen={isTesterOpen}
+              onClose={() => setIsTesterOpen(false)}
+              selectedKpi={selectedKpi}
+              camposConfigurados={campos}
+            />
           </div>
         </div>
       )}

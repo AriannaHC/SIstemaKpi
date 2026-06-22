@@ -50,17 +50,34 @@ function SemaforoDisplay({ cumplimiento }) {
 // ── Formateador ──────────────────────────────────────────────────────────────
 function formatearValor(label, valor) {
   if (valor === null || valor === undefined || valor === "") return "-";
-  const lbl = label.toLowerCase();
-  if (
-    lbl.includes("cumplimiento") ||
-    lbl.includes("eficiencia") ||
-    lbl.includes("eficacia") ||
-    lbl.includes("efectividad") ||
-    lbl.includes("rendimiento") ||
-    lbl.includes("productividad")
-  ) {
+  const lbl = label.toLowerCase().trim();
+
+  // FIX: Búsqueda exacta para evitar que "Puntuación de cumplimiento técnico"
+  // sufra un falso positivo y se multiplique por 100.
+  const esPorcentaje =
+    lbl === "cumplimiento" ||
+    lbl === "cumplimiento (%)" ||
+    lbl === "eficiencia" ||
+    lbl === "eficiencia (%)" ||
+    lbl === "eficacia" ||
+    lbl === "eficacia (%)" ||
+    lbl === "efectividad" ||
+    lbl === "efectividad (%)" ||
+    lbl === "rendimiento" ||
+    lbl === "rendimiento (%)";
+
+  if (esPorcentaje) {
     return (parseFloat(valor) * 100).toFixed(2) + "%";
   }
+
+  // FIX: Productividad se muestra como número normal.
+  // (Si en algún momento lo quieres sin decimales, cambia num.toFixed(2) a Math.round(num).toString())
+  if (lbl.includes("productividad")) {
+    const num = parseFloat(valor);
+    return isNaN(num) ? String(valor) : num.toFixed(2);
+  }
+
+  // Cualquier otro campo numérico (ej. Puntuación de cumplimiento técnico)
   const num = parseFloat(valor);
   return isNaN(num) ? String(valor) : num.toFixed(2);
 }
@@ -255,19 +272,36 @@ export default function LlenadoKPI() {
   }, []);
 
   const cumplimientoValue = (() => {
-    for (const key of Object.keys(contexto)) {
-      if (key.toLowerCase().includes("cumplimiento")) return contexto[key];
-    }
-    return null;
+    const key = Object.keys(contexto).find(
+      (k) => k.trim() === "Cumplimiento (%)" || k.trim() === "Cumplimiento",
+    );
+    return key ? contexto[key] : null;
   })();
 
-  // ── Lógica de Búsqueda Inteligente para evitar NaN ─────────────────────────
   const buscarValorDisplay = (labelBuscada) => {
-    const lb = labelBuscada.toLowerCase();
+    const lb = labelBuscada.toLowerCase().trim();
+    let campoEncontrado;
 
-    const campoEncontrado = campos.find(
-      (c) => c.campo_label && c.campo_label.toLowerCase().includes(lb),
-    );
+    // Regla de oro: Si el resumen pide "Cumplimiento", buscar SOLO el campo exacto
+    if (lb === "cumplimiento") {
+      campoEncontrado = campos.find((c) => {
+        if (!c.campo_label) return false;
+        const clean = c.campo_label.toLowerCase().trim();
+        return clean === "cumplimiento (%)" || clean === "cumplimiento";
+      });
+    } else {
+      // Para el resto de métricas (Eficiencia, Productividad, etc.)
+      campoEncontrado = campos.find((c) => {
+        if (!c.campo_label) return false;
+        const clean = c.campo_label.toLowerCase().trim();
+        return clean === lb || clean === `${lb} (%)`;
+      });
+      if (!campoEncontrado) {
+        campoEncontrado = campos.find(
+          (c) => c.campo_label && c.campo_label.toLowerCase().includes(lb),
+        );
+      }
+    }
 
     if (campoEncontrado) {
       const val = contexto[campoEncontrado.campo_label];
@@ -285,7 +319,11 @@ export default function LlenadoKPI() {
     }
 
     for (const [key, val] of Object.entries(contexto)) {
-      if (key.toLowerCase().includes(lb) && val !== null && val !== undefined) {
+      if (
+        key.toLowerCase().trim() === lb &&
+        val !== null &&
+        val !== undefined
+      ) {
         return formatearValor(key, val);
       }
     }
@@ -612,7 +650,7 @@ export default function LlenadoKPI() {
           <ChevronLeft className="w-4 h-4" /> Volver a mis KPIs
         </button>
 
-          <div className="bg-white rounded-4xl shadow-xl border border-slate-100 p-4 md:p-6">
+        <div className="bg-white rounded-4xl shadow-xl border border-slate-100 p-4 md:p-6">
           <div className="mb-4 md:mb-8">
             <span
               className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.24em] text-white"
@@ -680,7 +718,9 @@ export default function LlenadoKPI() {
                                 <span>{c.campo_label}</span>
                                 <ChevronDown
                                   className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${
-                                    textoExpandido[c.campo_key] ? "rotate-180" : ""
+                                    textoExpandido[c.campo_key]
+                                      ? "rotate-180"
+                                      : ""
                                   }`}
                                 />
                               </button>
@@ -774,7 +814,9 @@ export default function LlenadoKPI() {
               )}
 
               {camposResultado.length > 0 && (
-                <div className={`${verResultados ? "block" : "hidden"} lg:block lg:sticky lg:top-6 lg:self-start`}>
+                <div
+                  className={`${verResultados ? "block" : "hidden"} lg:block lg:sticky lg:top-6 lg:self-start`}
+                >
                   <div className="rounded-4xl border border-slate-200 bg-linear-to-br from-[#123498]/5 via-slate-50 to-[#F46F0B]/5 p-4 md:p-6 shadow-sm">
                     <div className="mb-3 md:mb-6">
                       <p className="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mb-3">
