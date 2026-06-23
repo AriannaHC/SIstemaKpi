@@ -87,11 +87,10 @@ function ejecutarMotor(campos, valores) {
   let contexto = {};
   campos.forEach((c) => {
     const raw = valores[c.campo_key];
-    const lbl = c.campo_label.toLowerCase();
+    const lbl = c.campo_label.toLowerCase().trim();
 
-    // MAGIA: Si el campo es una fecha, lo convertimos a "días totales"
     if (
-      lbl.includes("fecha") &&
+      lbl.startsWith("fecha") &&
       raw &&
       typeof raw === "string" &&
       /^\d{4}-\d{2}-\d{2}/.test(raw)
@@ -768,7 +767,10 @@ export default function LlenadoKPI() {
                               </label>
                               <input
                                 type={
-                                  c.campo_label.toLowerCase().includes("fecha")
+                                  c.campo_label
+                                    .toLowerCase()
+                                    .trim()
+                                    .startsWith("fecha")
                                     ? "date"
                                     : c.tipo === "numero"
                                       ? "number"
@@ -778,8 +780,8 @@ export default function LlenadoKPI() {
                                 name={c.campo_key}
                                 value={valores[c.campo_key] || ""}
                                 onChange={handleChange}
-                                required
-                                className="w-full rounded-3xl border border-slate-200 bg-white px-3 py-2 md:py-3 text-sm text-slate-700 outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/10 transition-all"
+                                className="w-full rounded-xl border px-3 py-2.5 text-sm text-slate-700 outline-none transition-all focus:ring-2 focus:ring-[#123498]/20 bg-white border-slate-200 focus:border-[#123498]"
+                                placeholder={`Ingresa ${c.campo_label}...`}
                               />
                             </>
                           )}

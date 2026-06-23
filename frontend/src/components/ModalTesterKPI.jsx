@@ -79,11 +79,10 @@ function ejecutarMotor(campos, valores) {
   let contexto = {};
   campos.forEach((c) => {
     const raw = valores[c.campo_key];
-    const lbl = c.campo_label.toLowerCase();
+    const lbl = c.campo_label.toLowerCase().trim();
 
-    // MAGIA: Si el campo es una fecha, lo convertimos a "días totales"
     if (
-      lbl.includes("fecha") &&
+      lbl.startsWith("fecha") &&
       raw &&
       typeof raw === "string" &&
       /^\d{4}-\d{2}-\d{2}/.test(raw)
@@ -368,7 +367,7 @@ export default function ModalTesterKPI({
                       </label>
                       <input
                         type={
-                          c.campo_label.toLowerCase().includes("fecha")
+                          c.campo_label.toLowerCase().trim().startsWith("fecha")
                             ? "date"
                             : c.tipo === "numero"
                               ? "number"
