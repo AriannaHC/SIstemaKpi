@@ -23,6 +23,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  LabelList,
 } from "recharts";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
@@ -307,9 +308,7 @@ export default function Analitica() {
             <SelectCustom
               value={filtroAnio}
               onChange={setFiltroAnio}
-              options={[
-                { value: "2026", label: "2026" },
-              ]}
+              options={[{ value: "2026", label: "2026" }]}
               className="w-24"
             />
           </div>
@@ -345,7 +344,8 @@ export default function Analitica() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
                       data={dataEvolucion}
-                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                      // FIX 1: Quitamos el left: -20 y le damos un margen positivo
+                      margin={{ top: 40, right: 20, left: 10, bottom: 0 }}
                     >
                       <defs>
                         <linearGradient
@@ -384,6 +384,7 @@ export default function Analitica() {
                         dy={10}
                       />
                       <YAxis
+                        width={45}
                         axisLine={false}
                         tickLine={false}
                         tick={{
@@ -391,7 +392,9 @@ export default function Analitica() {
                           fill: "#64748b",
                           fontWeight: 600,
                         }}
-                        domain={[0, 100]}
+                        domain={[0, "auto"]}
+                        // FIX: Agregamos el formateador de ticks para que ponga el "%"
+                        tickFormatter={(value) => `${value}%`}
                       />
                       <Tooltip
                         contentStyle={{
@@ -417,7 +420,21 @@ export default function Analitica() {
                         fill="url(#gradCumplimiento)"
                         dot={{ fill: "#F46F0B", strokeWidth: 2, r: 4 }}
                         activeDot={{ r: 7 }}
-                      />
+                        isAnimationActive={false}
+                      >
+                        {/* El LabelList DEBE ir por dentro (como hijo) del Area */}
+                        <LabelList
+                          dataKey="cumplimiento"
+                          position="top"
+                          offset={10}
+                          formatter={(val) => `${val}%`}
+                          style={{
+                            fontSize: "10px",
+                            fill: "#F46F0B",
+                            fontWeight: "bold",
+                          }}
+                        />
+                      </Area>
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -442,7 +459,7 @@ export default function Analitica() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={perfilData}
-                      margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+                      margin={{ top: 40, right: 10, left: -20, bottom: 5 }}
                     >
                       <CartesianGrid
                         strokeDasharray="3 3"
@@ -490,7 +507,19 @@ export default function Analitica() {
                         fill="#94a3b8"
                         radius={[6, 6, 0, 0]}
                         maxBarSize={40}
-                      />
+                        isAnimationActive={false} // <-- Evita el corte en PDF
+                      >
+                        <LabelList
+                          dataKey="promedio"
+                          position="top"
+                          formatter={(val) => `${val}%`}
+                          style={{
+                            fontSize: "10px",
+                            fill: "#64748b",
+                            fontWeight: "bold",
+                          }}
+                        />
+                      </Bar>
                       {filtroArea !== "todas" && (
                         <Bar
                           dataKey="valor"
@@ -498,7 +527,19 @@ export default function Analitica() {
                           fill="#123498"
                           radius={[6, 6, 0, 0]}
                           maxBarSize={40}
-                        />
+                          isAnimationActive={false} // <-- Evita el corte en PDF
+                        >
+                          <LabelList
+                            dataKey="valor"
+                            position="top"
+                            formatter={(val) => `${val}%`}
+                            style={{
+                              fontSize: "10px",
+                              fill: "#123498",
+                              fontWeight: "bold",
+                            }}
+                          />
+                        </Bar>
                       )}
                     </BarChart>
                   </ResponsiveContainer>
@@ -534,22 +575,38 @@ export default function Analitica() {
                           cy="50%"
                           innerRadius={60}
                           outerRadius={100}
-                          paddingAngle={4}
+                          paddingAngle={1}
                           dataKey="value"
-                          label={({ name, value }) => `${name}: ${value}%`}
-                          labelLine
+                          label={({ value }) => (value > 0 ? `${value}%` : "")}
+                          labelLine={false}
+                          isAnimationActive={false}
                         >
                           {estadoGeneralData.map((entry) => (
                             <Cell key={entry.name} fill={entry.color} />
                           ))}
                         </Pie>
+
+                        {/* FIX 3: Tooltip simplificado al hacer hover (solo muestra el porcentaje) */}
                         <Tooltip
                           contentStyle={{
                             borderRadius: "16px",
                             border: "none",
                             boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                           }}
-                          formatter={(value) => `${value}%`}
+                          formatter={(value) => [`${value}%`, ""]}
+                          separator=""
+                        />
+
+                        {/* FIX 4: Agregamos la leyenda en la parte inferior */}
+                        <Legend
+                          verticalAlign="bottom"
+                          iconType="circle"
+                          wrapperStyle={{
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            color: "#64748b",
+                            paddingTop: "20px",
+                          }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
