@@ -24,8 +24,23 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _safe_float(val):
+    if val is None or str(val).strip() == "":
+        return None
+        
+    val_str = str(val).strip()
+    
+    # MAGIA: Si el string es una fecha YYYY-MM-DD, lo convertimos a días (como Excel/JS)
+    if re.match(r"^\d{4}-\d{2}-\d{2}", val_str):
+        try:
+            # Tomamos solo la parte YYYY-MM-DD
+            fecha = datetime.strptime(val_str[:10], "%Y-%m-%d")
+            epoch = datetime(1970, 1, 1) # Misma fecha base que JavaScript
+            return (fecha - epoch).total_seconds() / 86400.0
+        except ValueError:
+            pass
+
     try:
-        return float(val) if val is not None else None
+        return float(val)
     except (ValueError, TypeError):
         return None
 

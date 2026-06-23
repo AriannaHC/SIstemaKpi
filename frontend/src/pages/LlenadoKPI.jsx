@@ -87,7 +87,17 @@ function ejecutarMotor(campos, valores) {
   let contexto = {};
   campos.forEach((c) => {
     const raw = valores[c.campo_key];
-    if (c.tipo === "texto") {
+    const lbl = c.campo_label.toLowerCase();
+
+    // MAGIA: Si el campo es una fecha, lo convertimos a "días totales"
+    if (
+      lbl.includes("fecha") &&
+      raw &&
+      typeof raw === "string" &&
+      /^\d{4}-\d{2}-\d{2}/.test(raw)
+    ) {
+      contexto[c.campo_label] = new Date(raw).getTime() / 86400000;
+    } else if (c.tipo === "texto") {
       contexto[c.campo_label] = raw ?? "";
     } else {
       contexto[c.campo_label] =
@@ -757,7 +767,13 @@ export default function LlenadoKPI() {
                                 <span className="text-red-600">*</span>
                               </label>
                               <input
-                                type={c.tipo === "numero" ? "number" : "text"}
+                                type={
+                                  c.campo_label.toLowerCase().includes("fecha")
+                                    ? "date"
+                                    : c.tipo === "numero"
+                                      ? "number"
+                                      : "text"
+                                }
                                 step="any"
                                 name={c.campo_key}
                                 value={valores[c.campo_key] || ""}
