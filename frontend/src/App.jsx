@@ -17,6 +17,7 @@ import HistorialKPIs from "./pages/HistorialKPIs";
 import Analitica from "./pages/Analitica";
 import Comparativas from "./pages/Comparativas";
 import Backups from "./pages/Backups";
+import LlenadoRegistroDiario from "./pages/LlenadoRegistroDiario";
 
 export default function App() {
   const { user, logout } = useAuth();
@@ -74,7 +75,8 @@ export default function App() {
         return <Comparativas />;
       case "backups":
         return <Backups />;
-
+      case "registro-diario":
+        return <LlenadoRegistroDiario />;
       default:
         return <LlenadoKPI />;
     }

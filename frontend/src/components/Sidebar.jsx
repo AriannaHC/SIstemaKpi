@@ -14,6 +14,7 @@ import {
   HardDriveDownload,
   BarChart3,
   ArrowLeftRight,
+  NotebookPen,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -162,6 +163,11 @@ export default function Sidebar({
                 view="mis-reportes"
                 icon={<ClipboardList className="w-5 h-5" />}
                 label="Mis Reportes"
+              />
+              <NavItem
+                view="registro-diario"
+                icon={<NotebookPen className="w-5 h-5" />}
+                label="Registro Diario"
               />
             </>
           )}

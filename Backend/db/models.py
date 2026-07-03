@@ -4,6 +4,7 @@ from sqlalchemy import Column, DateTime, Float, Integer, String, Boolean, Foreig
 from sqlalchemy.orm import relationship
 from db.database import Base
 import uuid
+from sqlalchemy import Date
 
 class Area(Base):
     __tablename__ = "areas"
@@ -132,3 +133,50 @@ class NotificationRead(Base):
     notification_id = Column(String(36), nullable=False)
     user_id = Column(String(36), nullable=False)
     read_at = Column(DateTime, default=datetime.utcnow)
+
+class RegistroDiario(Base):
+    __tablename__ = "registro_diario_actividades"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # --- DATOS BASE AUTOMÁTICOS ---
+    usuario_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    area_id = Column(Integer, ForeignKey("areas.id"), nullable=False)
+    fecha_registro = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # --- DATOS BASE DEL COLABORADOR (NOT NULL) ---
+    proceso = Column(String(200), nullable=False)
+    tipo_actividad = Column(String(150), nullable=False) # Clave para el enrutamiento
+    entregable = Column(String(300), nullable=False)
+    responsable_asigna = Column(String(150), nullable=False)
+    fecha_inicio = Column(Date, nullable=False)
+    fecha_entrega = Column(Date, nullable=False)
+    unidad_medida = Column(String(50), nullable=False) # "Horas" o "Días"
+    tiempo_estimado = Column(Float, nullable=False)
+    estado_base = Column(String(100), nullable=False) # ej. "En proceso", "Terminado"
+
+    # --- DATOS EXCLUSIVOS: CONTROL DE CALIDAD (NULLABLE) ---
+    estado_entregable_calidad = Column(String(100), nullable=True)
+    estado_animo = Column(String(100), nullable=True)
+    observaciones_calidad = Column(String(500), nullable=True)
+    tiempo_estandar = Column(Float, nullable=True)
+    tiempo_real_calidad = Column(Float, nullable=True)
+    errores_observaciones = Column(String(500), nullable=True)
+    eficiencia = Column(Float, nullable=True)
+    tasa_calidad = Column(Float, nullable=True)
+    rubrica_final = Column(String(500), nullable=True)
+
+    # --- DATOS EXCLUSIVOS: OPERACIONES (NULLABLE) ---
+    prioridad = Column(String(50), nullable=True)
+    tiempo_real_operaciones = Column(Float, nullable=True)
+    estado_tarea_operaciones = Column(String(100), nullable=True)
+    motivo_retraso = Column(String(500), nullable=True)
+    observaciones_operaciones = Column(String(500), nullable=True)
+    enlace_evidencia = Column(String(500), nullable=True)
+    validacion_lider = Column(String(100), nullable=True)
+    actitud_colaborador = Column(String(100), nullable=True)
+    dias_vencimiento = Column(Integer, nullable=True)
+    
+    # Relaciones para facilitar las consultas
+    usuario = relationship("User", foreign_keys=[usuario_id])
+    area = relationship("Area", foreign_keys=[area_id])

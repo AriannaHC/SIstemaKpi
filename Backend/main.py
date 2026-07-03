@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from api import auth, kpis, users, analytics, backup
+from api import auth, kpis, users, analytics, backup, registro_diario
 from services.notification_service import check_kpis_por_vencer
 
 app = FastAPI(title="Sistema KPIs API", version="1.0.0")
@@ -25,6 +25,7 @@ app.include_router(kpis.router)
 app.include_router(users.router)
 app.include_router(analytics.router)
 app.include_router(backup.router)
+app.include_router(registro_diario.router)
 
 # --- Configuración del Scheduler ---
 scheduler = BackgroundScheduler()

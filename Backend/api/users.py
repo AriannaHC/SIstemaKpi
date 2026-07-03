@@ -44,11 +44,11 @@ def get_mi_equipo(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Devuelve los trabajadores (rol 3) del área del Jefe de Área autenticado.
-    Solo accesible por Jefe de Área (rol 2). El Admin usa /api/users/ en su lugar.
+    Devuelve los miembros activos del área del usuario autenticado.
+    Accesible por Jefe de Área (rol 2) y Trabajador (rol 3).
     """
-    if current_user.kpi_rol_id != 2:
-        raise HTTPException(status_code=403, detail="Solo el Jefe de Área puede acceder a este endpoint")
+    if current_user.kpi_rol_id not in (2, 3):
+        raise HTTPException(status_code=403, detail="No tienes permisos para acceder a este endpoint")
 
     if not current_user.kpi_area_id:
         raise HTTPException(status_code=400, detail="No tienes un área asignada")
