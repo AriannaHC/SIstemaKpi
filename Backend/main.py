@@ -1,11 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from api import auth, kpis, users, analytics, backup, registro_diario
 from services.notification_service import check_kpis_por_vencer
 
 app = FastAPI(title="Sistema KPIs API", version="1.0.0")
+
+# Servir la carpeta uploads como archivos estáticos
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 origins = [
     "http://localhost:5173",

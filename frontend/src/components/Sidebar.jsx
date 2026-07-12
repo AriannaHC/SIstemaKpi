@@ -15,6 +15,8 @@ import {
   BarChart3,
   ArrowLeftRight,
   NotebookPen,
+  Boxes,
+  BadgeCheck,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -26,6 +28,7 @@ export default function Sidebar({
   setSidebarOpen,
 }) {
   const rol = user?.kpi_rol_id;
+  const areaId = user?.kpi_area_id;
 
   const handleNavigation = (view) => {
     setCurrentTab(view);
@@ -169,6 +172,33 @@ export default function Sidebar({
                 icon={<NotebookPen className="w-5 h-5" />}
                 label="Registro Diario"
               />
+            </>
+          )}
+
+          {/* ========================================================= */}
+          {/* PANELES POR ÁREA: Operaciones (26) y Calidad (25)         */}
+          {/* ========================================================= */}
+          {(areaId === 26 || areaId === 25) && (
+            <>
+              <div className="pt-4 pb-1">
+                <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                  Paneles de Área
+                </p>
+              </div>
+              {areaId === 26 && (
+                <NavItem
+                  view="panel-operaciones"
+                  icon={<Boxes className="w-5 h-5" />}
+                  label="Panel Operaciones"
+                />
+              )}
+              {areaId === 25 && (
+                <NavItem
+                  view="panel-calidad"
+                  icon={<BadgeCheck className="w-5 h-5" />}
+                  label="Panel Calidad"
+                />
+              )}
             </>
           )}
         </nav>

@@ -4,7 +4,7 @@ from sqlalchemy import Column, DateTime, Float, Integer, String, Boolean, Foreig
 from sqlalchemy.orm import relationship
 from db.database import Base
 import uuid
-from sqlalchemy import Date
+
 
 class Area(Base):
     __tablename__ = "areas"
@@ -143,14 +143,14 @@ class RegistroDiario(Base):
     usuario_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     area_id = Column(Integer, ForeignKey("areas.id"), nullable=False)
     fecha_registro = Column(DateTime, default=datetime.utcnow, nullable=False)
-    
     # --- DATOS BASE DEL COLABORADOR (NOT NULL) ---
     proceso = Column(String(200), nullable=False)
-    tipo_actividad = Column(String(150), nullable=False) # Clave para el enrutamiento
+    tipo_actividad = Column(String(150), nullable=False) 
+    tipo_tarea = Column(String(150), nullable=False) # <--- AÑADIDO
     entregable = Column(String(300), nullable=False)
     responsable_asigna = Column(String(150), nullable=False)
-    fecha_inicio = Column(Date, nullable=False)
-    fecha_entrega = Column(Date, nullable=False)
+    fecha_inicio = Column(DateTime, nullable=False)
+    fecha_entrega = Column(DateTime, nullable=False)
     unidad_medida = Column(String(50), nullable=False) # "Horas" o "Días"
     tiempo_estimado = Column(Float, nullable=False)
     estado_base = Column(String(100), nullable=False) # ej. "En proceso", "Terminado"
@@ -165,6 +165,7 @@ class RegistroDiario(Base):
     eficiencia = Column(Float, nullable=True)
     tasa_calidad = Column(Float, nullable=True)
     rubrica_final = Column(String(500), nullable=True)
+    auditado_calidad = Column(Boolean, default=False, nullable=False)
 
     # --- DATOS EXCLUSIVOS: OPERACIONES (NULLABLE) ---
     prioridad = Column(String(50), nullable=True)
@@ -173,9 +174,11 @@ class RegistroDiario(Base):
     motivo_retraso = Column(String(500), nullable=True)
     observaciones_operaciones = Column(String(500), nullable=True)
     enlace_evidencia = Column(String(500), nullable=True)
+    imagen_evidencia = Column(String(500), nullable=True)
     validacion_lider = Column(String(100), nullable=True)
     actitud_colaborador = Column(String(100), nullable=True)
     dias_vencimiento = Column(Integer, nullable=True)
+    auditado_operaciones = Column(Boolean, default=False, nullable=False)
     
     # Relaciones para facilitar las consultas
     usuario = relationship("User", foreign_keys=[usuario_id])
