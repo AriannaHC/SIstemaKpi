@@ -18,6 +18,9 @@ import Analitica from "./pages/Analitica";
 import Comparativas from "./pages/Comparativas";
 import Backups from "./pages/Backups";
 import LlenadoRegistroDiario from "./pages/LlenadoRegistroDiario";
+import PanelOperaciones from "./pages/PanelOperaciones";
+import PanelCalidad from "./pages/PanelCalidad";
+import LlenadoAuditoria from "./pages/LlenadoAuditoria";
 
 export default function App() {
   const { user, logout } = useAuth();
@@ -38,6 +41,15 @@ export default function App() {
   const [activePage, setActivePage] = useState(() =>
     getDefaultPage(user?.kpi_rol_id),
   );
+
+  // ── ESTADOS PARA LA AUDITORÍA ──
+  const [auditoriaRegistroId, setAuditoriaRegistroId] = useState(null);
+  const [auditoriaFeedback, setAuditoriaFeedback] = useState(null); // <--- NUEVO ESTADO
+
+  const navigateToAuditoria = (registroId) => {
+    setAuditoriaRegistroId(registroId);
+    setActivePage("llenado-auditoria");
+  };
 
   useEffect(() => {
     if (user) {
@@ -77,6 +89,35 @@ export default function App() {
         return <Backups />;
       case "registro-diario":
         return <LlenadoRegistroDiario />;
+
+      // ── PANELES ACTUALIZADOS ──
+      case "panel-operaciones":
+        return (
+          <PanelOperaciones
+            setActivePage={setActivePage}
+            navigateToAuditoria={navigateToAuditoria}
+            auditoriaFeedback={auditoriaFeedback}
+            setAuditoriaFeedback={setAuditoriaFeedback}
+          />
+        );
+      case "panel-calidad":
+        return (
+          <PanelCalidad
+            setActivePage={setActivePage}
+            navigateToAuditoria={navigateToAuditoria}
+            auditoriaFeedback={auditoriaFeedback}
+            setAuditoriaFeedback={setAuditoriaFeedback}
+          />
+        );
+      case "llenado-auditoria":
+        return (
+          <LlenadoAuditoria
+            registroId={auditoriaRegistroId}
+            setActivePage={setActivePage}
+            setAuditoriaFeedback={setAuditoriaFeedback}
+          />
+        );
+
       default:
         return <LlenadoKPI />;
     }
