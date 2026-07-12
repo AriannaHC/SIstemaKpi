@@ -1,3 +1,5 @@
+import io
+from fastapi.responses import StreamingResponse
 import subprocess
 import os
 import glob
@@ -10,6 +12,8 @@ from sqlalchemy.engine import make_url
 from core.config import settings
 from db.models import User
 from api.deps import get_current_user
+from services.ftp_service import upload_backup_bytes, list_backups as ftp_list_backups, download_backup_bytes
+
 
 BACKUP_DIR = "uploads/backups"
 os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -56,10 +60,16 @@ def generate_backup(current_user: User = Depends(get_current_user)):
             raise HTTPException(status_code=500, detail=f"Error en mysqldump: {result.stderr}")
 
         size = os.path.getsize(filepath)
+
+        # Subir a Hostinger (carpeta privada, fuera de public_html)
+        with open(filepath, "rb") as f:
+            upload_backup_bytes(f.read(), filename)
+        os.remove(filepath)  # ya no se necesita en el disco efímero de Render
+
         return {
             "success": True,
-            "filename": filename, 
-            "size_mb": round(size / 1024 / 1024, 2), 
+            "filename": filename,
+            "size_mb": round(size / 1024 / 1024, 2),
             "created_at": timestamp
         }
 
@@ -71,43 +81,19 @@ def generate_backup(current_user: User = Depends(get_current_user)):
 def list_backups(current_user: User = Depends(get_current_user)):
     if current_user.kpi_rol_id != 1:
         raise HTTPException(status_code=403, detail="Sin permisos.")
-
-    archivos = glob.glob(os.path.join(BACKUP_DIR, "*.sql"))
-    
-    backups = []
-    for ruta in archivos:
-        nombre = os.path.basename(ruta)
-        tamano = os.path.getsize(ruta)
-        # Fecha de modificación del archivo
-        fecha_mod = datetime.fromtimestamp(os.path.getmtime(ruta)).strftime("%Y-%m-%d %H:%M:%S")
-        
-        backups.append({
-            "filename": nombre,
-            "size_mb": round(tamano / 1024 / 1024, 2),
-            "created_at": fecha_mod
-        })
-    
-    # Ordenar del más reciente al más antiguo
-    backups.sort(key=lambda x: x["created_at"], reverse=True)
-    return backups
+    return ftp_list_backups()
 
 
 @router.get("/download/{filename}")
 def download_backup(filename: str, current_user: User = Depends(get_current_user)):
     if current_user.kpi_rol_id != 1:
         raise HTTPException(status_code=403, detail="Sin permisos.")
-
-    # Validar path traversal
     if "/" in filename or "\\" in filename or not filename.endswith(".sql"):
         raise HTTPException(status_code=400, detail="Nombre de archivo inválido.")
 
-    filepath = os.path.join(BACKUP_DIR, filename)
-    
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="El archivo de backup no existe.")
-
-    return FileResponse(
-        path=filepath, 
-        filename=filename, 
-        media_type="application/sql"
+    contenido = download_backup_bytes(filename)
+    return StreamingResponse(
+        io.BytesIO(contenido),
+        media_type="application/sql",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

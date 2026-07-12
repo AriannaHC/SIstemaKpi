@@ -27,6 +27,9 @@ from openpyxl.utils import get_column_letter
 
 from openpyxl.drawing.image import Image as OpenpyxlImage
 
+from services.ftp_service import upload_image_bytes, download_image_bytes
+from PIL import Image as PILImage
+
 router = APIRouter(prefix="/api/registros-diarios", tags=["Registros Diarios"])
 
 AREA_CALIDAD_ID = 25
@@ -358,23 +361,17 @@ def exportar_excel(
         # Si es Operaciones e incrustó una imagen física
         if area_panel == "operaciones" and registro.imagen_evidencia:
             filename = registro.imagen_evidencia.split("/")[-1]
-            img_path = os.path.join(UPLOADS_DIR, filename)
-            
-            if os.path.exists(img_path):
-                try:
-                    img = OpenpyxlImage(img_path)
-                    # Redimensionar la imagen para que encaje bien en la celda
-                    img.width = 100
-                    img.height = 100
-                    
-                    # La columna "Enlace Evidencia" es la número 15 (O)
-                    col_letra = get_column_letter(15) 
-                    ws.add_image(img, f"{col_letra}{row_idx}")
-                    
-                    # Sobrescribimos el enlace interno por un texto descriptivo
-                    ws.cell(row=row_idx, column=15, value="(Ver imagen adjunta)")
-                except Exception as e:
-                    print(f"Error cargando imagen en Excel: {e}")
+            try:
+                contenido_img = download_image_bytes(filename)
+                pil_img = PILImage.open(io.BytesIO(contenido_img))
+                img = OpenpyxlImage(pil_img)
+                img.width = 100
+                img.height = 100
+                col_letra = get_column_letter(15)
+                ws.add_image(img, f"{col_letra}{row_idx}")
+                ws.cell(row=row_idx, column=15, value="(Ver imagen adjunta)")
+            except Exception as e:
+                print(f"Error cargando imagen en Excel: {e}")
 
     # Ancho de columnas automático (aprox.)
     for col_idx, titulo in enumerate(columnas, start=1):
@@ -503,13 +500,9 @@ async def auditar_operaciones(
     if imagen_evidencia and imagen_evidencia.filename:
         extension = os.path.splitext(imagen_evidencia.filename)[1]
         nombre_unico = f"{uuid.uuid4().hex}{extension}"
-        ruta_destino = os.path.join(UPLOADS_DIR, nombre_unico)
-
         contenido = await imagen_evidencia.read()
-        with open(ruta_destino, "wb") as f:
-            f.write(contenido)
-
-        registro.imagen_evidencia = f"/uploads/{nombre_unico}"
+        url_publica = upload_image_bytes(contenido, nombre_unico)
+        registro.imagen_evidencia = url_publica
 
     # Cambiar la bandera a True para que pase al historial
     registro.auditado_operaciones = True
