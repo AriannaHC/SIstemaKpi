@@ -66,6 +66,9 @@ export default function RegistroDiarioPanelTable({
   const [isExporting, setIsExporting] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
+  const backendUrl =
+    import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+
   const toggleRow = (id) => {
     setExpandedId(expandedId === id ? null : id);
   };
@@ -770,7 +773,7 @@ export default function RegistroDiarioPanelTable({
                                         type="button"
                                         onClick={() =>
                                           setImagenModalUrl(
-                                            `http://localhost:8000${r.imagen_evidencia}`,
+                                            `${backendUrl}${r.imagen_evidencia}`,
                                           )
                                         }
                                         className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#F46F0B]/10 text-[#F46F0B] text-xs font-bold rounded-lg hover:bg-[#F46F0B] hover:text-white mb-2 transition-colors border border-[#F46F0B]/20 w-max"
