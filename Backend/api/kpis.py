@@ -13,6 +13,8 @@ from schemas.kpi_schema import KpiResponse, RegistroCreate, KpiProgramar
 from api.deps import get_current_user
 from services.notification_service import crear_notificacion
 
+from services.cache_service import get_cache, set_cache, invalidate_cache_prefix
+
 router = APIRouter(prefix="/api/kpis", tags=["Gestión de KPIs"])
 
 UPLOAD_FOLDER = "uploads"
@@ -143,6 +145,10 @@ def get_areas_stats(
     """
     es_admin = current_user.kpi_rol_id == 1
     _cerrar_kpis_vencidos_interno(db, system_user_id=current_user.id)
+    cache_key = f"kpis-areas-stats-{current_user.kpi_area_id}-{current_user.kpi_rol_id}"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
     now = datetime.now()
 
     # 1. Traer áreas permitidas
@@ -177,6 +183,7 @@ def get_areas_stats(
             "activos": prog_area_count.get(a.id, 0),
             "max": 3
         })
+    set_cache(cache_key, res)
     return res
 
 
@@ -297,6 +304,7 @@ def save_configuracion(
 
     try:
         db.commit()
+        invalidate_cache_prefix("kpis-") # <-- AGREGAR
         return {"success": True, "message": "Configuración guardada exitosamente"}
     except Exception as e:
         db.rollback()
@@ -503,6 +511,8 @@ def programar_kpi_semanal(
     )
     db.add(nuevo_programado)
     db.commit()
+    invalidate_cache_prefix("kpis-") # <-- AGREGAR
+
 
     try:
         crear_notificacion(
@@ -620,6 +630,7 @@ def registrar_llenado(
         programado.registro_kpi_id = nuevo_registro.id
 
     db.commit()
+    invalidate_cache_prefix("kpis-") # <-- AGREGAR
     return {
         "message": "Valor registrado con éxito",
         "registro_id": nuevo_registro.id,
@@ -682,6 +693,7 @@ def delete_area(
 
         db.delete(area)
         db.commit()
+        invalidate_cache_prefix("kpis-") # <-- AGREGAR
         return {"success": True, "message": "Área y todos sus KPIs eliminados correctamente."}
     except Exception as e:
         db.rollback()
@@ -767,6 +779,7 @@ def asignar_responsable_kpi(
 
     kpi.responsable_id = responsable_id
     db.commit()
+    invalidate_cache_prefix("kpis-") # <-- AGREGAR
     return {"success": True, "message": f"Responsable asignado correctamente al KPI '{kpi.nombre}'."}
 
 @router.post("/upload")
@@ -1047,6 +1060,7 @@ def _cerrar_kpis_vencidos_interno(db: Session, system_user_id: str | None = None
 
     if cerrados_count:
         db.commit()
+        invalidate_cache_prefix("kpis-") # <-- AGREGAR (Para que limpie el caché si el sistema cerró algo por su cuenta)
 
     return cerrados_count
 
@@ -1084,6 +1098,14 @@ def obtener_alertas_dashboard(
         raise HTTPException(status_code=403, detail="Sin permisos para ver el panel de alertas.")
 
     _cerrar_kpis_vencidos_interno(db, system_user_id=current_user.id)
+
+    es_admin = current_user.kpi_rol_id == 1
+    filtro_area = current_user.kpi_area_id if not es_admin else None
+
+    cache_key = f"kpis-alertas-{filtro_area}"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
 
     now = datetime.now()
     es_admin = current_user.kpi_rol_id == 1
@@ -1179,6 +1201,8 @@ def obtener_alertas_dashboard(
         "en_riesgo": en_riesgo,
         "participacion": participacion
     }
+    set_cache(cache_key, resultado)
+    return resultado
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1190,6 +1214,11 @@ def obtener_mis_reportes(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    cache_key = f"kpis-mis-reportes-{current_user.id}"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
+
     registros = (
         db.query(RegistroKpi, Kpi)
         .join(Kpi, RegistroKpi.kpi_id == Kpi.id)
@@ -1226,6 +1255,11 @@ def obtener_historial_general(
 ):
     if current_user.kpi_rol_id != 1:
         raise HTTPException(status_code=403, detail="Solo el administrador puede ver el historial general.")
+
+    cache_key = "kpis-historial"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
 
     registros = (
         db.query(RegistroKpi, Kpi, User, Area)

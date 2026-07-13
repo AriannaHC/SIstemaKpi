@@ -5,6 +5,7 @@ from db.database import get_db
 from db.models import User, Area, KpiRol
 from schemas.user_schema import UserResponse, UserUpdate
 from api.deps import get_current_user
+from services.cache_service import get_cache, set_cache, invalidate_cache_prefix
 
 router = APIRouter(prefix="/api/users", tags=["Gestión de Usuarios"])
 
@@ -34,8 +35,18 @@ def get_users(
     if current_user.kpi_rol_id != 1:
         raise HTTPException(status_code=403, detail="No tienes permisos para ver usuarios")
 
+    # 1. Revisar caché
+    cache_key = "users-lista"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
+
     users = db.query(User).filter(User.status == True).order_by(User.name).all()
-    return [_serialize_user(u) for u in users]
+    resultado = [_serialize_user(u) for u in users]
+    
+    # 2. Guardar en caché
+    set_cache(cache_key, resultado)
+    return resultado
 
 
 @router.get("/mi-equipo", response_model=List[UserResponse])
@@ -53,6 +64,14 @@ def get_mi_equipo(
     if not current_user.kpi_area_id:
         raise HTTPException(status_code=400, detail="No tienes un área asignada")
 
+    # 1. Revisar caché
+    cache_key = f"users-mi-equipo-{current_user.kpi_area_id}"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
+
+    # Devuelve TODOS los miembros activos del área sin excepción,
+
     # Devuelve TODOS los miembros activos del área sin excepción,
     # incluido el propio jefe de área. Sin filtro por rol.
     users = (
@@ -64,7 +83,11 @@ def get_mi_equipo(
         .order_by(User.name)
         .all()
     )
-    return [_serialize_user(u) for u in users]
+    resultado = [_serialize_user(u) for u in users]
+    
+    # 2. Guardar en caché
+    set_cache(cache_key, resultado)
+    return resultado
 
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -96,6 +119,7 @@ def update_user(
 
     db.commit()
     db.refresh(user)
+    invalidate_cache_prefix("users-")
     return _serialize_user(user)
 
 

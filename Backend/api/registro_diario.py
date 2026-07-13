@@ -30,6 +30,8 @@ from openpyxl.drawing.image import Image as OpenpyxlImage
 from services.ftp_service import upload_image_bytes, download_image_bytes
 from PIL import Image as PILImage
 
+from services.cache_service import get_cache, set_cache, invalidate_cache_prefix
+
 router = APIRouter(prefix="/api/registros-diarios", tags=["Registros Diarios"])
 
 AREA_CALIDAD_ID = 25
@@ -111,6 +113,8 @@ def crear_registro(
     db.add(nuevo_registro)
     db.commit()
     db.refresh(nuevo_registro)
+
+    invalidate_cache_prefix("registros-diarios-")
     
     return nuevo_registro
 
@@ -134,6 +138,10 @@ def panel_operaciones(
     if current_user.kpi_area_id != AREA_OPERACIONES_ID:
         raise HTTPException(status_code=403, detail="No tienes acceso a este panel.")
 
+    cached_data = get_cache("registros-diarios-panel-operaciones")
+    if cached_data:
+        return cached_data
+
     registros = (
         db.query(*_PANEL_COLUMNS)
         .join(User, RegistroDiario.usuario_id == User.id)
@@ -141,6 +149,8 @@ def panel_operaciones(
         .order_by(RegistroDiario.fecha_registro.desc())
         .all()
     )
+
+    set_cache("registros-diarios-panel-operaciones", registros)
     return registros
 
 
@@ -158,6 +168,10 @@ def panel_calidad(
     if current_user.kpi_area_id != AREA_CALIDAD_ID:
         raise HTTPException(status_code=403, detail="No tienes acceso a este panel.")
 
+    cached_data = get_cache("registros-diarios-panel-calidad")
+    if cached_data:
+        return cached_data
+
     registros = (
         db.query(*_PANEL_COLUMNS)
         .join(User, RegistroDiario.usuario_id == User.id)
@@ -165,6 +179,7 @@ def panel_calidad(
         .order_by(RegistroDiario.fecha_registro.desc())
         .all()
     )
+    set_cache("registros-diarios-panel-calidad", registros)
     return registros
 
 
@@ -446,6 +461,8 @@ def auditar_calidad(
 
     db.commit()
     db.refresh(registro)
+
+    invalidate_cache_prefix("registros-diarios-")
     
     # Inyectamos los nombres para el response model
     registro.trabajador_nombre = registro.usuario.name if registro.usuario else "Usuario Desconocido"
@@ -509,6 +526,8 @@ async def auditar_operaciones(
 
     db.commit()
     db.refresh(registro)
+
+    invalidate_cache_prefix("registros-diarios-")
     
     # Inyectamos los nombres para el response model
     registro.trabajador_nombre = registro.usuario.name if registro.usuario else "Usuario Desconocido"

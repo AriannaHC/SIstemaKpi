@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, joinedload          # ← añade joinedload
+from sqlalchemy.orm import Session, joinedload
 from db.database import get_db
 from db.models import User
 from schemas.auth_schema import LoginRequest, LoginResponse, UserInfoResponse, TokenData
-from core.security import verify_password, create_access_token
+
+# Añadimos needs_rehash y get_password_hash a la importación
+from core.security import verify_password, create_access_token, needs_rehash, get_password_hash
 
 router = APIRouter(prefix="/api/auth", tags=["Autenticación"])
 
@@ -21,12 +23,21 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         .first()
     )
 
-    # 2. Validar
+    # 2. Validar credenciales
     if not user or not verify_password(request.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas",
         )
+        
+    # --- OPTIMIZACIÓN RENDER: Re-hash silencioso ---
+    # Si la contraseña validó bien pero es antigua (Laravel) o muy pesada (>8 rounds)
+    if needs_rehash(user.password):
+        user.password = get_password_hash(request.password)
+        db.commit()
+    # -----------------------------------------------
+
+    # Validaciones adicionales
     if not user.status:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

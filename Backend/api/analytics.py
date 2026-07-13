@@ -10,6 +10,8 @@ from db.models import User, Kpi, KpiProgramado, RegistroKpi, Area
 from api.deps import get_current_user
 from datetime import timedelta
 
+from services.cache_service import get_cache, set_cache
+
 router = APIRouter(prefix="/api/analytics", tags=["Analítica y Dashboards"])
 
 def _build_month_range(mes: Optional[int], anio: Optional[int]):
@@ -36,6 +38,11 @@ def get_tasa_participacion(
         area_id = current_user.kpi_area_id
 
     inicio, fin = _build_month_range(mes, anio)
+
+    cache_key = f"kpis-participacion-{area_id}-{mes}-{anio}"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
 
     # Base query: Traer Usuarios (solo rol 2 y 3) y sus áreas
     query_users = db.query(User, Area).outerjoin(Area, User.kpi_area_id == Area.id)\
@@ -84,6 +91,7 @@ def get_tasa_participacion(
 
     # Ordenar de mayor a menor score por defecto
     resultados = sorted(resultados, key=lambda x: x['score'], reverse=True)
+    set_cache(cache_key, resultados)
     return resultados
 
 
@@ -102,6 +110,11 @@ def get_evolucion_historica(
         area_id = current_user.kpi_area_id
 
     inicio, fin = _build_month_range(mes, anio)
+
+    cache_key = f"kpis-evolucion-{area_id}-{mes}-{anio}"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
 
     # Calculamos el promedio de 'cumplimiento' agrupado por 'semana'
     query = db.query(
@@ -129,7 +142,7 @@ def get_evolucion_historica(
         }
         for r in registros
     ]
-
+    set_cache(cache_key, resultado)
     return resultado
 
 @router.get("/comparar-areas")
@@ -315,6 +328,11 @@ def get_perfil_rendimiento(
     """Devuelve los promedios de las 4 métricas clave a nivel general y por área."""
     inicio, fin = _build_month_range(mes, anio)
 
+    cache_key = f"kpis-perfil-{area_id}-{mes}-{anio}"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
+
     # 1. Promedio General de toda la empresa
     q_gral = db.query(
         func.avg(RegistroKpi.cumplimiento).label('cump'),
@@ -371,3 +389,5 @@ def get_perfil_rendimiento(
         "promedioGral": promedios_gral,
         "areaValor": promedios_area
     }
+    set_cache(cache_key, resultado_final)
+    return resultado_final
