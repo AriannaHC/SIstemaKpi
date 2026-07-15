@@ -1,26 +1,34 @@
 // src/App.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy, useCallback } from "react";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
-import LlenadoKPI from "./pages/LlenadoKPI";
-import ConfiguracionKPI from "./pages/ConfiguracionKPI";
-import Dashboard from "./pages/Dashboard";
-import Usuarios from "./pages/Usuarios";
-import EscogerKPI from "./pages/EscogerKPI";
-import MiEquipo from "./pages/MiEquipo";
-import Reportes from "./pages/Reportes";
-import MisReportes from "./pages/MisReportes";
-import HistorialKPIs from "./pages/HistorialKPIs";
+import { kpiService } from "./services/kpiService";
+import { userService } from "./services/userService";
 
-// NUEVAS PÁGINAS
-import Analitica from "./pages/Analitica";
-import Comparativas from "./pages/Comparativas";
-import Backups from "./pages/Backups";
-import LlenadoRegistroDiario from "./pages/LlenadoRegistroDiario";
-import PanelOperaciones from "./pages/PanelOperaciones";
-import PanelCalidad from "./pages/PanelCalidad";
-import LlenadoAuditoria from "./pages/LlenadoAuditoria";
+// Lazy imports — solo se cargan cuando se navega a la página
+const LlenadoKPI = lazy(() => import("./pages/LlenadoKPI"));
+const ConfiguracionKPI = lazy(() => import("./pages/ConfiguracionKPI"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Usuarios = lazy(() => import("./pages/Usuarios"));
+const EscogerKPI = lazy(() => import("./pages/EscogerKPI"));
+const MiEquipo = lazy(() => import("./pages/MiEquipo"));
+const Reportes = lazy(() => import("./pages/Reportes"));
+const MisReportes = lazy(() => import("./pages/MisReportes"));
+const HistorialKPIs = lazy(() => import("./pages/HistorialKPIs"));
+const Analitica = lazy(() => import("./pages/Analitica"));
+const Comparativas = lazy(() => import("./pages/Comparativas"));
+const Backups = lazy(() => import("./pages/Backups"));
+const LlenadoRegistroDiario = lazy(() => import("./pages/LlenadoRegistroDiario"));
+const PanelOperaciones = lazy(() => import("./pages/PanelOperaciones"));
+const PanelCalidad = lazy(() => import("./pages/PanelCalidad"));
+const LlenadoAuditoria = lazy(() => import("./pages/LlenadoAuditoria"));
+
+const PageSpinner = (
+  <div className="flex items-center justify-center h-64">
+    <div className="w-8 h-8 border-4 border-[#123498] border-t-[#F46F0B] rounded-full animate-spin" />
+  </div>
+);
 
 export default function App() {
   const { user, logout } = useAuth();
@@ -44,11 +52,21 @@ export default function App() {
 
   // ── ESTADOS PARA LA AUDITORÍA ──
   const [auditoriaRegistroId, setAuditoriaRegistroId] = useState(null);
-  const [auditoriaFeedback, setAuditoriaFeedback] = useState(null); // <--- NUEVO ESTADO
+  const [auditoriaFeedback, setAuditoriaFeedback] = useState(null);
 
   const navigateToAuditoria = (registroId) => {
     setAuditoriaRegistroId(registroId);
     setActivePage("llenado-auditoria");
+  };
+
+  // ── PREFETCH: carga datos en background al hacer hover en el sidebar ──
+  const prefetchMap = {
+    dashboard: useCallback(() => { kpiService.getDashboardData(); }, []),
+    reports: useCallback(() => { kpiService.getAlertas(); }, []),
+    historial: useCallback(() => { kpiService.getHistorial(); }, []),
+    users: useCallback(() => { userService.getUsers(); kpiService.getAreasStats(); }, []),
+    analitica: useCallback(() => { kpiService.getAreasStats(); }, []),
+    comparativas: useCallback(() => { kpiService.getAreasStats(); userService.getUsers(); }, []),
   };
 
   useEffect(() => {
@@ -60,39 +78,50 @@ export default function App() {
   if (!user) return <Login />;
 
   const renderPage = () => {
+    let content;
+
     switch (activePage) {
       case "dashboard":
-        return <Dashboard setActivePage={setActivePage} />;
+        content = <Dashboard setActivePage={setActivePage} />;
+        break;
       case "daily":
-        return <LlenadoKPI />;
+        content = <LlenadoKPI />;
+        break;
       case "settings":
-        return <ConfiguracionKPI />;
+        content = <ConfiguracionKPI />;
+        break;
       case "users":
-        return <Usuarios />;
+        content = <Usuarios />;
+        break;
       case "escoger-kpi":
-        return <EscogerKPI />;
+        content = <EscogerKPI />;
+        break;
       case "reports":
-        return <Reportes />;
+        content = <Reportes />;
+        break;
       case "mis-reportes":
-        return <MisReportes />;
+        content = <MisReportes />;
+        break;
       case "historial":
-        return <HistorialKPIs />;
+        content = <HistorialKPIs />;
+        break;
       case "mi-equipo":
-        return <MiEquipo />;
-
-      // RUTAS NUEVAS
+        content = <MiEquipo />;
+        break;
       case "analitica":
-        return <Analitica />;
+        content = <Analitica />;
+        break;
       case "comparativas":
-        return <Comparativas />;
+        content = <Comparativas />;
+        break;
       case "backups":
-        return <Backups />;
+        content = <Backups />;
+        break;
       case "registro-diario":
-        return <LlenadoRegistroDiario />;
-
-      // ── PANELES ACTUALIZADOS ──
+        content = <LlenadoRegistroDiario />;
+        break;
       case "panel-operaciones":
-        return (
+        content = (
           <PanelOperaciones
             setActivePage={setActivePage}
             navigateToAuditoria={navigateToAuditoria}
@@ -100,8 +129,9 @@ export default function App() {
             setAuditoriaFeedback={setAuditoriaFeedback}
           />
         );
+        break;
       case "panel-calidad":
-        return (
+        content = (
           <PanelCalidad
             setActivePage={setActivePage}
             navigateToAuditoria={navigateToAuditoria}
@@ -109,18 +139,22 @@ export default function App() {
             setAuditoriaFeedback={setAuditoriaFeedback}
           />
         );
+        break;
       case "llenado-auditoria":
-        return (
+        content = (
           <LlenadoAuditoria
             registroId={auditoriaRegistroId}
             setActivePage={setActivePage}
             setAuditoriaFeedback={setAuditoriaFeedback}
           />
         );
-
+        break;
       default:
-        return <LlenadoKPI />;
+        content = <LlenadoKPI />;
+        break;
     }
+
+    return <Suspense fallback={PageSpinner}>{content}</Suspense>;
   };
 
   return (
@@ -129,6 +163,7 @@ export default function App() {
       setActivePage={setActivePage}
       onLogout={logout}
       user={user}
+      onPrefetch={prefetchMap}
     >
       {renderPage()}
     </Layout>

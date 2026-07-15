@@ -157,22 +157,34 @@ export default function Usuarios() {
   };
 
   const handleRoleChange = async (userId, nuevoRolId, areaIdActual) => {
+    const nuevaArea = nuevoRolId === null ? null : (nuevoRolId === 1 ? null : areaIdActual);
+
+    setUsuarios((prev) =>
+      prev.map((u) =>
+        u.id === userId ? { ...u, kpi_rol_id: nuevoRolId, kpi_area_id: nuevaArea } : u,
+      ),
+    );
+
     try {
-      await userService.updateUser(userId, nuevoRolId || null, areaIdActual);
-      alert("✅ Rol actualizado con éxito");
+      await userService.updateUser(userId, nuevoRolId, nuevaArea);
+    } catch {
+      alert("❌ Error al actualizar rol, recargando datos...");
       cargarDatos();
-    } catch (e) {
-      alert("❌ Error al actualizar rol");
     }
   };
 
   const handleAreaChange = async (userId, rolIdActual, nuevaAreaId) => {
+    setUsuarios((prev) =>
+      prev.map((u) =>
+        u.id === userId ? { ...u, kpi_area_id: nuevaAreaId } : u,
+      ),
+    );
+
     try {
-      await userService.updateUser(userId, rolIdActual, nuevaAreaId || null);
-      alert("✅ Área asignada con éxito");
+      await userService.updateUser(userId, rolIdActual, nuevaAreaId);
+    } catch {
+      alert("❌ Error al actualizar área, recargando datos...");
       cargarDatos();
-    } catch (e) {
-      alert("❌ Error al actualizar área");
     }
   };
 

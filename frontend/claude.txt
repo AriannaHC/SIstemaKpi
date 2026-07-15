@@ -1,0 +1,104 @@
+Exacto, ahí está el segundo llamado a `users/` que ves en el log: cada vez que cambias un rol o área, `handleRoleChange`/`handleAreaChange` llaman a `cargarDatos()` completo, que vuelve a pedir **todo** el listado de usuarios al backend — con toda la latencia Oregon↔Brasil de nuevo, solo para reflejar un cambio que tú ya conoces (el que acabas de hacer).
+
+La solución aquí es **actualización optimista**: en vez de recargar todo desde el servidor, actualizas el estado local de React directamente con el nuevo valor, y el `PUT` va "en segundo plano" solo para persistir el cambio en la BD — el usuario ve el cambio al instante, sin esperar el viaje de ida y vuelta.
+
+## Cambios en `Usuarios.jsx`
+
+Reemplaza `handleRoleChange` y `handleAreaChange`:
+
+```jsx
+const handleRoleChange = async (userId, nuevoRolId, areaIdActual) => {
+  // Si quitas el rol, también se quita el área (misma regla que el backend)
+  const nuevaArea = nuevoRolId === null ? null : (nuevoRolId === 1 ? null : areaIdActual);
+
+  // 1. Actualización optimista: refleja el cambio YA en pantalla
+  setUsuarios((prev) =>
+    prev.map((u) =>
+      u.id === userId ? { ...u, kpi_rol_id: nuevoRolId, kpi_area_id: nuevaArea } : u,
+    ),
+  );
+
+  // 2. Persiste en segundo plano, sin recargar todo
+  try {
+    await userService.updateUser(userId, nuevoRolId, nuevaArea);
+  } catch (e) {
+    alert("❌ Error al actualizar rol, recargando datos...");
+    cargarDatos(); // Solo si falla, ahí sí recargamos para corregir la vista
+  }
+};
+
+const handleAreaChange = async (userId, rolIdActual, nuevaAreaId) => {
+  setUsuarios((prev) =>
+    prev.map((u) =>
+      u.id === userId ? { ...u, kpi_area_id: nuevaAreaId } : u,
+    ),
+  );
+
+  try {
+    await userService.updateUser(userId, rolIdActual, nuevaAreaId);
+  } catch (e) {
+    alert("❌ Error al actualizar área, recargando datos...");
+    cargarDatos();
+  }
+};
+```
+
+Nota que quité los `alert("✅ ...")` de éxito — con la actualización optimista, el cambio ya es visible instantáneamente en la tabla, así que el alert de confirmación se vuelve redundante y hasta molesto (interrumpe con un popup bloqueante). Si quieres mantener feedback visual, mejor usa un `Toast` no bloqueante (como ya tienes en otros componentes) en vez de `alert`.
+
+## Cambios en `userService.js` (cache para la carga inicial)
+
+```javascript
+// frontend/src/services/userService.js
+import apiClient from "./apiClient";
+
+const CACHE_DURATION = 1000 * 60 * 5;
+let usersCache = { data: null, timestamp: 0 };
+
+export const userService = {
+  getUsers: async (forceRefresh = false) => {
+    if (
+      !forceRefresh &&
+      usersCache.data &&
+      Date.now() - usersCache.timestamp < CACHE_DURATION
+    ) {
+      return usersCache.data;
+    }
+    const response = await apiClient.get("/users/");
+    usersCache.data = response.data;
+    usersCache.timestamp = Date.now();
+    return response.data;
+  },
+
+  getMiEquipo: async () => {
+    const response = await apiClient.get("/users/mi-equipo");
+    return response.data;
+  },
+
+  getRoles: async () => {
+    const response = await apiClient.get("/users/roles");
+    return response.data;
+  },
+
+  updateUser: async (userId, kpi_rol_id, kpi_area_id) => {
+    const payload = {
+      kpi_rol_id: kpi_rol_id ?? null,
+      kpi_area_id: kpi_area_id ?? null,
+    };
+    const response = await apiClient.put(`/users/${userId}`, payload);
+    // Invalidamos el cache local: el próximo getUsers() traerá datos frescos
+    usersCache.data = null;
+    return response.data;
+  },
+};
+```
+
+Con esto:
+- **Primera carga** de la página: sí pega al backend (inevitable, es la primera vez).
+- **Cambios de rol/área**: instantáneos en pantalla, el `PUT` va en segundo plano sin bloquear ni recargar todo.
+- **Si vuelves a entrar a Usuarios** dentro de los 5 minutos: usa cache local en vez de volver a pedir todo (a menos que hiciste un cambio, que invalida el cache automáticamente).
+
+## Aplica el mismo patrón en el resto de páginas lentas
+Vi en tu log que `stats` se pide 2 veces y `historial` también tarda — el mismo patrón de **cache con invalidación selectiva + actualización optimista en updates** aplica ahí. Si me compartes el service y componente de `stats`/`historial` (o los dashboards que las usan), te dejo el mismo ajuste ya armado.
+
+--- esto me indico mi lider: realiza esos cambios en la página de usuarios.jsx y userservice.js y pruebas la gestion de usuarios como administrador en el sistema de kpis
+usa claude para esto y si tienes dudas avisame, te paso el prompt que le pase a claude

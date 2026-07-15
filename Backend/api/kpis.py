@@ -1,6 +1,7 @@
 import os, re
 import openpyxl
 import pandas as pd
+import time as _time
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import text
@@ -1015,7 +1016,14 @@ def _process_smart_excel(filepath: str, db: Session) -> int:
 #  Ahora: joinedload(KpiProgramado.kpi) trae toda la relación en 1 solo query.
 # ══════════════════════════════════════════════════════════════════════════════
 
+_last_cerrar_kpis_ts = {"value": 0}
+
 def _cerrar_kpis_vencidos_interno(db: Session, system_user_id: str | None = None) -> int:
+    now_ts = _time.time()
+    if now_ts - _last_cerrar_kpis_ts["value"] < 300:
+        return 0
+    _last_cerrar_kpis_ts["value"] = now_ts
+
     now = datetime.now()
 
     # joinedload precarga kpi (y su responsable_id) en el mismo query inicial
@@ -1196,7 +1204,7 @@ def obtener_alertas_dashboard(
             "porcentaje": round(porcentaje, 1)
         })
 
-    return {
+    resultado = {
         "pendientes": pendientes,
         "en_riesgo": en_riesgo,
         "participacion": participacion
@@ -1227,7 +1235,7 @@ def obtener_mis_reportes(
         .all()
     )
 
-    return [
+    resultado = [
         {
             "id": r.id,
             "kpi_nombre": k.nombre,
@@ -1242,6 +1250,8 @@ def obtener_mis_reportes(
         }
         for r, k in registros
     ]
+    set_cache(cache_key, resultado)
+    return resultado
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1270,7 +1280,7 @@ def obtener_historial_general(
         .all()
     )
 
-    return [
+    resultado = [
         {
             "id": r.id,
             "periodo_inicio": r.periodo_inicio,
@@ -1293,3 +1303,5 @@ def obtener_historial_general(
         }
         for r, k, u, a in registros
     ]
+    set_cache(cache_key, resultado)
+    return resultado
