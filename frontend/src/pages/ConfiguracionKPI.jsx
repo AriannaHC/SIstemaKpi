@@ -677,9 +677,9 @@ export default function ConfiguracionKPI() {
                 </form>
 
                 {/* BARRA INFERIOR HORIZONTAL: INSIGHTS & GUARDAR */}
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row md:flex-wrap items-center justify-between gap-6">
                   {/* Left Side: Stats */}
-                  <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                  <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto md:flex-1">
                     <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex-1 md:w-48 flex flex-col justify-center">
                       <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">
                         Variables Calculadas
@@ -718,8 +718,8 @@ export default function ConfiguracionKPI() {
                   </div>
 
                   {/* Right Side: Button */}
-                  <div className="w-full md:w-1/2 lg:w-5/12 min-w-[350px]">
-                    <div className="flex gap-[5px]">
+                  <div className="w-full md:flex-1 md:min-w-[260px] lg:max-w-sm">
+                    <div className="flex flex-col sm:flex-row gap-[5px]">
                       <button
                         type="button"
                         onClick={() => setIsTesterOpen(true)}
