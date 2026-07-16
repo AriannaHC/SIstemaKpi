@@ -230,14 +230,14 @@ export default function Usuarios() {
       <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
         {/* Filtros */}
         <div className="p-6 md:p-8 border-b border-slate-50 bg-slate-50/30">
-          <div className="flex flex-col sm:flex-row gap-4 lg:gap-6 justify-between items-center">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 lg:gap-6 justify-between items-start sm:items-center">
             <h2 className="text-xl font-bold text-azul-profundo flex items-center gap-2 shrink-0 self-start sm:self-center">
               Directorio de Personal
             </h2>
 
-            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+            <div className="flex flex-wrap gap-4 w-full sm:w-auto sm:justify-end">
               {/* Búsqueda */}
-              <div className="flex gap-2 w-full sm:w-80">
+              <div className="flex gap-2 w-full sm:w-auto sm:flex-1 sm:min-w-[260px] sm:max-w-[320px]">
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
@@ -258,7 +258,7 @@ export default function Usuarios() {
               </div>
 
               {/* Filtro Área */}
-              <div className="w-full sm:w-64">
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[200px] sm:max-w-[256px]">
                 <SelectCustom
                   value={filterArea}
                   onChange={handleAreaFilterChange}
@@ -275,7 +275,7 @@ export default function Usuarios() {
               </div>
 
               {/* Filtro Rol */}
-              <div className="w-full sm:w-48">
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[170px] sm:max-w-[192px]">
                 <SelectCustom
                   value={filterRol}
                   onChange={(v) => { setFilterRol(v); setPage(1); }}

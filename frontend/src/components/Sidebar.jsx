@@ -60,7 +60,7 @@ export default function Sidebar({
     <aside
       className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 shadow-sm transition-transform duration-300 ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      } lg:translate-x-0`}
+      }`}
     >
       <div className="flex flex-col h-full">
         {/* Logo / Título */}
