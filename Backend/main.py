@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -34,6 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
     max_age=600,
 )
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 app.include_router(auth.router)
 app.include_router(kpis.router)

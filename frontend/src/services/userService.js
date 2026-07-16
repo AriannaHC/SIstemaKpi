@@ -1,10 +1,21 @@
 // frontend/src/services/userService.js
 import apiClient from "./apiClient";
 
+const CACHE_DURATION = 1000 * 60 * 5;
+let usersCache = { data: null, timestamp: 0 };
+
 export const userService = {
-  // Lista todos los usuarios activos (solo admin)
-  getUsers: async () => {
+  getUsers: async (forceRefresh = false) => {
+    if (
+      !forceRefresh &&
+      usersCache.data &&
+      Date.now() - usersCache.timestamp < CACHE_DURATION
+    ) {
+      return usersCache.data;
+    }
     const response = await apiClient.get("/users/");
+    usersCache.data = response.data;
+    usersCache.timestamp = Date.now();
     return response.data;
   },
 
@@ -20,13 +31,13 @@ export const userService = {
     return response.data;
   },
 
-  // Actualiza rol y área de un usuario
   updateUser: async (userId, kpi_rol_id, kpi_area_id) => {
     const payload = {
       kpi_rol_id: kpi_rol_id ?? null,
       kpi_area_id: kpi_area_id ?? null,
     };
     const response = await apiClient.put(`/users/${userId}`, payload);
+    usersCache.data = null;
     return response.data;
   },
 };

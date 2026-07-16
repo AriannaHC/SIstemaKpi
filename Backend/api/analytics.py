@@ -1,7 +1,7 @@
 # Backend/api/analytics.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, case
 from typing import List, Optional
 from calendar import monthrange
 
@@ -44,46 +44,44 @@ def get_tasa_participacion(
     if cached_data:
         return cached_data
 
-    # Base query: Traer Usuarios (solo rol 2 y 3) y sus áreas
-    query_users = db.query(User, Area).outerjoin(Area, User.kpi_area_id == Area.id)\
-                    .filter(User.kpi_rol_id.in_([2, 3]), User.status == 'active')
+    # Query optimizado: 1 solo query con GROUP BY (antes eran ~101 queries)
+    query = (
+        db.query(
+            User.id,
+            User.name,
+            Area.nombre.label("area_nombre"),
+            func.count(KpiProgramado.id).label("total"),
+            func.sum(case((KpiProgramado.completado == True, 1), else_=0)).label("completados")
+        )
+        .outerjoin(Area, User.kpi_area_id == Area.id)
+        .join(Kpi, Kpi.responsable_id == User.id)
+        .join(KpiProgramado, KpiProgramado.kpi_id == Kpi.id)
+        .filter(User.kpi_rol_id.in_([2, 3]), User.status == 'active')
+        .group_by(User.id, User.name, Area.nombre)
+    )
 
     if area_id:
-        query_users = query_users.filter(User.kpi_area_id == area_id)
+        query = query.filter(User.kpi_area_id == area_id)
 
-    usuarios = query_users.all()
+    if inicio and fin:
+        query = query.filter(
+            KpiProgramado.fecha_inicio >= inicio,
+            KpiProgramado.fecha_fin <= fin
+        )
+
+    rows = query.all()
 
     resultados = []
-    
-    for u, a in usuarios:
-        q_total = db.query(KpiProgramado).join(Kpi)\
-                    .filter(Kpi.responsable_id == u.id)
-        q_comp = db.query(KpiProgramado).join(Kpi)\
-                   .filter(Kpi.responsable_id == u.id, KpiProgramado.completado == True)
-
-        if inicio and fin:
-            q_total = q_total.filter(
-                KpiProgramado.fecha_inicio >= inicio,
-                KpiProgramado.fecha_fin <= fin
-            )
-            q_comp = q_comp.filter(
-                KpiProgramado.fecha_inicio >= inicio,
-                KpiProgramado.fecha_fin <= fin
-            )
-
-        total_programados = q_total.count()
-        
-        if total_programados == 0:
+    for row in rows:
+        total = row.total
+        completados = row.completados or 0
+        if total == 0:
             continue
-
-        completados = q_comp.count()
-
-        porcentaje = round((completados / total_programados) * 100, 1)
-
+        porcentaje = round((completados / total) * 100, 1)
         resultados.append({
-            "id": u.id,
-            "nombre": u.name,
-            "area": a.nombre if a else "Sin Área",
+            "id": row.id,
+            "nombre": row.name,
+            "area": row.area_nombre or "Sin Área",
             "score": porcentaje,
             "alerta_cero": porcentaje == 0,
             "alerta_alta": porcentaje >= 90
@@ -385,9 +383,9 @@ def get_perfil_rendimiento(
                 safe_pct(stats_area.rend)
             ]
 
-    return {
+    resultado = {
         "promedioGral": promedios_gral,
         "areaValor": promedios_area
     }
-    set_cache(cache_key, resultado_final)
-    return resultado_final
+    set_cache(cache_key, resultado)
+    return resultado

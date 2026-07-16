@@ -1,6 +1,6 @@
 from cachetools import TTLCache
 
-cache_general = TTLCache(maxsize=200, ttl=60)
+cache_general = TTLCache(maxsize=500, ttl=300)
 
 
 def get_cache(key: str):

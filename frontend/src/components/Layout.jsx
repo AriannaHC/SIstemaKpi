@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
-export default function Layout({ children, activePage, setActivePage, onLogout, user }) {
+export default function Layout({ children, activePage, setActivePage, onLogout, user, onPrefetch }) {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
 
   useEffect(() => {
@@ -32,6 +32,7 @@ export default function Layout({ children, activePage, setActivePage, onLogout, 
         user={user}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
+        onPrefetch={onPrefetch}
       />
 
       <main className={`flex-1 min-w-0 overflow-x-hidden transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>

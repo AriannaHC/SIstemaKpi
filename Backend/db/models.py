@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, Boolean, ForeignKey, BigInteger
+from sqlalchemy import Column, DateTime, Float, Integer, String, Boolean, ForeignKey, BigInteger, Index
 from sqlalchemy.orm import relationship
 from db.database import Base
 import uuid
@@ -46,12 +46,12 @@ class Kpi(Base):
     formula_texto = Column(String(500), nullable=True) 
     tipo_kpi = Column(String(50), default="Positivo")
 
-    area_id = Column(Integer, ForeignKey("areas.id"), nullable=True)
-    responsable_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    area_id = Column(Integer, ForeignKey("areas.id"), nullable=True, index=True)
+    responsable_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
     meta_valor = Column(Float, default=0.0)
     meta_produccion = Column(Float, nullable=True)
     horas_planificadas = Column(Float, nullable=True)
-    activo = Column(Boolean, default=True) 
+    activo = Column(Boolean, default=True, index=True)
     activo_semanal = Column(Boolean, default=False)
     
     area = relationship("Area")
@@ -72,8 +72,8 @@ class KpiCampo(Base):
 class RegistroKpi(Base):
     __tablename__ = "registros_kpi"
     id = Column(Integer, primary_key=True, index=True)
-    usuario_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    kpi_id = Column(Integer, ForeignKey("kpis.id"), nullable=False)
+    usuario_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    kpi_id = Column(Integer, ForeignKey("kpis.id"), nullable=False, index=True)
     periodo_inicio = Column(String(20), nullable=True)
     periodo_fin = Column(String(20), nullable=True)
     semana = Column(Integer, nullable=True)
@@ -85,25 +85,25 @@ class RegistroKpi(Base):
     eficacia = Column(Float, nullable=True)
     efectividad = Column(Float, nullable=True)
     rendimiento = Column(Float, nullable=True)
-    alerta = Column(String(20), default='gris')
+    alerta = Column(String(20), default='gris', index=True)
     observaciones = Column(String(500), nullable=True)
     acciones_correctivas = Column(String(500), nullable=True)
-    enviado_en = Column(DateTime, default=datetime.utcnow)
+    enviado_en = Column(DateTime, default=datetime.utcnow, index=True)
 
 class RegistroValores(Base):
     __tablename__ = "registro_valores"
     id = Column(Integer, primary_key=True, index=True)
-    registro_id = Column(Integer, ForeignKey("registros_kpi.id"), nullable=False)
-    campo_id = Column(Integer, ForeignKey("kpi_campos.id"), nullable=False)
+    registro_id = Column(Integer, ForeignKey("registros_kpi.id"), nullable=False, index=True)
+    campo_id = Column(Integer, ForeignKey("kpi_campos.id"), nullable=False, index=True)
     valor = Column(Float, nullable=True)
 
 class KpiProgramado(Base):
     __tablename__ = "kpis_programados"
     id = Column(Integer, primary_key=True, index=True)
-    kpi_id = Column(Integer, ForeignKey("kpis.id", ondelete="CASCADE"), nullable=False)
-    fecha_inicio = Column(DateTime, nullable=False)
-    fecha_fin = Column(DateTime, nullable=False)
-    completado = Column(Boolean, default=False)
+    kpi_id = Column(Integer, ForeignKey("kpis.id", ondelete="CASCADE"), nullable=False, index=True)
+    fecha_inicio = Column(DateTime, nullable=False, index=True)
+    fecha_fin = Column(DateTime, nullable=False, index=True)
+    completado = Column(Boolean, default=False, index=True)
     registro_kpi_id = Column(Integer, ForeignKey("registros_kpi.id", ondelete="SET NULL"), nullable=True)
     asignado_por = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     creado_en = Column(DateTime, default=datetime.utcnow)
@@ -140,9 +140,9 @@ class RegistroDiario(Base):
     id = Column(Integer, primary_key=True, index=True)
     
     # --- DATOS BASE AUTOMÁTICOS ---
-    usuario_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    area_id = Column(Integer, ForeignKey("areas.id"), nullable=False)
-    fecha_registro = Column(DateTime, default=datetime.utcnow, nullable=False)
+    usuario_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    area_id = Column(Integer, ForeignKey("areas.id"), nullable=False, index=True)
+    fecha_registro = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     # --- DATOS BASE DEL COLABORADOR (NOT NULL) ---
     proceso = Column(String(200), nullable=False)
     tipo_actividad = Column(String(150), nullable=False) 
@@ -183,3 +183,13 @@ class RegistroDiario(Base):
     # Relaciones para facilitar las consultas
     usuario = relationship("User", foreign_keys=[usuario_id])
     area = relationship("Area", foreign_keys=[area_id])
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  ÍNDICES COMPUESTOS (para queries con múltiples filtros)
+# ══════════════════════════════════════════════════════════════════════════════
+
+Index("ix_kpis_programados_kpi_completado", KpiProgramado.kpi_id, KpiProgramado.completado)
+Index("ix_kpis_programados_fechas", KpiProgramado.fecha_inicio, KpiProgramado.fecha_fin)
+Index("ix_registros_kpi_usuario_alerta", RegistroKpi.usuario_id, RegistroKpi.alerta)
+Index("ix_registro_diario_usuario_fecha", RegistroDiario.usuario_id, RegistroDiario.fecha_registro)

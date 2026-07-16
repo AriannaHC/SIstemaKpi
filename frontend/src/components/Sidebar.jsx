@@ -26,6 +26,7 @@ export default function Sidebar({
   user,
   sidebarOpen,
   setSidebarOpen,
+  onPrefetch,
 }) {
   const rol = user?.kpi_rol_id;
   const areaId = user?.kpi_area_id;
@@ -38,6 +39,11 @@ export default function Sidebar({
   const NavItem = ({ view, icon, label }) => (
     <button
       onClick={() => handleNavigation(view)}
+      onMouseEnter={() => {
+        clearTimeout(window.__prefetchTimer);
+        window.__prefetchTimer = setTimeout(() => onPrefetch?.[view]?.(), 300);
+      }}
+      onMouseLeave={() => clearTimeout(window.__prefetchTimer)}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
         currentTab === view
           ? "bg-[#123498] text-white shadow-lg shadow-[#123498]/20"

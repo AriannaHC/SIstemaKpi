@@ -1,5 +1,19 @@
 import apiClient from "./apiClient";
 
+const CACHE_DURATION = 1000 * 60 * 5;
+let areasStatsCache = { data: null, timestamp: 0 };
+let dashboardCache = { data: null, timestamp: 0 };
+let alertasCache = { data: null, timestamp: 0 };
+let historialCache = { data: null, timestamp: 0 };
+
+const invalidateAreasStatsCache = () => {
+  areasStatsCache.data = null;
+};
+
+const invalidateDashboardCache = () => {
+  dashboardCache.data = null;
+};
+
 // ── MÉTODOS NUEVOS ────────────────────────────────────────────────────────────
 
 export const getKpisSemanales = async (areaId) => {
@@ -24,8 +38,17 @@ export const asignarResponsable = async (kpiId, responsableId) => {
   return response.data;
 };
 
-export const getAlertas = async () => {
+export const getAlertas = async (forceRefresh = false) => {
+  if (
+    !forceRefresh &&
+    alertasCache.data &&
+    Date.now() - alertasCache.timestamp < CACHE_DURATION
+  ) {
+    return alertasCache.data;
+  }
   const response = await apiClient.get("/kpis/alertas");
+  alertasCache.data = response.data;
+  alertasCache.timestamp = Date.now();
   return response.data;
 };
 
@@ -34,13 +57,31 @@ export const getMisReportes = async () => {
   return response.data;
 };
 
-export const getHistorial = async () => {
+export const getHistorial = async (forceRefresh = false) => {
+  if (
+    !forceRefresh &&
+    historialCache.data &&
+    Date.now() - historialCache.timestamp < CACHE_DURATION
+  ) {
+    return historialCache.data;
+  }
   const response = await apiClient.get("/kpis/historial");
+  historialCache.data = response.data;
+  historialCache.timestamp = Date.now();
   return response.data;
 };
 
-export const getAreasStats = async () => {
+export const getAreasStats = async (forceRefresh = false) => {
+  if (
+    !forceRefresh &&
+    areasStatsCache.data &&
+    Date.now() - areasStatsCache.timestamp < CACHE_DURATION
+  ) {
+    return areasStatsCache.data;
+  }
   const response = await apiClient.get("/kpis/areas/stats");
+  areasStatsCache.data = response.data;
+  areasStatsCache.timestamp = Date.now();
   return response.data;
 };
 
@@ -72,8 +113,17 @@ export const kpiService = {
     return response.data;
   },
 
-  getDashboardData: async () => {
+  getDashboardData: async (forceRefresh = false) => {
+    if (
+      !forceRefresh &&
+      dashboardCache.data &&
+      Date.now() - dashboardCache.timestamp < CACHE_DURATION
+    ) {
+      return dashboardCache.data;
+    }
     const response = await apiClient.get("/kpis/dashboard_data");
+    dashboardCache.data = response.data;
+    dashboardCache.timestamp = Date.now();
     return response.data;
   },
 
@@ -87,16 +137,22 @@ export const kpiService = {
       `/kpis/configuracion/${kpiId}`,
       payload,
     );
+    invalidateAreasStatsCache();
+    invalidateDashboardCache();
     return response.data;
   },
 
   deleteArea: async (areaId) => {
     const response = await apiClient.delete(`/kpis/areas/${areaId}`);
+    invalidateAreasStatsCache();
+    invalidateDashboardCache();
     return response.data;
   },
 
   deleteKpi: async (kpiId) => {
     const response = await apiClient.delete(`/kpis/kpi/${kpiId}`);
+    invalidateAreasStatsCache();
+    invalidateDashboardCache();
     return response.data;
   },
 
