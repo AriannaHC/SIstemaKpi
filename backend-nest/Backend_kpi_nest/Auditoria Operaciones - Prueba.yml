@@ -1,0 +1,33 @@
+info:
+  name: Auditoria Operaciones - Prueba
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: http://localhost:3000/api/registros-diarios/11/operaciones
+  body:
+    type: multipart-form
+    data:
+      - name: estado_tarea_operaciones
+        type: text
+        value: '"Finalizada"'
+      - name: tiempo_real_operaciones
+        type: text
+        value: '8'
+      - name: prioridad
+        type: text
+        value: '"Alta"'
+      - name: imagen_evidencia
+        type: file
+        value:
+          - d:\JB\sistemaKPIOhño\backend-nest\Backend_kpi_nest\captura_horariobloque1completado.png
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyOTIwYjQ0OS02ZWZmLTQyZWEtOWY4MC0wZDFhMWE0MjgzYjMiLCJyb2wiOjIsImFyZWEiOjI2LCJpYXQiOjE3ODQ3NTE5OTQsImV4cCI6MTc4NDgzODM5NH0.h3JpiuDBe-JQ5DHGvBAtVj7zwHHKVQaTkE44j1k6cyA
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

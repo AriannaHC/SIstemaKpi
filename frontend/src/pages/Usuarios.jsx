@@ -1,9 +1,20 @@
-// frontend/src/pages/Usuarios.jsx
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { userService } from "../services/userService";
 import { kpiService } from "../services/kpiService";
-import { Search, Filter, ChevronDown, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import {
+  Search,
+  Filter,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  AlertTriangle,
+  UserCheck,
+  Folder,
+} from "lucide-react";
 import SelectCustom from "../components/SelectCustom";
+import Toast from "../components/Toast";
 
 const ROLES = [
   { value: 1, label: "Administrador", color: "#123498" },
@@ -33,11 +44,17 @@ function RoleDropdown({ value, onChange }) {
         className="w-full flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold outline-none transition-all cursor-pointer hover:bg-white"
       >
         {selected ? (
-          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: selected.color }} />
+          <span
+            className="w-2.5 h-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: selected.color }}
+          />
         ) : (
           <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-gray-300" />
         )}
-        <span className="flex-1 text-left truncate" style={{ color: selected?.color || "#94a3b8" }}>
+        <span
+          className="flex-1 text-left truncate"
+          style={{ color: selected?.color || "#94a3b8" }}
+        >
           {selected ? selected.label : "Sin Acceso"}
         </span>
       </button>
@@ -45,7 +62,10 @@ function RoleDropdown({ value, onChange }) {
         <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
           <button
             type="button"
-            onClick={() => { onChange(null); setOpen(false); }}
+            onClick={() => {
+              onChange(null);
+              setOpen(false);
+            }}
             className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors text-left"
           >
             <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-gray-300" />
@@ -55,10 +75,16 @@ function RoleDropdown({ value, onChange }) {
             <button
               key={rol.value}
               type="button"
-              onClick={() => { onChange(rol.value); setOpen(false); }}
+              onClick={() => {
+                onChange(rol.value);
+                setOpen(false);
+              }}
               className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors text-left"
             >
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: rol.color }} />
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: rol.color }}
+              />
               <span style={{ color: rol.color }}>{rol.label}</span>
             </button>
           ))}
@@ -100,7 +126,10 @@ function AreaDropdown({ areas, value, onChange, disabled }) {
         <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
           <button
             type="button"
-            onClick={() => { onChange(null); setOpen(false); }}
+            onClick={() => {
+              onChange(null);
+              setOpen(false);
+            }}
             className="w-full text-left px-3 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors text-gray-400"
           >
             -- Sin área --
@@ -109,7 +138,10 @@ function AreaDropdown({ areas, value, onChange, disabled }) {
             <button
               key={a.id}
               type="button"
-              onClick={() => { onChange(a.id); setOpen(false); }}
+              onClick={() => {
+                onChange(a.id);
+                setOpen(false);
+              }}
               className="w-full text-left px-3 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors text-slate-700"
             >
               {a.nombre}
@@ -127,6 +159,20 @@ export default function Usuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+
+  // Estados de Modales y Toast
+  const [toast, setToast] = useState({ message: "", type: "success" });
+  const [roleModal, setRoleModal] = useState({
+    open: false,
+    user: null,
+    newRoleId: null,
+  });
+  const [areaModal, setAreaModal] = useState({
+    open: false,
+    user: null,
+    newAreaId: null,
+  });
 
   // Filtros y Paginación
   const [page, setPage] = useState(1);
@@ -144,47 +190,81 @@ export default function Usuarios() {
     setLoading(true);
     try {
       const [resUsers, resAreas] = await Promise.all([
-        userService.getUsers(),
-        kpiService.getAreasStats(),
+        userService.getUsers().catch((err) => {
+          console.error("Error cargando usuarios:", err);
+          return [];
+        }),
+        kpiService.getAreasStats().catch((err) => {
+          console.warn("Áreas no disponibles aún:", err.message);
+          return [];
+        }),
       ]);
+
       setUsuarios(resUsers);
       setAreas(resAreas);
     } catch (error) {
-      console.error("Error cargando datos", error);
+      console.error("Error crítico cargando datos", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRoleChange = async (userId, nuevoRolId, areaIdActual) => {
-    const nuevaArea = nuevoRolId === null ? null : (nuevoRolId === 1 ? null : areaIdActual);
+  // --- LÓGICA DE ROLES ---
+  const requestRoleChange = (user, nuevoRolId) => {
+    if (user.kpi_rol_id === nuevoRolId) return;
+    setRoleModal({ open: true, user, newRoleId: nuevoRolId });
+  };
 
-    setUsuarios((prev) =>
-      prev.map((u) =>
-        u.id === userId ? { ...u, kpi_rol_id: nuevoRolId, kpi_area_id: nuevaArea } : u,
-      ),
-    );
+  const confirmRoleChange = async () => {
+    const { user, newRoleId } = roleModal;
+    setUpdating(true);
+
+    const nuevaArea =
+      newRoleId === null ? null : newRoleId === 1 ? null : user.kpi_area_id;
 
     try {
-      await userService.updateUser(userId, nuevoRolId, nuevaArea);
-    } catch {
-      alert("❌ Error al actualizar rol, recargando datos...");
+      await userService.updateUser(user.id, newRoleId, nuevaArea);
+      setUsuarios((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, kpi_rol_id: newRoleId, kpi_area_id: nuevaArea }
+            : u,
+        ),
+      );
+      setToast({ message: "Rol actualizado correctamente.", type: "success" });
+    } catch (error) {
+      setToast({ message: "Error al actualizar el rol.", type: "error" });
       cargarDatos();
+    } finally {
+      setUpdating(false);
+      setRoleModal({ open: false, user: null, newRoleId: null });
     }
   };
 
-  const handleAreaChange = async (userId, rolIdActual, nuevaAreaId) => {
-    setUsuarios((prev) =>
-      prev.map((u) =>
-        u.id === userId ? { ...u, kpi_area_id: nuevaAreaId } : u,
-      ),
-    );
+  // --- LÓGICA DE ÁREAS ---
+  const requestAreaChange = (user, nuevaAreaId) => {
+    if (user.kpi_area_id === nuevaAreaId) return;
+    setAreaModal({ open: true, user, newAreaId: nuevaAreaId });
+  };
+
+  const confirmAreaChange = async () => {
+    const { user, newAreaId } = areaModal;
+    setUpdating(true);
 
     try {
-      await userService.updateUser(userId, rolIdActual, nuevaAreaId);
-    } catch {
-      alert("❌ Error al actualizar área, recargando datos...");
+      await userService.updateUser(user.id, user.kpi_rol_id, newAreaId);
+      setUsuarios((prev) =>
+        prev.map((u) =>
+          u.id === user.id ? { ...u, kpi_area_id: newAreaId } : u,
+        ),
+      );
+      setToast({ message: "Área asignada correctamente.", type: "success" });
+    } catch (error) {
+      setToast({ message: "Error al actualizar el área.", type: "error" });
       cargarDatos();
+    } finally {
+      setUpdating(false);
+      setAreaModal({ open: false, user: null, newAreaId: null });
     }
   };
 
@@ -215,8 +295,27 @@ export default function Usuarios() {
     page * LIMIT,
   );
 
+  const getRoleInfo = (roleId) => {
+    return (
+      ROLES.find((r) => r.value === roleId) || {
+        label: "Sin Acceso",
+        color: "#94a3b8",
+      }
+    );
+  };
+
+  const getAreaInfo = (areaId) => {
+    return areas.find((a) => a.id === areaId) || { nombre: "Sin Área" };
+  };
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 max-w-7xl mx-auto">
+    <div className="space-y-8 animate-in fade-in duration-700 max-w-7xl mx-auto relative">
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, message: "" })}
+      />
+
       {/* Cabecera */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -237,7 +336,7 @@ export default function Usuarios() {
 
             <div className="flex flex-wrap gap-4 w-full sm:w-auto sm:justify-end">
               {/* Búsqueda */}
-              <div className="flex gap-2 w-full sm:w-auto sm:flex-1 sm:min-w-[260px] sm:max-w-[320px]">
+              <div className="flex gap-2 w-full sm:w-auto sm:flex-1 sm:min-w-65 sm:max-w-[320px]">
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
@@ -258,7 +357,7 @@ export default function Usuarios() {
               </div>
 
               {/* Filtro Área */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[200px] sm:max-w-[256px]">
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-50 sm:max-w-[256px]">
                 <SelectCustom
                   value={filterArea}
                   onChange={handleAreaFilterChange}
@@ -275,10 +374,13 @@ export default function Usuarios() {
               </div>
 
               {/* Filtro Rol */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[170px] sm:max-w-[192px]">
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-42.5 sm:max-w-48">
                 <SelectCustom
                   value={filterRol}
-                  onChange={(v) => { setFilterRol(v); setPage(1); }}
+                  onChange={(v) => {
+                    setFilterRol(v);
+                    setPage(1);
+                  }}
                   options={[
                     { value: "", label: "TODOS LOS ROLES" },
                     ...ROLES.map((r) => ({
@@ -352,7 +454,7 @@ export default function Usuarios() {
                       <RoleDropdown
                         value={u.kpi_rol_id}
                         onChange={(nuevoRolId) =>
-                          handleRoleChange(u.id, nuevoRolId, u.kpi_area_id)
+                          requestRoleChange(u, nuevoRolId)
                         }
                       />
                     </td>
@@ -363,7 +465,7 @@ export default function Usuarios() {
                         areas={areas}
                         value={u.kpi_area_id}
                         onChange={(nuevaAreaId) =>
-                          handleAreaChange(u.id, u.kpi_rol_id, nuevaAreaId)
+                          requestAreaChange(u, nuevaAreaId)
                         }
                         disabled={!u.kpi_rol_id || u.kpi_rol_id === 1}
                       />
@@ -398,57 +500,78 @@ export default function Usuarios() {
             <div className="flex justify-center py-16">
               <div className="w-8 h-8 border-4 border-azul border-t-naranja rounded-full animate-spin" />
             </div>
-          ) : (
-            currentUsuarios.length === 0 ? (
-              <div className="flex flex-col items-center py-16">
-                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4 border border-slate-100">
-                  <Users className="w-8 h-8" />
-                </div>
-                <p className="text-azul font-black uppercase tracking-widest text-sm">No se encontraron usuarios</p>
-                <p className="text-gray-500 text-xs mt-1">Intenta con otros términos de búsqueda.</p>
+          ) : currentUsuarios.length === 0 ? (
+            <div className="flex flex-col items-center py-16">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4 border border-slate-100">
+                <Users className="w-8 h-8" />
               </div>
-            ) : (
-              currentUsuarios.map((u) => (
-                <div key={u.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-                  <button
-                    onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}
-                    className="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-azul/10 text-azul flex items-center justify-center font-bold text-sm border-2 border-azul/10 shrink-0">
-                      {u.name.charAt(0).toUpperCase()}
+              <p className="text-azul font-black uppercase tracking-widest text-sm">
+                No se encontraron usuarios
+              </p>
+              <p className="text-gray-500 text-xs mt-1">
+                Intenta con otros términos de búsqueda.
+              </p>
+            </div>
+          ) : (
+            currentUsuarios.map((u) => (
+              <div
+                key={u.id}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm"
+              >
+                <button
+                  onClick={() =>
+                    setExpandedId(expandedId === u.id ? null : u.id)
+                  }
+                  className="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full bg-azul/10 text-azul flex items-center justify-center font-bold text-sm border-2 border-azul/10 shrink-0">
+                    {u.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="flex-1 text-left text-sm font-bold text-slate-800 truncate">
+                    Colaborador: {u.name}
+                  </span>
+                  <ChevronDown
+                    className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${expandedId === u.id ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {expandedId === u.id && (
+                  <div className="px-4 pb-4 space-y-3 border-t border-slate-50 pt-3">
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                        Correo
+                      </p>
+                      <p className="text-xs font-semibold text-gray-600">
+                        {u.email}
+                      </p>
                     </div>
-                    <span className="flex-1 text-left text-sm font-bold text-slate-800 truncate">
-                      Colaborador: {u.name}
-                    </span>
-                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${expandedId === u.id ? "rotate-180" : ""}`} />
-                  </button>
-                  {expandedId === u.id && (
-                    <div className="px-4 pb-4 space-y-3 border-t border-slate-50 pt-3">
-                      <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Correo</p>
-                        <p className="text-xs font-semibold text-gray-600">{u.email}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Nivel de Acceso</p>
-                        <RoleDropdown
-                          value={u.kpi_rol_id}
-                          onChange={(nuevoRolId) => handleRoleChange(u.id, nuevoRolId, u.kpi_area_id)}
-                        />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Asignación de Área</p>
-                        <AreaDropdown
-                          areas={areas}
-                          value={u.kpi_area_id}
-                          onChange={(nuevaAreaId) => handleAreaChange(u.id, u.kpi_rol_id, nuevaAreaId)}
-                          disabled={!u.kpi_rol_id || u.kpi_rol_id === 1}
-                        />
-                      </div>
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                        Nivel de Acceso
+                      </p>
+                      <RoleDropdown
+                        value={u.kpi_rol_id}
+                        onChange={(nuevoRolId) =>
+                          requestRoleChange(u, nuevoRolId)
+                        }
+                      />
                     </div>
-                  )}
-                </div>
-              ))
-            )
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                        Asignación de Área
+                      </p>
+                      <AreaDropdown
+                        areas={areas}
+                        value={u.kpi_area_id}
+                        onChange={(nuevaAreaId) =>
+                          requestAreaChange(u, nuevaAreaId)
+                        }
+                        disabled={!u.kpi_rol_id || u.kpi_rol_id === 1}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
           )}
         </div>
 
@@ -480,6 +603,158 @@ export default function Usuarios() {
           </div>
         </div>
       </div>
+
+      {/* --- MODAL CONFIRMACIÓN DE ROL --- */}
+      {roleModal.open &&
+        roleModal.user &&
+        createPortal(
+          <div className="fixed inset-0 z-9999 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+            <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border-0">
+              {/* Cabecera (Roja si es Admin, Azul para otros) */}
+              <div
+                className={`${roleModal.newRoleId === 1 ? "bg-rojo-persa" : "bg-azul"} p-8 text-white text-center`}
+              >
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  {roleModal.newRoleId === 1 ? (
+                    <AlertTriangle className="w-8 h-8" />
+                  ) : (
+                    <UserCheck className="w-8 h-8" />
+                  )}
+                </div>
+                <h3 className="text-xl font-black uppercase tracking-tighter font-heading">
+                  {roleModal.newRoleId === 1
+                    ? "Otorgar Permisos de Administrador"
+                    : "Cambiar Nivel de Acceso"}
+                </h3>
+              </div>
+
+              <div className="p-8 text-center space-y-4">
+                <p className="text-gray-600 font-semibold text-sm leading-relaxed">
+                  ¿Confirmas el cambio de acceso para este colaborador?
+                </p>
+
+                <div className="flex flex-col gap-3 bg-slate-50 rounded-2xl p-4 border border-slate-100 text-left">
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">
+                      Colaborador
+                    </p>
+                    <p className="text-sm font-bold text-slate-800">
+                      {roleModal.user.name}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">
+                      Nuevo Rol
+                    </p>
+                    <p
+                      className="text-sm font-black flex items-center gap-2"
+                      style={{ color: getRoleInfo(roleModal.newRoleId).color }}
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{
+                          backgroundColor: getRoleInfo(roleModal.newRoleId)
+                            .color,
+                        }}
+                      />
+                      {getRoleInfo(roleModal.newRoleId).label}
+                    </p>
+                  </div>
+                </div>
+
+                {roleModal.newRoleId === 1 && (
+                  <p className="text-[11px] text-rojo-persa font-bold">
+                    Atención: Los administradores tienen control total sobre el
+                    sistema, incluyendo KPIs, usuarios y configuraciones.
+                  </p>
+                )}
+              </div>
+
+              <div className="px-8 pb-8 grid grid-cols-2 gap-4">
+                <button
+                  onClick={() =>
+                    setRoleModal({ open: false, user: null, newRoleId: null })
+                  }
+                  disabled={updating}
+                  className="py-4 rounded-2xl border-2 border-slate-200 text-gray-500 font-black text-xs uppercase tracking-widest font-heading hover:bg-slate-50 transition-all disabled:opacity-60"
+                >
+                  CANCELAR
+                </button>
+                <button
+                  onClick={confirmRoleChange}
+                  disabled={updating}
+                  className={`py-4 rounded-2xl text-white font-black text-xs uppercase tracking-widest font-heading transition-all shadow-lg disabled:opacity-60 ${roleModal.newRoleId === 1 ? "bg-rojo-persa hover:bg-red-700 shadow-rojo-persa/20" : "bg-azul hover:bg-azul-profundo shadow-azul/20"}`}
+                >
+                  {updating ? "GUARDANDO..." : "SÍ, CONFIRMAR"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* --- MODAL CONFIRMACIÓN DE ÁREA --- */}
+      {areaModal.open &&
+        areaModal.user &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+            <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border-0">
+              <div className="bg-azul p-8 text-white text-center">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Folder className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-black uppercase tracking-tighter font-heading">
+                  Reasignar Área
+                </h3>
+              </div>
+
+              <div className="p-8 text-center space-y-4">
+                <p className="text-gray-600 font-semibold text-sm leading-relaxed">
+                  ¿Confirmas el cambio de área para este colaborador?
+                </p>
+
+                <div className="flex flex-col gap-3 bg-slate-50 rounded-2xl p-4 border border-slate-100 text-left">
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">
+                      Colaborador
+                    </p>
+                    <p className="text-sm font-bold text-slate-800">
+                      {areaModal.user.name}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">
+                      Nueva Área Asignada
+                    </p>
+                    <p className="text-sm font-black text-azul">
+                      {getAreaInfo(areaModal.newAreaId).nombre}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-8 pb-8 grid grid-cols-2 gap-4">
+                <button
+                  onClick={() =>
+                    setAreaModal({ open: false, user: null, newAreaId: null })
+                  }
+                  disabled={updating}
+                  className="py-4 rounded-2xl border-2 border-slate-200 text-gray-500 font-black text-xs uppercase tracking-widest font-heading hover:bg-slate-50 transition-all disabled:opacity-60"
+                >
+                  CANCELAR
+                </button>
+                <button
+                  onClick={confirmAreaChange}
+                  disabled={updating}
+                  className="py-4 rounded-2xl bg-azul text-white font-black text-xs uppercase tracking-widest font-heading hover:bg-azul-profundo transition-all shadow-lg shadow-azul/20 disabled:opacity-60"
+                >
+                  {updating ? "GUARDANDO..." : "SÍ, REASIGNAR"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

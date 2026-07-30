@@ -1,20 +1,23 @@
 import apiClient from "./apiClient";
 
 const CACHE_DURATION = 1000 * 60 * 5;
+
+// Variables de Caché
 let areasStatsCache = { data: null, timestamp: 0 };
 let dashboardCache = { data: null, timestamp: 0 };
 let alertasCache = { data: null, timestamp: 0 };
 let historialCache = { data: null, timestamp: 0 };
 
-const invalidateAreasStatsCache = () => {
-  areasStatsCache.data = null;
+// ── FUNCIÓN MAESTRA DE LIMPIEZA ──────────────────────────────────────────────
+// Borra la memoria temporal obligando a React a pedir datos frescos al backend
+const clearAllCaches = () => {
+  areasStatsCache = { data: null, timestamp: 0 };
+  dashboardCache = { data: null, timestamp: 0 };
+  alertasCache = { data: null, timestamp: 0 };
+  historialCache = { data: null, timestamp: 0 };
 };
 
-const invalidateDashboardCache = () => {
-  dashboardCache.data = null;
-};
-
-// ── MÉTODOS NUEVOS ────────────────────────────────────────────────────────────
+// ── MÉTODOS INDEPENDIENTES ───────────────────────────────────────────────────
 
 export const getKpisSemanales = async (areaId) => {
   const response = await apiClient.get(`/kpis/semanales/${areaId}`);
@@ -23,11 +26,7 @@ export const getKpisSemanales = async (areaId) => {
 
 export const programarKpi = async (kpiId, payload) => {
   const response = await apiClient.post(`/kpis/${kpiId}/programar`, payload);
-  return response.data;
-};
-
-export const activarKpi = async (kpiId) => {
-  const response = await apiClient.post(`/kpis/${kpiId}/activar`);
+  clearAllCaches(); // Invalida caché al cambiar estado
   return response.data;
 };
 
@@ -35,6 +34,7 @@ export const asignarResponsable = async (kpiId, responsableId) => {
   const response = await apiClient.patch(`/kpis/${kpiId}/responsable`, {
     responsable_id: responsableId,
   });
+  clearAllCaches(); // Invalida caché al cambiar asignación
   return response.data;
 };
 
@@ -79,13 +79,27 @@ export const getAreasStats = async (forceRefresh = false) => {
   ) {
     return areasStatsCache.data;
   }
-  const response = await apiClient.get("/kpis/areas/stats");
-  areasStatsCache.data = response.data;
-  areasStatsCache.timestamp = Date.now();
+
+  try {
+    const response = await apiClient.get("/kpis/areas/stats");
+    areasStatsCache.data = response.data;
+    areasStatsCache.timestamp = Date.now();
+    return response.data;
+  } catch (error) {
+    console.warn(
+      "Bypass kpiService: /kpis/areas/stats no disponible aún, devolviendo []",
+    );
+    return [];
+  }
+};
+
+export const cerrarVencidosManual = async () => {
+  const response = await apiClient.post("/kpis/cerrar-vencidos");
+  clearAllCaches(); // Invalida caché al forzar cierres
   return response.data;
 };
 
-// ── MÉTODOS EXISTENTES (copia completa para que no pierdas nada) ──────────────
+// ── OBJETO PRINCIPAL (kpiService) ────────────────────────────────────────────
 
 export const kpiService = {
   getAreas: async () => {
@@ -110,6 +124,7 @@ export const kpiService = {
 
   registrar: async (payload) => {
     const response = await apiClient.post("/kpis/registrar", payload);
+    clearAllCaches(); // Vital: refresca reportes y alertas al registrar
     return response.data;
   },
 
@@ -137,22 +152,19 @@ export const kpiService = {
       `/kpis/configuracion/${kpiId}`,
       payload,
     );
-    invalidateAreasStatsCache();
-    invalidateDashboardCache();
+    clearAllCaches(); // Invalida caché al editar fórmula
     return response.data;
   },
 
   deleteArea: async (areaId) => {
     const response = await apiClient.delete(`/kpis/areas/${areaId}`);
-    invalidateAreasStatsCache();
-    invalidateDashboardCache();
+    clearAllCaches(); // Invalida caché al borrar área
     return response.data;
   },
 
   deleteKpi: async (kpiId) => {
     const response = await apiClient.delete(`/kpis/kpi/${kpiId}`);
-    invalidateAreasStatsCache();
-    invalidateDashboardCache();
+    clearAllCaches(); // Invalida caché al borrar KPI
     return response.data;
   },
 
@@ -160,6 +172,7 @@ export const kpiService = {
     const response = await apiClient.post("/kpis/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+    clearAllCaches(); // Invalida caché al subir Excel
     return response.data;
   },
 
@@ -167,16 +180,17 @@ export const kpiService = {
     const response = await apiClient.post("/kpis/upload_smart", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+    clearAllCaches(); // Invalida caché al subir SMART
     return response.data;
   },
 
   // Expuestos también como named exports arriba
   getKpisSemanales,
-  activarKpi,
   asignarResponsable,
   programarKpi,
   getAlertas,
   getMisReportes,
   getHistorial,
   getAreasStats,
+  cerrarVencidosManual,
 };

@@ -1,0 +1,27 @@
+info:
+  name: Registrar valores KPI
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:3000/api/kpis/registrar
+  body:
+    type: json
+    data: |-
+      {
+        "kpi_id": 6,
+        "valores": {
+          "campo_clave_1": "100",
+          "campo_clave_2": "Comentario de prueba"
+        }
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3MWNlOGJhNi1kZjhlLTQxMDEtYTNiZi1jYzIzMGY1MzdmMjYiLCJyb2wiOjMsImFyZWEiOjIwLCJpYXQiOjE3ODQ5MDc3NDQsImV4cCI6MTc4NDk5NDE0NH0.p1U50xr6vwgIZnKl7LExXzgS7U8zAhJ0GKgsiFnSdL8
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

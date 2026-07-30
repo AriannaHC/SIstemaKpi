@@ -1,0 +1,31 @@
+info:
+  name: Auditoria Calidad - Prueba
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: http://localhost:3000/api/registros-diarios/11/calidad
+  body:
+    type: json
+    data: |-
+      {
+        "estado_entregable_calidad": "Aprobado",
+        "estado_animo": "Motivado",
+        "tiempo_estandar": 8.5,
+        "tiempo_real_calidad": 8.0,
+        "errores_observaciones": "Ninguno",
+        "observaciones_calidad": "Excelente trabajo",
+        "rubrica_final": "Cumple expectativas",
+        "eficiencia": 100,
+        "tasa_calidad": 100
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5ZTY5NzJiMi01OWY1LTRmYTUtYTAzYy01MzhhYTA2MGZjMjgiLCJyb2wiOjIsImFyZWEiOjI1LCJpYXQiOjE3ODQ3NTE5MjAsImV4cCI6MTc4NDgzODMyMH0.Boz3M-wrfkNXsSAohD5WbitflLDKqKnhA9B_C5FlfZk
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

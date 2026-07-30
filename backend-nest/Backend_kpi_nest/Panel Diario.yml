@@ -1,0 +1,17 @@
+info:
+  name: Panel Diario
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:3000/api/kpis/diario
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3MWNlOGJhNi1kZjhlLTQxMDEtYTNiZi1jYzIzMGY1MzdmMjYiLCJyb2wiOjMsImFyZWEiOjIwLCJpYXQiOjE3ODQ4NTk4NDUsImV4cCI6MTc4NDk0NjI0NX0.BSNyT0amB6doUWjQxN1lAjzjrkk8933uyiONbxnhHJc
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

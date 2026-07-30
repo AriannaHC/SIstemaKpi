@@ -29,15 +29,21 @@ export default function Dashboard({ setActivePage }) {
   // Estado para el Drill-down
   const [selectedArea, setSelectedArea] = useState(null);
 
+  // Modales de Eliminación
   const [deleteModal, setDeleteModal] = useState({ open: false, area: null });
   const [deleting, setDeleting] = useState(false);
+
+  const [deleteKpiModal, setDeleteKpiModal] = useState({
+    open: false,
+    kpi: null,
+  });
+  const [deletingKpi, setDeletingKpi] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     try {
       const data = await kpiService.getDashboardData();
       setAreas(data);
-      // Actualizar el área seleccionada si existe para refrescar sus KPIs
       if (selectedArea) {
         const updated = data.find((a) => a.id === selectedArea.id);
         if (updated) setSelectedArea(updated);
@@ -90,17 +96,7 @@ export default function Dashboard({ setActivePage }) {
     }
   };
 
-  const handleDeleteKpi = async (id, nombre) => {
-    if (window.confirm(`¿Seguro que deseas eliminar el KPI "${nombre}"?`)) {
-      try {
-        await kpiService.deleteKpi(id);
-        loadData();
-      } catch (e) {
-        alert("Error al eliminar KPI");
-      }
-    }
-  };
-
+  // Lógica de eliminación de ÁREA
   const handleDeleteAreaClick = (area) => {
     setDeleteModal({ open: true, area });
   };
@@ -122,14 +118,31 @@ export default function Dashboard({ setActivePage }) {
     }
   };
 
-  const handleConfigurarKpi = (kpi, areaFallbackId) => {
-    // Asegurarnos de tener el area_id, ya sea del objeto KPI o del área seleccionada
-    const kpiData = { ...kpi, area_id: kpi.area_id || areaFallbackId };
-    sessionStorage.setItem("kpiToConfig", JSON.stringify(kpiData));
-    setActivePage("settings"); // Viajamos a la configuración
+  // Lógica de eliminación de KPI
+  const handleDeleteKpiClick = (kpi) => {
+    setDeleteKpiModal({ open: true, kpi });
   };
 
-  // LÓGICA DE BÚSQUEDA Y DRILL-DOWN EN VIVO
+  const confirmDeleteKpi = async () => {
+    if (!deleteKpiModal.kpi) return;
+    setDeletingKpi(true);
+    try {
+      await kpiService.deleteKpi(deleteKpiModal.kpi.id);
+      setDeleteKpiModal({ open: false, kpi: null });
+      loadData();
+    } catch (e) {
+      alert("Error al eliminar KPI");
+    } finally {
+      setDeletingKpi(false);
+    }
+  };
+
+  const handleConfigurarKpi = (kpi, areaFallbackId) => {
+    const kpiData = { ...kpi, area_id: kpi.area_id || areaFallbackId };
+    sessionStorage.setItem("kpiToConfig", JSON.stringify(kpiData));
+    setActivePage("settings");
+  };
+
   const globalMatchingKpis = searchTerm
     ? areas.flatMap((a) =>
         a.kpis
@@ -186,7 +199,6 @@ export default function Dashboard({ setActivePage }) {
           </h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Subida 1 */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
               <h3 className="font-bold text-azul mb-1">
                 1. Subir Excel de Área
@@ -214,7 +226,6 @@ export default function Dashboard({ setActivePage }) {
               </form>
             </div>
 
-            {/* Subida 2 */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
               <h3 className="font-bold text-azul mb-1">
                 2. Subir Diccionario SMART
@@ -250,7 +261,6 @@ export default function Dashboard({ setActivePage }) {
         {/* Filtros y Breadcrumbs */}
         <div className="p-6 md:p-8 border-b border-slate-50 bg-white">
           <div className="flex flex-col md:flex-row gap-4 lg:gap-6 items-center justify-between">
-            {/* Breadcrumbs */}
             <div className="flex items-center gap-2 text-sm font-bold text-azul-profundo shrink-0 self-start md:self-center">
               <button
                 onClick={() => {
@@ -272,7 +282,6 @@ export default function Dashboard({ setActivePage }) {
               )}
             </div>
 
-            {/* Búsqueda en vivo */}
             <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
               <div className="relative w-full sm:w-80">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -296,7 +305,7 @@ export default function Dashboard({ setActivePage }) {
         </div>
 
         {/* Contenido principal: Grid de Cards */}
-        <div className="bg-slate-50/50 min-h-[300px]">
+        <div className="bg-slate-50/50 min-h-75">
           {loading ? (
             <div className="py-20 flex justify-center">
               <div className="w-8 h-8 border-4 border-azul border-t-naranja rounded-full animate-spin mx-auto" />
@@ -333,7 +342,7 @@ export default function Dashboard({ setActivePage }) {
                               e.stopPropagation();
                               handleDeleteAreaClick(area);
                             }}
-                            className="p-2.5 text-rojo-persa bg-rojo-persa/5 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-rojo-persa hover:text-white transition-all border border-rojo-persa/10"
+                            className="p-2.5 text-rojo-persa bg-rojo-persa/5 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-rojo-persa hover:text-white transition-all border border-rojo-persa/10 shrink-0"
                             title="Eliminar Área"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -354,35 +363,42 @@ export default function Dashboard({ setActivePage }) {
                 : currentItems.map((kpi) => (
                     <div
                       key={kpi.id}
-                      className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-lg transition-all flex flex-col h-56"
+                      className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-lg transition-all flex flex-col h-full min-h-60"
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                              kpi.tipo_kpi === "Positivo"
-                                ? "bg-turquesa/10 text-turquesa"
-                                : "bg-rojo-persa/10 text-rojo-persa"
-                            }`}
+                      {/* Parte Superior: Título y Fórmula */}
+                      <div className="flex flex-col flex-1 mb-4">
+                        {!selectedArea && (
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider line-clamp-1 mb-2">
+                            {kpi.area_nombre}
+                          </span>
+                        )}
+                        <h3
+                          className="text-md font-bold text-slate-800 leading-snug line-clamp-2"
+                          title={kpi.nombre}
+                        >
+                          {kpi.nombre}
+                        </h3>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-3">
+                          <p
+                            className="text-[10px] font-mono text-gray-500 line-clamp-2 wrap-break-word"
+                            title={kpi.formula_texto}
                           >
-                            <Activity className="w-6 h-6" />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <span
-                              className={`self-start px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getTipoColor(
-                                kpi.tipo_kpi,
-                              )}`}
-                            >
-                              {kpi.tipo_kpi}
-                            </span>
-                            {!selectedArea && (
-                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider line-clamp-1">
-                                {kpi.area_nombre}
-                              </span>
-                            )}
-                          </div>
+                            {kpi.formula_texto || "Fórmula no especificada"}
+                          </p>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                      </div>
+
+                      {/* Parte Inferior: Píldora de estado y Botones de acción alineados */}
+                      <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50">
+                        <span
+                          className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${getTipoColor(
+                            kpi.tipo_kpi,
+                          )}`}
+                        >
+                          {kpi.tipo_kpi}
+                        </span>
+
+                        <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() =>
                               handleConfigurarKpi(kpi, selectedArea?.id)
@@ -393,27 +409,13 @@ export default function Dashboard({ setActivePage }) {
                             <Settings className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteKpi(kpi.id, kpi.nombre)}
+                            onClick={() => handleDeleteKpiClick(kpi)}
                             className="p-2 text-rojo-persa bg-rojo-persa/5 rounded-lg hover:bg-rojo-persa hover:text-white transition-colors border border-rojo-persa/10"
                             title="Eliminar KPI"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
-                      </div>
-                      <div className="flex flex-col flex-1 justify-end">
-                        <h3
-                          className="text-sm font-bold text-slate-800 leading-snug mb-3 line-clamp-2"
-                          title={kpi.nombre}
-                        >
-                          {kpi.nombre}
-                        </h3>
-                        <p
-                          className="text-[10px] font-mono text-gray-500 line-clamp-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100"
-                          title={kpi.formula_texto}
-                        >
-                          {kpi.formula_texto || "Fórmula no especificada"}
-                        </p>
                       </div>
                     </div>
                   ))}
@@ -455,7 +457,6 @@ export default function Dashboard({ setActivePage }) {
         createPortal(
           <div className="fixed inset-0 z-9999 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
             <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border-0">
-              {/* Cabecera roja */}
               <div className="bg-rojo-persa p-8 text-white text-center">
                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <AlertTriangle className="w-8 h-8" />
@@ -464,8 +465,6 @@ export default function Dashboard({ setActivePage }) {
                   Eliminar Área
                 </h3>
               </div>
-
-              {/* Cuerpo */}
               <div className="p-8 text-center space-y-4">
                 <p className="text-gray-600 font-semibold text-sm leading-relaxed">
                   ¿Estás seguro de que deseas eliminar esta área?
@@ -489,8 +488,6 @@ export default function Dashboard({ setActivePage }) {
                   puede deshacer.
                 </p>
               </div>
-
-              {/* Botones */}
               <div className="px-8 pb-8 grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setDeleteModal({ open: false, area: null })}
@@ -505,6 +502,69 @@ export default function Dashboard({ setActivePage }) {
                   className="py-4 rounded-2xl bg-rojo-persa text-white font-black text-xs uppercase tracking-widest font-heading hover:bg-red-700 transition-all shadow-lg shadow-rojo-persa/20 disabled:opacity-60"
                 >
                   {deleting ? "ELIMINANDO..." : "SÍ, ELIMINAR"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* Modal Eliminación KPI */}
+      {deleteKpiModal.open &&
+        deleteKpiModal.kpi &&
+        createPortal(
+          <div className="fixed inset-0 z-9999 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+            <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border-0">
+              <div className="bg-rojo-persa p-8 text-white text-center">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Activity className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-black uppercase tracking-tighter font-heading">
+                  Eliminar KPI
+                </h3>
+              </div>
+              <div className="p-8 text-center space-y-4">
+                <p className="text-gray-600 font-semibold text-sm leading-relaxed">
+                  ¿Estás seguro de que deseas eliminar este indicador?
+                </p>
+                <div className="flex items-center gap-3 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                  <div
+                    className={`w-12 h-12 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center ${
+                      deleteKpiModal.kpi.tipo_kpi === "Positivo"
+                        ? "text-turquesa"
+                        : "text-rojo-persa"
+                    }`}
+                  >
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <div className="text-left flex-1">
+                    <p className="text-sm font-black text-azul font-heading line-clamp-1">
+                      {deleteKpiModal.kpi.nombre}
+                    </p>
+                    <p className="text-[10px] text-naranja font-black uppercase tracking-widest mt-0.5">
+                      Indicador Clave
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400 font-semibold">
+                  Toda la configuración y los registros históricos de este KPI
+                  se borrarán del sistema. Esta acción no se puede deshacer.
+                </p>
+              </div>
+              <div className="px-8 pb-8 grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setDeleteKpiModal({ open: false, kpi: null })}
+                  disabled={deletingKpi}
+                  className="py-4 rounded-2xl border-2 border-slate-200 text-gray-500 font-black text-xs uppercase tracking-widest font-heading hover:bg-slate-50 transition-all disabled:opacity-60"
+                >
+                  CANCELAR
+                </button>
+                <button
+                  onClick={confirmDeleteKpi}
+                  disabled={deletingKpi}
+                  className="py-4 rounded-2xl bg-rojo-persa text-white font-black text-xs uppercase tracking-widest font-heading hover:bg-red-700 transition-all shadow-lg shadow-rojo-persa/20 disabled:opacity-60"
+                >
+                  {deletingKpi ? "ELIMINANDO..." : "SÍ, ELIMINAR"}
                 </button>
               </div>
             </div>

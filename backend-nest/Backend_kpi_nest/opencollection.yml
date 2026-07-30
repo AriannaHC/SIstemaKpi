@@ -1,0 +1,10 @@
+opencollection: 1.0.0
+
+info:
+  name: Backend_kpi_nest
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git

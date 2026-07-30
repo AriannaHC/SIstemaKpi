@@ -1,0 +1,24 @@
+info:
+  name: Analytics Comparar áreas
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:3000/api/analytics/comparar-areas?area_a=21&area_b=20
+  params:
+    - name: area_a
+      value: '21'
+      type: query
+    - name: area_b
+      value: '20'
+      type: query
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1LWFkbWluLWpiLTAwMSIsInJvbCI6MSwiYXJlYSI6bnVsbCwiaWF0IjoxNzg0NjY1ODE0LCJleHAiOjE3ODQ3NTIyMTR9.Y0wHWLBb7tVqI5sCbMugO81lP9i80LUNrRV0GDUUm2Q
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

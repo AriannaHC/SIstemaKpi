@@ -72,7 +72,13 @@ export default function Analitica() {
   const rankingPdfRef = useRef(null);
 
   useEffect(() => {
-    kpiService.getAreasStats().then(setAreas).catch(console.error);
+    kpiService
+      .getAreasStats()
+      .then(setAreas)
+      .catch((err) => {
+        console.warn("Áreas no disponibles aún (404 esperado):", err.message);
+        setAreas([]);
+      });
   }, []);
 
   useEffect(() => {
@@ -688,8 +694,8 @@ export default function Analitica() {
       </div>
 
       {/* ── TABLA OCULTA PARA EXPORTACIÓN DEL RANKING EN PDF ── */}
-      <div className="absolute left-[-9999px] top-[-9999px]">
-        <div ref={rankingPdfRef} className="w-[800px] bg-white p-10">
+      <div className="absolute -left-2499.75 -top-2499.75">
+        <div ref={rankingPdfRef} className="w-200 bg-white p-10">
           <h2 className="text-2xl font-black text-[#123498] mb-2">
             Ranking Global de Colaboradores
           </h2>

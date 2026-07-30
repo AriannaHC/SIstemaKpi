@@ -1,0 +1,17 @@
+info:
+  name: Reportes
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:3000/api/kpis/historial
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1LWFkbWluLWpiLTAwMSIsInJvbCI6MSwiYXJlYSI6bnVsbCwiaWF0IjoxNzg0OTMwMDMwLCJleHAiOjE3ODUwMTY0MzB9.0E8e7iIvq8dHFf0e7aG_SYM3sqGmNMGV84iqzUqIDWw
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

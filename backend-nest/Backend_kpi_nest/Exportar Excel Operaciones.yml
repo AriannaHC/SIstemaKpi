@@ -1,0 +1,21 @@
+info:
+  name: Exportar Excel Operaciones
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:3000/api/registros-diarios/exportar-excel?area_panel=operaciones
+  params:
+    - name: area_panel
+      value: operaciones
+      type: query
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyOTIwYjQ0OS02ZWZmLTQyZWEtOWY4MC0wZDFhMWE0MjgzYjMiLCJyb2wiOjIsImFyZWEiOjI2LCJpYXQiOjE3ODQ3NTIyODIsImV4cCI6MTc4NDgzODY4Mn0._y9G9NUGTUepVEdhroEgaXo6Uo7UZp_s2bnXnUoZJkU
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

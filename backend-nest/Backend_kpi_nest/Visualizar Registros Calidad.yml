@@ -1,0 +1,17 @@
+info:
+  name: Visualizar Registros Calidad
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:3000/api/registros-diarios/panel-calidad
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5ZTY5NzJiMi01OWY1LTRmYTUtYTAzYy01MzhhYTA2MGZjMjgiLCJyb2wiOjIsImFyZWEiOjI1LCJpYXQiOjE3ODQ3Mzk5MDUsImV4cCI6MTc4NDgyNjMwNX0.6S_wxGb8Xp7zGM68WYi37VF5ORHyEd9yqXRwglfHAl8
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

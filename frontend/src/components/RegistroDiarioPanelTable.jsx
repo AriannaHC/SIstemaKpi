@@ -550,7 +550,7 @@ export default function RegistroDiarioPanelTable({
 
                         {area === "calidad" && (
                           <td
-                            className="px-4 py-3 text-slate-600 max-w-[150px] truncate"
+                            className="px-4 py-3 text-slate-600 max-w-37.5 truncate"
                             title={r.proceso}
                           >
                             {r.proceso}
@@ -565,7 +565,7 @@ export default function RegistroDiarioPanelTable({
                               </span>
                             </td>
                             <td
-                              className="px-4 py-3 max-w-[150px] truncate text-slate-500"
+                              className="px-4 py-3 max-w-37.5 truncate text-slate-500"
                               title={r.entregable}
                             >
                               {r.entregable}
@@ -601,7 +601,7 @@ export default function RegistroDiarioPanelTable({
                               {r.dias_vencimiento ?? "-"}
                             </td>
                             <td
-                              className="px-4 py-3 text-slate-600 truncate max-w-[120px]"
+                              className="px-4 py-3 text-slate-600 truncate max-w-30"
                               title={r.motivo_retraso}
                             >
                               {r.motivo_retraso || "-"}

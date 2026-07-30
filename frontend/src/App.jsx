@@ -1,4 +1,3 @@
-// src/App.jsx
 import { useState, useEffect, Suspense, lazy, useCallback } from "react";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
@@ -19,10 +18,13 @@ const HistorialKPIs = lazy(() => import("./pages/HistorialKPIs"));
 const Analitica = lazy(() => import("./pages/Analitica"));
 const Comparativas = lazy(() => import("./pages/Comparativas"));
 const Backups = lazy(() => import("./pages/Backups"));
-const LlenadoRegistroDiario = lazy(() => import("./pages/LlenadoRegistroDiario"));
+const LlenadoRegistroDiario = lazy(
+  () => import("./pages/LlenadoRegistroDiario"),
+);
 const PanelOperaciones = lazy(() => import("./pages/PanelOperaciones"));
 const PanelCalidad = lazy(() => import("./pages/PanelCalidad"));
 const LlenadoAuditoria = lazy(() => import("./pages/LlenadoAuditoria"));
+const KpisArea = lazy(() => import("./pages/KpisArea"));
 
 const PageSpinner = (
   <div className="flex items-center justify-center h-64">
@@ -49,6 +51,19 @@ export default function App() {
   const [activePage, setActivePage] = useState(() =>
     getDefaultPage(user?.kpi_rol_id),
   );
+  const [prevUser, setPrevUser] = useState(user);
+
+  // ── FIX PANTALLA BLANCA: Sincronización exacta en el renderizado ──
+  // Si el usuario acaba de iniciar sesión, actualizamos activePage instantáneamente
+  // antes de que React dibuje componentes incorrectos en pantalla.
+  if (user !== prevUser) {
+    setPrevUser(user);
+    if (!prevUser && user) {
+      setActivePage(getDefaultPage(user.kpi_rol_id));
+    } else if (prevUser && !user) {
+      setActivePage(getDefaultPage(null)); // Reseteo al cerrar sesión
+    }
+  }
 
   // ── ESTADOS PARA LA AUDITORÍA ──
   const [auditoriaRegistroId, setAuditoriaRegistroId] = useState(null);
@@ -61,19 +76,27 @@ export default function App() {
 
   // ── PREFETCH: carga datos en background al hacer hover en el sidebar ──
   const prefetchMap = {
-    dashboard: useCallback(() => { kpiService.getDashboardData(); }, []),
-    reports: useCallback(() => { kpiService.getAlertas(); }, []),
-    historial: useCallback(() => { kpiService.getHistorial(); }, []),
-    users: useCallback(() => { userService.getUsers(); kpiService.getAreasStats(); }, []),
-    analitica: useCallback(() => { kpiService.getAreasStats(); }, []),
-    comparativas: useCallback(() => { kpiService.getAreasStats(); userService.getUsers(); }, []),
+    dashboard: useCallback(() => {
+      kpiService.getDashboardData();
+    }, []),
+    reports: useCallback(() => {
+      kpiService.getAlertas();
+    }, []),
+    historial: useCallback(() => {
+      kpiService.getHistorial();
+    }, []),
+    users: useCallback(() => {
+      userService.getUsers();
+      kpiService.getAreasStats();
+    }, []),
+    analitica: useCallback(() => {
+      kpiService.getAreasStats();
+    }, []),
+    comparativas: useCallback(() => {
+      kpiService.getAreasStats();
+      userService.getUsers();
+    }, []),
   };
-
-  useEffect(() => {
-    if (user) {
-      setActivePage(getDefaultPage(user.kpi_rol_id));
-    }
-  }, [user]);
 
   if (!user) return <Login />;
 
@@ -107,6 +130,9 @@ export default function App() {
         break;
       case "mi-equipo":
         content = <MiEquipo />;
+        break;
+      case "kpis-area":
+        content = <KpisArea />;
         break;
       case "analitica":
         content = <Analitica />;

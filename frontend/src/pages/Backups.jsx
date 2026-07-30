@@ -202,7 +202,7 @@ export default function Backups() {
           </div>
         </div>
 
-        <div className="p-4 md:p-6 bg-slate-50/70 space-y-4 min-h-[200px]">
+        <div className="p-4 md:p-6 bg-slate-50/70 space-y-4 min-h-50">
           {loading ? (
             <div className="flex items-center justify-center h-32">
               <div className="w-8 h-8 border-4 border-azul border-t-naranja rounded-full animate-spin"></div>

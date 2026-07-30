@@ -1,0 +1,17 @@
+info:
+  name: Prueba de seguridad de solicitud de usuarios
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:3000/api/users
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3MWNlOGJhNi1kZjhlLTQxMDEtYTNiZi1jYzIzMGY1MzdmMjYiLCJyb2wiOjMsImFyZWEiOjIwLCJpYXQiOjE3ODQ2NTEwMzYsImV4cCI6MTc4NDczNzQzNn0.ZLeQGOJe0O3MYr7mDRGRCSgudsS52ajy35Fq2pNgxOA
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

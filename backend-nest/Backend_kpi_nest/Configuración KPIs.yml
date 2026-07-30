@@ -1,0 +1,29 @@
+info:
+  name: Configuración KPIs
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:3000/api/kpis/configuracion/1
+  body:
+    type: json
+    data: |-
+      {
+        "campos": [
+          {
+            "id": 1,
+            "origen": "sistema",
+            "formula_personalizada": "meta * 2"
+          }
+        ]
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1LWFkbWluLWpiLTAwMSIsInJvbCI6MSwiYXJlYSI6bnVsbCwiaWF0IjoxNzg0ODU5NzcwLCJleHAiOjE3ODQ5NDYxNzB9.OCTGIFw8YVktjp7UflOWESGGgfMAdXdYRYIyldc5_Cc
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

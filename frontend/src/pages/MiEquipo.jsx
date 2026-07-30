@@ -31,19 +31,26 @@ export default function MiEquipo() {
   const cargarDatos = async () => {
     setLoading(true);
     try {
+      // Al agregar .catch() a cada promesa individual, evitamos que Promise.all "explote"
       const [miEquipoRes, kpisRes] = await Promise.all([
-        apiClient.get("/users/mi-equipo"),
-        kpiService.getKpisSemanales(user.kpi_area_id),
+        apiClient.get("/users/mi-equipo").catch((err) => {
+          console.error("Error cargando equipo:", err);
+          return { data: [] }; // Fallback para que no rompa la vista
+        }),
+        kpiService.getKpisSemanales(user.kpi_area_id).catch((err) => {
+          console.warn("KPIs no disponibles aún (404 esperado):", err.message);
+          return { kpis: [] }; // Fallback silencioso mientras construimos el backend de KPIs
+        }),
       ]);
-      let equipoData = miEquipoRes.data || [];
-      const jefeIncluido = equipoData.some((t) => t.id === user.id);
 
-      if (!jefeIncluido) {
+      let equipoData = miEquipoRes.data || [];
+      const jefeIncluido = equipoData.some((t) => t.id === user?.id);
+
+      if (!jefeIncluido && user) {
         equipoData = [
           {
             id: user.id,
-            name: `${user.name} (Tú - Jefe de Área)`, // Distintivo visual
-            email: user.email,
+            name: `${user.name} (Tú - Jefe de Área)`,
             kpi_rol_id: user.kpi_rol_id,
             kpi_area_id: user.kpi_area_id,
           },
@@ -53,12 +60,14 @@ export default function MiEquipo() {
 
       setEquipo(equipoData);
 
-      setKpisActivos((kpisRes.kpis || []).filter((k) => k.is_programado));
+      // Manejamos tanto si kpisRes trae { kpis: [] } como si trae un arreglo directo
+      const listaKpis = Array.isArray(kpisRes) ? kpisRes : kpisRes.kpis || [];
+      setKpisActivos(listaKpis.filter((k) => k.is_programado));
     } catch (err) {
       console.error(err);
       setFeedback({
         tipo: "error",
-        mensaje: "Error al cargar datos del equipo.",
+        mensaje: "Error crítico al intentar cargar la vista.",
       });
     } finally {
       setLoading(false);
@@ -227,7 +236,7 @@ export default function MiEquipo() {
             return (
               <div
                 key={trabajador.id}
-                className="bg-white border border-slate-200 rounded-[2.5rem] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col h-full relative overflow-hidden group"
+                className="bg-white border border-slate-200 rounded-[2.5rem] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col h-full relative group z-10 hover:z-20"
               >
                 {/* Info Personal */}
                 <div className="flex items-center gap-4 mb-6 relative z-10">
@@ -241,12 +250,6 @@ export default function MiEquipo() {
                     >
                       {trabajador.name}
                     </h3>
-                    <p
-                      className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate"
-                      title={trabajador.email}
-                    >
-                      {trabajador.email.split("@")[0]}
-                    </p>
                   </div>
                 </div>
 

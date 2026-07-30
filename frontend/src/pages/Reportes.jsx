@@ -380,7 +380,7 @@ export default function Reportes() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3 max-h-[560px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3 max-h-140 overflow-y-auto pr-1">
                 {itemsFiltrados.map((item) => {
                   const isCritico = item.tipo === "critico";
                   const isRiesgo = item.tipo === "riesgo";
@@ -453,7 +453,7 @@ export default function Reportes() {
             </div>
           </div>
 
-          <div className="p-5 bg-slate-50/70 space-y-4 max-h-[620px] overflow-y-auto">
+          <div className="p-5 bg-slate-50/70 space-y-4 max-h-155 overflow-y-auto">
             {(alertasData?.participacion || []).length === 0 ? (
               <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
                 <p className="text-sm font-bold text-slate-400">

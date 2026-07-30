@@ -152,7 +152,7 @@ export default function EscogerKPI() {
             </h2>
           </div>
 
-          <div className="p-6 md:p-8 bg-slate-50/50 min-h-[400px]">
+          <div className="p-6 md:p-8 bg-slate-50/50 min-h-100">
             {loadingAreas ? (
               <div className="flex justify-center py-20">
                 <div className="w-10 h-10 border-4 border-azul border-t-naranja rounded-full animate-spin"></div>
@@ -260,7 +260,7 @@ export default function EscogerKPI() {
             )}
           </div>
 
-          <div className="p-6 md:p-8 bg-slate-50/50 min-h-[400px]">
+          <div className="p-6 md:p-8 bg-slate-50/50 min-h-100">
             {loadingKpis ? (
               <div className="text-center py-20">
                 <div className="w-8 h-8 border-4 border-azul border-t-naranja rounded-full animate-spin mx-auto"></div>
@@ -353,7 +353,7 @@ export default function EscogerKPI() {
             />
 
             <div
-              className={`fixed top-0 right-0 h-dvh w-full md:w-[450px] bg-white z-9999 shadow-2xl transform transition-transform duration-300 ease-out flex flex-col ${
+              className={`fixed top-0 right-0 h-dvh w-full md:w-112.5 bg-white z-9999 shadow-2xl transform transition-transform duration-300 ease-out flex flex-col ${
                 modalSide.open ? "translate-x-0" : "translate-x-full"
               }`}
             >

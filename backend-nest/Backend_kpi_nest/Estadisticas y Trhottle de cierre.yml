@@ -1,0 +1,17 @@
+info:
+  name: Estadisticas y Trhottle de cierre
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:3000/api/kpis/areas/stats
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1LWFkbWluLWpiLTAwMSIsInJvbCI6MSwiYXJlYSI6bnVsbCwiaWF0IjoxNzg0ODU5MjkwLCJleHAiOjE3ODQ5NDU2OTB9.jrRNNS-wFpVYKWtrnEfgTIPv7MgTEkvsOUMrxzvEen4
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

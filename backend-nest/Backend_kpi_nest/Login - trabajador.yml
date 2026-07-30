@@ -1,0 +1,22 @@
+info:
+  name: Login - trabajador
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:3000/api/auth/login
+  body:
+    type: json
+    data: |-
+      {
+        "email": "jashitor21@gmail.com",
+        "password": "Carlinnho$$20"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

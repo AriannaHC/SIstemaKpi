@@ -1,0 +1,29 @@
+info:
+  name: Enviar Registro Diario
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:3000/api/registros-diarios
+  body:
+    type: json
+    data: |-
+      {
+        "proceso": "Test",
+        "tipo_actividad": "Actividad de Prueba",
+        "tipo_tarea": "Desarrollo",
+        "entregable": "Documento Test",
+        "responsable_asigna": "Juan Perez",
+        "fecha_inicio": "2026-07-22T08:00:00Z",
+        "fecha_entrega": "2026-07-22T18:00:00Z"
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3MWNlOGJhNi1kZjhlLTQxMDEtYTNiZi1jYzIzMGY1MzdmMjYiLCJyb2wiOjMsImFyZWEiOjIwLCJpYXQiOjE3ODQ3MzkzMzgsImV4cCI6MTc4NDgyNTczOH0.XZ56zBElPm3lwKspCc6K83DT5oACrlnHtgV9XldkyrM
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

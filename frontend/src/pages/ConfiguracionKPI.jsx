@@ -290,7 +290,7 @@ export default function ConfiguracionKPI() {
           </div>
 
           {/* Cuadrícula de KPIs */}
-          <div className="p-6 md:p-8 bg-slate-50/50 min-h-[400px]">
+          <div className="p-6 md:p-8 bg-slate-50/50 min-h-100">
             {!selectedArea ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <Database className="w-14 h-14 text-slate-200 mb-4" />
@@ -590,7 +590,7 @@ export default function ConfiguracionKPI() {
                   onSubmit={handleSubmit}
                   className="rounded-3xl border border-slate-200 shadow-sm bg-white overflow-x-auto w-full"
                 >
-                  <table className="w-full text-left min-w-[700px]">
+                  <table className="w-full text-left min-w-175">
                     <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
                         <th
@@ -718,8 +718,8 @@ export default function ConfiguracionKPI() {
                   </div>
 
                   {/* Right Side: Button */}
-                  <div className="w-full md:flex-1 md:min-w-[260px] lg:max-w-sm">
-                    <div className="flex flex-col sm:flex-row gap-[5px]">
+                  <div className="w-full md:flex-1 md:min-w-65 lg:max-w-sm">
+                    <div className="flex flex-col sm:flex-row gap-1.25">
                       <button
                         type="button"
                         onClick={() => setIsTesterOpen(true)}

@@ -54,30 +54,51 @@ export default function Comparativas() {
   const isMeses = tipoComparacion === "meses";
 
   useEffect(() => {
-    Promise.all([kpiService.getAreasStats(), userService.getUsers()])
+    Promise.all([
+      kpiService.getAreasStats().catch((err) => {
+        console.warn("Áreas no disponibles aún (404 esperado):", err.message);
+        return [];
+      }),
+      userService.getUsers().catch((err) => {
+        console.error("Error cargando usuarios:", err);
+        return [];
+      }),
+    ])
       .then(([resAreas, resUsers]) => {
-        setAreasList(resAreas);
-        setUsersList(resUsers);
-        if (resAreas.length > 1) {
+        setAreasList(resAreas || []);
+        setUsersList(resUsers || []);
+
+        if (resAreas && resAreas.length > 1) {
           setEntidadAId(resAreas[0].id.toString());
           setEntidadBId(resAreas[1].id.toString());
         }
       })
-      .catch(console.error);
+      .catch((err) => console.error("Error crítico en inicialización:", err));
   }, []);
 
   useEffect(() => {
-    if (isAreas && areasList.length > 1) {
-      setEntidadAId(areasList[0].id.toString());
-      setEntidadBId(areasList[1].id.toString());
-    } else if (tipoComparacion === "trabajadores" && usersList.length > 1) {
-      setEntidadAId(usersList[0].id.toString());
-      setEntidadBId(usersList[1].id.toString());
+    // Limpiamos los estados al cambiar de pestaña para evitar cruce de IDs (evita el error NaN)
+    if (isAreas) {
+      if (areasList && areasList.length > 1) {
+        setEntidadAId(areasList[0].id.toString());
+        setEntidadBId(areasList[1].id.toString());
+      } else {
+        setEntidadAId("");
+        setEntidadBId("");
+      }
+    } else if (tipoComparacion === "trabajadores") {
+      if (usersList && usersList.length > 1) {
+        setEntidadAId(usersList[0].id.toString());
+        setEntidadBId(usersList[1].id.toString());
+      } else {
+        setEntidadAId("");
+        setEntidadBId("");
+      }
     } else if (isMeses) {
-      setEntidadAId("todas"); // Para meses, la entidadAId servirá como filtro de área
+      setEntidadAId("todas");
       setEntidadBId("");
     }
-  }, [tipoComparacion]);
+  }, [tipoComparacion, isAreas, isMeses, areasList, usersList]);
 
   useEffect(() => {
     if (!isMeses && (!entidadAId || !entidadBId)) return;
@@ -86,7 +107,11 @@ export default function Comparativas() {
     let fetchAnalitica;
 
     if (isMeses) {
-      fetchAnalitica = analyticsService.compararMeses(entidadAId, filtroMes, filtroAnio);
+      fetchAnalitica = analyticsService.compararMeses(
+        entidadAId,
+        filtroMes,
+        filtroAnio,
+      );
     } else if (isAreas) {
       fetchAnalitica = analyticsService.compararAreas(
         entidadAId,
@@ -249,9 +274,7 @@ export default function Comparativas() {
         <SelectCustom
           value={filtroAnio}
           onChange={setFiltroAnio}
-          options={[
-            { value: "2026", label: "2026" },
-          ]}
+          options={[{ value: "2026", label: "2026" }]}
           className="w-24"
         />
       </div>
@@ -417,7 +440,7 @@ export default function Comparativas() {
             <h3 className="font-black text-lg text-[#123498] text-center mb-8 uppercase tracking-widest">
               {entidadANombre} vs {entidadBNombre}
             </h3>
-            <div className="w-full h-[400px]">
+            <div className="w-full h-100">
               <ResponsiveContainer
                 width="100%"
                 height="100%"

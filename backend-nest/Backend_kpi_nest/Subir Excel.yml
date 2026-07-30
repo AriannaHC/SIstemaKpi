@@ -1,0 +1,24 @@
+info:
+  name: Subir Excel
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:3000/api/kpis/upload_smart
+  body:
+    type: multipart-form
+    data:
+      - name: file
+        type: file
+        value:
+          - d:\JB\sistemaKPIOhño\backend-nest\Backend_kpi_nest\Sistema_KPIs_SMART_Automatizado.xlsx
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1LWFkbWluLWpiLTAwMSIsInJvbCI6MSwiYXJlYSI6bnVsbCwiaWF0IjoxNzg0OTMwMDMwLCJleHAiOjE3ODUwMTY0MzB9.0E8e7iIvq8dHFf0e7aG_SYM3sqGmNMGV84iqzUqIDWw
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

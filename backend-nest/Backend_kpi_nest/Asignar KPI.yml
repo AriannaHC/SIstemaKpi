@@ -1,0 +1,23 @@
+info:
+  name: Asignar KPI
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: http://localhost:3000/api/kpis/10/responsable
+  body:
+    type: json
+    data: |-
+      {
+        "responsable_id": "71ce8ba6-df8e-4101-a3bf-cc230f537f26"
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4Y2RmMTU2ZS0yMWRlLTQwYWItOTc2Ny01ZGM5NWNhM2E0MDIiLCJyb2wiOjIsImFyZWEiOjIwLCJpYXQiOjE3ODQ5MDc0NjYsImV4cCI6MTc4NDk5Mzg2Nn0.EdYzVN1Xp-ZIwaPIy4X_iQfKVXQ_bzoXOmlhnTndS0o
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

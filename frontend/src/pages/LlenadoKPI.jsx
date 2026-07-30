@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { kpiService } from "../services/kpiService";
+import confetti from "canvas-confetti";
 import {
   FileText,
   Clock,
@@ -8,6 +9,7 @@ import {
   ChevronDown,
   ChevronLeft,
   Target,
+  AlertCircle,
 } from "lucide-react";
 import Toast from "../components/Toast";
 
@@ -52,8 +54,6 @@ function formatearValor(label, valor) {
   if (valor === null || valor === undefined || valor === "") return "-";
   const lbl = label.toLowerCase().trim();
 
-  // FIX: Búsqueda exacta para evitar que "Puntuación de cumplimiento técnico"
-  // sufra un falso positivo y se multiplique por 100.
   const esPorcentaje =
     lbl === "cumplimiento" ||
     lbl === "cumplimiento (%)" ||
@@ -70,14 +70,11 @@ function formatearValor(label, valor) {
     return (parseFloat(valor) * 100).toFixed(2) + "%";
   }
 
-  // FIX: Productividad se muestra como número normal.
-  // (Si en algún momento lo quieres sin decimales, cambia num.toFixed(2) a Math.round(num).toString())
   if (lbl.includes("productividad")) {
     const num = parseFloat(valor);
     return isNaN(num) ? String(valor) : num.toFixed(2);
   }
 
-  // Cualquier otro campo numérico (ej. Puntuación de cumplimiento técnico)
   const num = parseFloat(valor);
   return isNaN(num) ? String(valor) : num.toFixed(2);
 }
@@ -106,8 +103,6 @@ function ejecutarMotor(campos, valores) {
     }
   });
 
-  // OPTIMIZACIÓN: Añadimos un indicador "huboCambios" (Early Exit).
-  // Si en un pase no se calculó nada nuevo, no hacemos los pases restantes.
   let huboCambios = true;
   for (let pase = 1; pase <= 4 && huboCambios; pase++) {
     huboCambios = false;
@@ -130,17 +125,13 @@ function ejecutarMotor(campos, valores) {
       }
 
       if (canCalculate) {
-        // SEGURIDAD: Expresión regular que solo permite matemáticas válidas (Números, operadores y Math.max/min)
-        // Bloquea cualquier inyección de código JavaScript (XSS).
         if (!/[^0-9+\-*/().,\sMathmaxinul=<>?!|&:]/i.test(formula)) {
           try {
-            // Usamos new Function en lugar de eval() por ser más restrictivo
             const evaluador = new Function("return " + formula);
             const resultado = evaluador();
             const valorFinal =
               !isNaN(resultado) && isFinite(resultado) ? resultado : null;
 
-            // Si el valor cambió en este pase, marcamos que hubo cambios para dar otra vuelta si es necesario
             if (contexto[c.campo_label] !== valorFinal) {
               contexto[c.campo_label] = valorFinal;
               huboCambios = true;
@@ -291,7 +282,6 @@ export default function LlenadoKPI() {
     const lb = labelBuscada.toLowerCase().trim();
     let campoEncontrado;
 
-    // Regla de oro: Si el resumen pide "Cumplimiento", buscar SOLO el campo exacto
     if (lb === "cumplimiento") {
       campoEncontrado = campos.find((c) => {
         if (!c.campo_label) return false;
@@ -299,7 +289,6 @@ export default function LlenadoKPI() {
         return clean === "cumplimiento (%)" || clean === "cumplimiento";
       });
     } else {
-      // Para el resto de métricas (Eficiencia, Productividad, etc.)
       campoEncontrado = campos.find((c) => {
         if (!c.campo_label) return false;
         const clean = c.campo_label.toLowerCase().trim();
@@ -401,6 +390,14 @@ export default function LlenadoKPI() {
       const payload = { kpi_id: kpiSeleccionado.id, valores: valoresCompletos };
       await kpiService.registrar(payload);
 
+      // ¡GAMIFICACIÓN! 🎊
+      confetti({
+        particleCount: 700,
+        spread: 240,
+        origin: { y: 0.6 },
+        colors: ["#123498", "#F46F0B", "#ffffff"],
+      });
+
       setFeedback({
         tipo: "ok",
         mensaje: `✅ Registro exitoso.`,
@@ -417,6 +414,9 @@ export default function LlenadoKPI() {
         });
         setValores(valoresReset);
       }
+
+      // Opcional: Recargar los KPIs diarios para que se vea como completado en la lista general
+      cargarKpisDiarios();
     } catch (err) {
       setFeedback({
         tipo: "error",
@@ -479,12 +479,14 @@ export default function LlenadoKPI() {
               return (
                 <div
                   key={kpi.id}
-                  className={`rounded-2xl border shadow-sm transition-all duration-300 overflow-hidden flex flex-col ${
+                  className={`rounded-2xl transition-all duration-300 overflow-hidden flex flex-col ${
                     isCompletado
-                      ? "bg-slate-50 border-slate-200 opacity-80"
+                      ? "bg-slate-50 border border-slate-200 opacity-80"
                       : isVencido
-                        ? "bg-red-50 border-red-200"
-                        : "bg-white border-slate-100 hover:shadow-lg"
+                        ? "bg-red-50 border border-red-200"
+                        : kpi.es_mi_kpi
+                          ? "bg-white border-2 border-orange-300 shadow-sm hover:shadow-lg"
+                          : "bg-white border border-slate-100 hover:shadow-lg"
                   }`}
                 >
                   <div
@@ -493,30 +495,37 @@ export default function LlenadoKPI() {
                         ? "bg-slate-200"
                         : isVencido
                           ? "bg-red-100"
-                          : "bg-linear-to-br from-[#123498]/10 to-[#F46F0B]/10"
+                          : kpi.es_mi_kpi
+                            ? "bg-linear-to-br from-[#F46F0B]/10 to-[#F46F0B]/5" // MEJORA UI: Fondo de la cabecera en tonos naranjas.
+                            : "bg-linear-to-br from-[#123498]/10 to-[#F46F0B]/10"
                     }`}
                   >
                     <span
-                      className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border bg-white ${
+                      className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border bg-white flex items-center gap-1.5 ${
                         isCompletado
                           ? "text-slate-500 border-slate-300"
                           : isVencido
                             ? "text-red-600 border-red-300"
                             : kpi.es_mi_kpi
-                              ? "text-[#F46F0B] border-[#F46F0B]/30"
+                              ? "text-[#F46F0B] border-[#F46F0B]" // MEJORA UI: Borde e ícono más fuerte para el badge.
                               : "text-[#123498] border-[#123498]/30"
                       }`}
                     >
-                      {isCompletado
-                        ? "Completado"
-                        : isVencido
-                          ? "Plazo Expirado"
-                          : kpi.es_mi_kpi
-                            ? "Tu responsabilidad"
-                            : "KPI de equipo"}
+                      {isCompletado ? (
+                        "Completado"
+                      ) : isVencido ? (
+                        "Plazo Expirado"
+                      ) : kpi.es_mi_kpi ? (
+                        <>
+                          <AlertCircle className="w-3 h-3 text-[#F46F0B]" />
+                          Tu responsabilidad
+                        </>
+                      ) : (
+                        "KPI de equipo"
+                      )}
                     </span>
                     <FileText
-                      className={`w-8 h-8 ${isCompletado ? "text-slate-400" : "text-[#123498]/20"}`}
+                      className={`w-8 h-8 ${isCompletado ? "text-slate-400" : kpi.es_mi_kpi ? "text-[#F46F0B]/40" : "text-[#123498]/20"}`}
                     />
                   </div>
 
@@ -718,7 +727,6 @@ export default function LlenadoKPI() {
                         >
                           {esTextoLargo ? (
                             <>
-                              {/* Mobile: toggle button */}
                               <button
                                 type="button"
                                 onClick={() => toggleTexto(c.campo_key)}
@@ -744,7 +752,6 @@ export default function LlenadoKPI() {
                                   />
                                 </div>
                               )}
-                              {/* Desktop: label + textarea siempre visible */}
                               <div className="hidden lg:block">
                                 <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-[0.18em]">
                                   {c.campo_label}{" "}
@@ -815,7 +822,6 @@ export default function LlenadoKPI() {
                 </button>
               </div>
 
-              {/* Botón toggle solo en mobile */}
               {camposResultado.length > 0 && (
                 <button
                   type="button"

@@ -1,4 +1,3 @@
-// frontend/src/services/userService.js
 import apiClient from "./apiClient";
 
 const CACHE_DURATION = 1000 * 60 * 5;
@@ -13,19 +12,18 @@ export const userService = {
     ) {
       return usersCache.data;
     }
-    const response = await apiClient.get("/users/");
+    // ¡ATENCIÓN! Barra final eliminada para compatibilidad con NestJS
+    const response = await apiClient.get("/users");
     usersCache.data = response.data;
     usersCache.timestamp = Date.now();
     return response.data;
   },
 
-  // Trabajadores del área del jefe autenticado (solo rol 2)
   getMiEquipo: async () => {
     const response = await apiClient.get("/users/mi-equipo");
     return response.data;
   },
 
-  // Roles disponibles para el <select>
   getRoles: async () => {
     const response = await apiClient.get("/users/roles");
     return response.data;

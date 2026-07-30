@@ -17,6 +17,7 @@ import {
   NotebookPen,
   Boxes,
   BadgeCheck,
+  Target,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -151,11 +152,18 @@ export default function Sidebar({
           {/* VISTAS EXCLUSIVAS DEL JEFE DE ÁREA (Rol 2) */}
           {/* ========================================================= */}
           {rol === 2 && (
-            <NavItem
-              view="mi-equipo"
-              icon={<Users className="w-5 h-5" />}
-              label="Mi Equipo"
-            />
+            <>
+              <NavItem
+                view="kpis-area"
+                icon={<Target className="w-5 h-5" />}
+                label="KPIs de área"
+              />
+              <NavItem
+                view="mi-equipo"
+                icon={<Users className="w-5 h-5" />}
+                label="Mi Equipo"
+              />
+            </>
           )}
 
           {/* ========================================================= */}

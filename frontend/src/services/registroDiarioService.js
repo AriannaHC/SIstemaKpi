@@ -11,7 +11,7 @@ let panelCache = {
 
 export const registroDiarioService = {
   crearRegistro: async (payload) => {
-    const response = await apiClient.post("/registros-diarios/", payload);
+    const response = await apiClient.post("/registros-diarios", payload);
     return response.data;
   },
 

@@ -1,0 +1,21 @@
+info:
+  name: Exportar Excel Calidad
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:3000/api/registros-diarios/exportar-excel?area_panel=calidad
+  params:
+    - name: area_panel
+      value: calidad
+      type: query
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5ZTY5NzJiMi01OWY1LTRmYTUtYTAzYy01MzhhYTA2MGZjMjgiLCJyb2wiOjIsImFyZWEiOjI1LCJpYXQiOjE3ODQ3NTI2OTMsImV4cCI6MTc4NDgzOTA5M30.SqTLReqCjyWjV2siDdXepv4nTPbPkD8jLTFyGfUgpz4
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

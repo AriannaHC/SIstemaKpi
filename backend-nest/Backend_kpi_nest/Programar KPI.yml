@@ -1,0 +1,24 @@
+info:
+  name: Programar KPI
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:3000/api/kpis/6/programar
+  body:
+    type: json
+    data: |-
+      {
+        "fecha_inicio": "2026-07-24T00:00:00Z",
+        "fecha_fin": "2026-07-31T23:59:59Z"
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1LWFkbWluLWpiLTAwMSIsInJvbCI6MSwiYXJlYSI6bnVsbCwiaWF0IjoxNzg0OTA3NjM3LCJleHAiOjE3ODQ5OTQwMzd9.hOw_grlPMqHcg8n-VonGdaBkDHIAYwJUj-0WH80ChWE
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

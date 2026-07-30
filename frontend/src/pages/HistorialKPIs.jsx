@@ -241,7 +241,7 @@ export default function HistorialKPIs() {
             className="overflow-x-auto"
             onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
           >
-            <table className="w-full min-w-[900px] border-collapse">
+            <table className="w-full min-w-225 border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80">
                   {[
@@ -300,7 +300,7 @@ export default function HistorialKPIs() {
                             {reg.area_nombre}
                           </span>
                         </td>
-                        <td className="px-5 py-4 max-w-[200px]">
+                        <td className="px-5 py-4 max-w-50">
                           <p
                             className="text-xs font-bold truncate"
                             style={{

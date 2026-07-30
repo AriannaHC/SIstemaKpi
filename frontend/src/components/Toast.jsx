@@ -20,15 +20,11 @@ export default function Toast({ message, type = "success", onClose }) {
     <AnimatePresence>
       {message && (
         <motion.div
-          // 1. Estado inicial (fuera de pantalla, un poco transparente y pequeño)
-          initial={{ opacity: 0, y: 50, scale: 0.95 }}
-          // 2. Animación de entrada (posición normal)
+          initial={{ opacity: 0, y: -50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          // 3. Animación de salida (se desvanece y baja ligeramente)
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          // 4. Curva de transición
+          exit={{ opacity: 0, y: -20, scale: 0.95 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="fixed bottom-6 right-6 z-9999"
+          className="fixed top-6 right-6 z-9999"
         >
           <div
             className={`bg-white border rounded-2xl shadow-xl p-4 flex items-start gap-3 w-80 sm:w-96 relative overflow-hidden ${

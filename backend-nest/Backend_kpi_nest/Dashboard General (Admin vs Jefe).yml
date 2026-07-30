@@ -1,0 +1,17 @@
+info:
+  name: Dashboard General (Admin vs Jefe)
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:3000/api/kpis/dashboard_data
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4Y2RmMTU2ZS0yMWRlLTQwYWItOTc2Ny01ZGM5NWNhM2E0MDIiLCJyb2wiOjIsImFyZWEiOjIwLCJpYXQiOjE3ODQ4NTkzNDMsImV4cCI6MTc4NDk0NTc0M30.YBv-sL3h9gmyR8rMUdb2EX7p9W51ccrAbEY9Qg83pYQ
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
