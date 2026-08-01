@@ -18,7 +18,7 @@ export class FtpService {
         password: this.configService.get<string>(
           `FTP_${type.toUpperCase()}_PASSWORD`,
         ),
-        secure: false,
+        secure: true, // ← único cambio: antes decía false
       });
       return client;
     } catch (error) {
