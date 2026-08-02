@@ -61,8 +61,8 @@ export default function Login() {
     }
   };
 
-  const userIcon = <User className="w-[18px] h-[18px]" />;
-  const lockIcon = <Lock className="w-[18px] h-[18px]" />;
+  const userIcon = <User className="w-4.5 h-4.5" />;
+  const lockIcon = <Lock className="w-4.5 h-4.5" />;
 
   return (
     <section className="min-h-screen flex">

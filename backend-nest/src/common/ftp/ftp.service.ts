@@ -20,15 +20,23 @@ export class FtpService {
     const pass = this.configService.get<string>(
       `FTP_${type.toUpperCase()}_PASSWORD`,
     );
-    this.logger.debug(
-      `[DEBUG FTP] host="${host}" user="${user}" pass_length=${pass?.length} pass_first="${pass?.charAt(0)}" pass_last="${pass?.charAt((pass?.length ?? 1) - 1)}"`,
+    console.log('===== DEBUG FTP =====');
+    console.log('host:', JSON.stringify(host));
+    console.log('user:', JSON.stringify(user));
+    console.log('pass_length:', pass?.length);
+    console.log('pass_first_char:', JSON.stringify(pass?.charAt(0)));
+    console.log(
+      'pass_last_char:',
+      JSON.stringify(pass?.charAt((pass?.length ?? 1) - 1)),
     );
+    console.log('======================');
 
     try {
       await client.access({
         host,
         user,
         password: pass,
+        port: 21,
         secure: true,
         secureOptions: { rejectUnauthorized: false },
       });

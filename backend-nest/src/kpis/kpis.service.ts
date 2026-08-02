@@ -26,6 +26,7 @@ import { KpiCierreService } from './kpi-cierre.service';
 import { RegistrarKpiDto } from './dto/registrar-kpi.dto';
 import { ProgramarKpiDto } from './dto/programar-kpi.dto';
 import { AsignarResponsableDto } from './dto/asignar-responsable.dto';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class KpisService {
@@ -477,6 +478,7 @@ export class KpisService {
         kpi: { areaId: kpi.areaId },
         fechaInicio: LessThanOrEqual(new Date(dto.fecha_fin)),
         fechaFin: MoreThanOrEqual(new Date(dto.fecha_inicio)),
+        completado: false, // AGREGADO: solo cuenta lo que sigue activo, no lo histórico
       },
     });
 
@@ -505,6 +507,7 @@ export class KpisService {
       });
       await this.notificationRepo.save(
         this.notificationRepo.create({
+          id: randomUUID(), // AGREGADO: arregla el TypeORMError que viste en los logs
           title: '🎯 Nueva Tarea de Área',
           body: `Se ha habilitado el KPI '${kpi.nombre}' para tu área. Límite para registro: ${dFormateada}.`,
           audience: 'area',

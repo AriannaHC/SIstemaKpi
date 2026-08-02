@@ -397,7 +397,7 @@ export default function Usuarios() {
         </div>
 
         {/* Tabla — Desktop */}
-        <div className="hidden md:block overflow-x-auto min-h-[400px]">
+        <div className="hidden md:block overflow-x-auto min-h-100">
           <table className="w-full text-left">
             <thead className="bg-slate-50/80 border-b border-slate-100">
               <tr>
@@ -697,7 +697,7 @@ export default function Usuarios() {
       {areaModal.open &&
         areaModal.user &&
         createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+          <div className="fixed inset-0 z-9999 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
             <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border-0">
               <div className="bg-azul p-8 text-white text-center">
                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">

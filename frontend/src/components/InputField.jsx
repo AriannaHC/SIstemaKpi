@@ -81,9 +81,9 @@ export default function InputField({
             }
           >
             {showPassword ? (
-              <EyeOff className="w-[18px] h-[18px]" />
+              <EyeOff className="w-4.5 h-4.5" />
             ) : (
-              <Eye className="w-[18px] h-[18px]" />
+              <Eye className="w-4.5 h-4.5" />
             )}
           </button>
         )}
