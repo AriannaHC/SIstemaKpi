@@ -11,15 +11,26 @@ export class FtpService {
 
   private async connect(type: 'images' | 'backups'): Promise<ftp.Client> {
     const client = new ftp.Client();
+
+    // TEMPORAL — diagnóstico, borrar después de resolver
+    const host = this.configService.get<string>('FTP_HOST');
+    const user = this.configService.get<string>(
+      `FTP_${type.toUpperCase()}_USER`,
+    );
+    const pass = this.configService.get<string>(
+      `FTP_${type.toUpperCase()}_PASSWORD`,
+    );
+    this.logger.debug(
+      `[DEBUG FTP] host="${host}" user="${user}" pass_length=${pass?.length} pass_first="${pass?.charAt(0)}" pass_last="${pass?.charAt((pass?.length ?? 1) - 1)}"`,
+    );
+
     try {
       await client.access({
-        host: this.configService.get<string>('FTP_HOST'),
-        user: this.configService.get<string>(`FTP_${type.toUpperCase()}_USER`),
-        password: this.configService.get<string>(
-          `FTP_${type.toUpperCase()}_PASSWORD`,
-        ),
+        host,
+        user,
+        password: pass,
         secure: true,
-        secureOptions: { rejectUnauthorized: false }, // ← agregar esta línea
+        secureOptions: { rejectUnauthorized: false },
       });
       return client;
     } catch (error) {
