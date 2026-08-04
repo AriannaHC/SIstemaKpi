@@ -588,7 +588,7 @@ export default function LlenadoKPI() {
                             className={`text-xs font-bold ${isVencido && !isCompletado ? "text-red-600" : "text-slate-600"}`}
                           >
                             {kpi.fecha_fin
-                              ? `Vence: ${new Date(kpi.fecha_fin).toLocaleString("es-PE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}`
+                              ? `Vence: ${new Date(typeof kpi.fecha_fin === 'string' ? (kpi.fecha_fin.replace(' ', 'T') + (!kpi.fecha_fin.endsWith('Z') ? 'Z' : '')) : kpi.fecha_fin).toLocaleString("es-PE", { timeZone: "UTC", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}`
                               : "Sin fecha"}
                           </p>
                         </div>

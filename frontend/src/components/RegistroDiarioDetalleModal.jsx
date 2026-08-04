@@ -13,9 +13,20 @@ import { registroDiarioService } from "../services/registroDiarioService";
 /** Formatea un string ISO datetime a "dd/mm/aaaa hh:mm AM/PM" */
 const formatFechaHora = (isoStr) => {
   if (!isoStr) return "—";
-  const d = new Date(isoStr);
+  
+  let cleanIso = isoStr;
+  if (typeof cleanIso === "string") {
+    cleanIso = cleanIso.replace(" ", "T");
+    if (!cleanIso.endsWith("Z")) {
+      cleanIso += "Z";
+    }
+  }
+
+  const d = new Date(cleanIso);
   if (isNaN(d.getTime())) return isoStr;
+  
   return d.toLocaleString("es-PE", {
+    timeZone: "UTC",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

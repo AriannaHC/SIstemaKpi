@@ -114,8 +114,18 @@ export default function EscogerKPI() {
 
   const formatFecha = (isoString) => {
     if (!isoString) return "";
-    const date = new Date(isoString);
+    
+    let cleanIso = isoString;
+    if (typeof cleanIso === "string") {
+      cleanIso = cleanIso.replace(" ", "T");
+      if (!cleanIso.endsWith("Z")) {
+        cleanIso += "Z";
+      }
+    }
+
+    const date = new Date(cleanIso);
     return date.toLocaleString("es-PE", {
+      timeZone: "UTC",
       day: "2-digit",
       month: "short",
       hour: "2-digit",

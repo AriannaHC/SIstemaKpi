@@ -28,9 +28,21 @@ const REGISTROS_POR_PAGINA = 30;
 function formatFecha(fechaIso) {
   try {
     if (!fechaIso) return "-";
-    const d = new Date(fechaIso);
+    
+    // Forzamos la interpretación como UTC para que el navegador no reste horas
+    let cleanIso = fechaIso;
+    if (typeof cleanIso === "string") {
+      cleanIso = cleanIso.replace(" ", "T");
+      if (!cleanIso.endsWith("Z")) {
+        cleanIso += "Z";
+      }
+    }
+
+    const d = new Date(cleanIso);
     if (isNaN(d.getTime())) return fechaIso;
+    
     return d.toLocaleString("es-PE", {
+      timeZone: "UTC",
       day: "2-digit",
       month: "short",
       year: "numeric",
