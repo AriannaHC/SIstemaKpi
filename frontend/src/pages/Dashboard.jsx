@@ -325,7 +325,7 @@ export default function Dashboard({ setActivePage }) {
                 ? currentItems.map((area) => (
                     <div
                       key={area.id}
-                      className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between h-48"
+                      className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between min-h-48"
                       onClick={() => {
                         setSelectedArea(area);
                         setSearchTerm("");
@@ -350,8 +350,8 @@ export default function Dashboard({ setActivePage }) {
                         )}
                       </div>
                       <div>
-                        <h3 className="text-lg font-black text-azul-profundo mb-2 line-clamp-1">
-                          {area.nombre}
+                        <h3 className="text-lg font-black text-azul-profundo mb-2">
+                          {area.nombre} 
                         </h3>
                         <span className="inline-block bg-slate-100 text-slate-500 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest">
                           {area.kpis.length} KPI

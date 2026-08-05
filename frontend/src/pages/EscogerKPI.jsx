@@ -191,7 +191,7 @@ export default function EscogerKPI() {
                     </div>
 
                     <div className="mt-auto relative z-10">
-                      <h3 className="text-lg font-black text-azul-profundo line-clamp-1 mb-1">
+                      <h3 className="text-lg font-black text-azul-profundo mb-1">
                         {area.nombre}
                       </h3>
                       <p className="text-xs text-gray-500 font-semibold">
