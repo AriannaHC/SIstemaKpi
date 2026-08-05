@@ -298,7 +298,7 @@ export default function Comparativas() {
                   label: e.nombre,
                 })),
               ]}
-              className="flex-1"
+              className="flex-1 min-w-0"
             />
           </div>
         ) : (
