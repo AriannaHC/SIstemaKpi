@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { kpiService } from "../services/kpiService";
+import apiClient from "../services/apiClient";
 import {
   Calendar,
   Clock,
@@ -9,6 +10,7 @@ import {
   ChevronLeft,
   Folder,
   Activity,
+  RefreshCw,
 } from "lucide-react";
 import Toast from "../components/Toast";
 
@@ -16,6 +18,7 @@ export default function EscogerKPI() {
   // Estados de Áreas (Master)
   const [areas, setAreas] = useState([]);
   const [loadingAreas, setLoadingAreas] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   // Estados de KPIs (Detail)
   const [selectedArea, setSelectedArea] = useState(null);
@@ -38,6 +41,29 @@ export default function EscogerKPI() {
       setFeedback({ tipo: "error", mensaje: "Error al cargar las áreas." });
     } finally {
       setLoadingAreas(false);
+    }
+  };
+
+  // ── NUEVA FUNCIÓN DE SINCRONIZACIÓN ──
+  const handleSincronizar = async () => {
+    setSyncing(true);
+    try {
+      await kpiService.sincronizarBD();
+      if (selectedArea) {
+        const data = await kpiService.getKpisSemanales(selectedArea.id);
+        setKpisData(data);
+      } else {
+        await cargarAreasConStats(true);
+      }
+
+      setFeedback({
+        tipo: "success",
+        mensaje: "Sincronizado con la Base de Datos.",
+      });
+    } catch (err) {
+      setFeedback({ tipo: "error", mensaje: "Error al sincronizar." });
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -142,13 +168,25 @@ export default function EscogerKPI() {
         onClose={() => setFeedback(null)}
       />
 
-      {/* Cabecera Global (Igual que Dashboard) */}
+      {/* Cabecera Global Modificada */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-azul font-heading">
             Programación de <span className="text-naranja">KPIs</span>
           </h1>
         </div>
+
+        {/* NUEVO BOTÓN DE SINCRONIZAR */}
+        <button
+          onClick={handleSincronizar}
+          disabled={syncing}
+          className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm"
+        >
+          <RefreshCw
+            className={`w-4 h-4 text-naranja ${syncing ? "animate-spin" : ""}`}
+          />
+          {syncing ? "Sincronizando..." : "Actualizar"}
+        </button>
       </div>
 
       {/* ───────────────────────────────────────────────────────── */}
@@ -200,7 +238,7 @@ export default function EscogerKPI() {
 
                     {/* FONDO: carpeta decorativa (marca de agua) */}
                     <div className="absolute -bottom-8 -right-8 rotate-330 text-[#eef0f4] opacity-60 group-hover:scale-110 group-hover:rotate-360 transition-transform">
-                      <Folder className="w-32 h-32" fill="#eef0f4"/>
+                      <Folder className="w-32 h-32" fill="#eef0f4" />
                     </div>
                   </div>
                 ))}

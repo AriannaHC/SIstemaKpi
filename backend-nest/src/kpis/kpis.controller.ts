@@ -6,8 +6,10 @@ import {
   ParseIntPipe,
   Body,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { KpisService } from './kpis.service';
 import { Delete, Patch } from '@nestjs/common';
@@ -147,6 +149,15 @@ export class KpisController {
     return this.kpisService.getAlertas(req.user);
   }
 
+  @Get('sincronizar')
+  async sincronizarManual() {
+    await this.kpisService.limpiarCachesGlobales();
+    return {
+      success: true,
+      message: 'Caché sincronizada con la base de datos',
+    };
+  }
+
   @Get('mis-reportes')
   misReportes(@Req() req) {
     return this.kpisService.getMisReportes(req.user);
@@ -155,5 +166,21 @@ export class KpisController {
   @Get('historial')
   historial(@Req() req) {
     return this.kpisService.getHistorial(req.user);
+  }
+
+  @Get('historial/exportar')
+  async exportarHistorialExcel(@Req() req, @Res() res: Response) {
+    const buffer = await this.kpisService.exportarHistorialExcel(req.user);
+    const fecha = new Date().toISOString().split('T')[0];
+
+    // Le decimos al navegador que esto es un archivo de Excel para descargar
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename=Historial_KPIs_${fecha}.xlsx`,
+      'Content-Length': buffer.length.toString(),
+    });
+
+    res.end(buffer);
   }
 }

@@ -27,6 +27,7 @@ import { RegistrarKpiDto } from './dto/registrar-kpi.dto';
 import { ProgramarKpiDto } from './dto/programar-kpi.dto';
 import { AsignarResponsableDto } from './dto/asignar-responsable.dto';
 import { randomUUID } from 'crypto';
+import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class KpisService {
@@ -838,8 +839,11 @@ export class KpisService {
     const cached = this.cache.get(cacheKey);
     if (cached) return cached;
 
+    // 🚀 SQL ACTUALIZADO: Trae la programación real y el momento de envío
     const sql = `
-      SELECT r.id AS id, r.periodo_inicio AS periodo_inicio, r.periodo_fin AS periodo_fin,
+      SELECT r.id AS id, 
+             COALESCE(kp.fecha_inicio, r.periodo_inicio) AS periodo_inicio, 
+             COALESCE(kp.fecha_fin, r.periodo_fin) AS periodo_fin,
              a.nombre AS area_nombre, k.nombre AS kpi_nombre, u.name AS responsable,
              r.valor_semanal AS valor_semanal, r.cumplimiento AS cumplimiento,
              r.productividad AS productividad, r.eficiencia AS eficiencia,
@@ -850,12 +854,102 @@ export class KpisService {
       INNER JOIN kpis k ON r.kpi_id = k.id
       INNER JOIN users u ON r.usuario_id = u.id
       INNER JOIN areas a ON k.area_id = a.id
+      LEFT JOIN kpis_programados kp ON kp.registro_kpi_id = r.id
       ORDER BY r.id DESC
     `;
     const resultado = await this.dataSource.query(sql);
 
     this.cache.set(cacheKey, resultado);
     return resultado;
+  }
+
+  // ── 18. EXPORTAR HISTORIAL A EXCEL ──
+  async exportarHistorialExcel(currentUser: User): Promise<Buffer> {
+    if (currentUser.kpiRolId !== 1) {
+      throw new ForbiddenException(
+        'Solo el administrador puede exportar el historial.',
+      );
+    }
+
+    const datos = await this.getHistorial(currentUser);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Historial KPIs');
+
+    // 🚀 COLUMNAS ACTUALIZADAS: Agregamos "Fecha Llenado"
+    worksheet.columns = [
+      { header: 'Fecha Inicio', key: 'periodo_inicio', width: 15 },
+      { header: 'Fecha Fin', key: 'periodo_fin', width: 15 },
+      { header: 'Fecha Llenado', key: 'enviado_en', width: 22 }, // <-- NUEVA
+      { header: 'Área', key: 'area_nombre', width: 35 },
+      { header: 'KPI', key: 'kpi_nombre', width: 45 },
+      { header: 'Responsable', key: 'responsable', width: 30 },
+      { header: 'Valor Semanal', key: 'valor_semanal', width: 15 },
+      { header: 'Cumplimiento', key: 'cumplimiento', width: 15 },
+      { header: 'Productividad', key: 'productividad', width: 15 },
+      { header: 'Eficiencia', key: 'eficiencia', width: 15 },
+      { header: 'Eficacia', key: 'eficacia', width: 15 },
+      { header: 'Efectividad', key: 'efectividad', width: 15 },
+      { header: 'Rendimiento', key: 'rendimiento', width: 15 },
+      { header: 'Estado', key: 'estado', width: 20 },
+      { header: 'Alerta', key: 'alerta', width: 15 },
+      { header: 'Observaciones', key: 'observaciones', width: 50 },
+      {
+        header: 'Acciones Correctivas',
+        key: 'acciones_correctivas',
+        width: 50,
+      },
+    ];
+
+    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF123498' },
+    };
+
+    // 🚀 FORMATOS ACTUALIZADOS: Convertimos las fechas a formato humano
+    datos.forEach((row: any) => {
+      worksheet.addRow({
+        ...row,
+        // Formateo de fechas
+        periodo_inicio: row.periodo_inicio
+          ? new Date(row.periodo_inicio).toLocaleDateString('es-PE')
+          : '—',
+        periodo_fin: row.periodo_fin
+          ? new Date(row.periodo_fin).toLocaleDateString('es-PE')
+          : '—',
+        enviado_en: row.enviado_en
+          ? new Date(row.enviado_en).toLocaleString('es-PE')
+          : '—', // Muestra fecha y hora exacta
+        // Formateo de porcentajes
+        cumplimiento:
+          row.cumplimiento !== null
+            ? `${(row.cumplimiento * 100).toFixed(2)}%`
+            : '—',
+        productividad:
+          row.productividad !== null
+            ? `${(row.productividad * 100).toFixed(2)}%`
+            : '—',
+        eficiencia:
+          row.eficiencia !== null
+            ? `${(row.eficiencia * 100).toFixed(2)}%`
+            : '—',
+        eficacia:
+          row.eficacia !== null ? `${(row.eficacia * 100).toFixed(2)}%` : '—',
+        efectividad:
+          row.efectividad !== null
+            ? `${(row.efectividad * 100).toFixed(2)}%`
+            : '—',
+        rendimiento:
+          row.rendimiento !== null
+            ? `${(row.rendimiento * 100).toFixed(2)}%`
+            : '—',
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return buffer as unknown as Buffer;
   }
 
   // ── LIMPIEZA DE CACHÉ GLOBAL ──

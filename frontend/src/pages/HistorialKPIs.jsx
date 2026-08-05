@@ -15,6 +15,7 @@ import {
   Activity,
   Target,
   FileText,
+  Loader2,
 } from "lucide-react";
 import Toast from "../components/Toast";
 
@@ -71,6 +72,38 @@ export default function HistorialKPIs() {
   // Estado para el Badge seguidor del Mouse
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHoveringTable, setIsHoveringTable] = useState(false);
+
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportarExcel = async () => {
+    setExporting(true);
+    try {
+      // 1. Llamamos a nuestro servicio
+      const blobData = await kpiService.exportarHistorialExcel();
+
+      // 2. Creamos el link de descarga invisible
+      const url = window.URL.createObjectURL(new Blob([blobData]));
+      const link = document.createElement("a");
+      link.href = url;
+      const fecha = new Date().toISOString().split("T")[0];
+      link.setAttribute("download", `Historial_KPIs_${fecha}.xlsx`);
+
+      document.body.appendChild(link);
+      link.click();
+
+      // 3. Limpieza
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setFeedback({
+        tipo: "success",
+        mensaje: "¡Historial exportado con éxito!",
+      });
+    } catch (error) {
+      setFeedback({ tipo: "error", mensaje: "Error al descargar el Excel." });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const COLOR_AZUL = "#123498";
   const COLOR_NARANJA = "#F46F0B";
@@ -186,7 +219,25 @@ export default function HistorialKPIs() {
             Registro completo de todos los KPIs de la empresa.
           </p>
         </div>
+
+        {/* BOTÓN Y BADGE JUNTOS */}
         <div className="flex items-center gap-3 text-sm">
+          <button
+            onClick={handleExportarExcel}
+            disabled={exporting || filtered.length === 0}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 text-xs font-black uppercase tracking-widest transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exporting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Generando Excel...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" /> Exportar Excel
+              </>
+            )}
+          </button>
+
           <span
             className="px-4 py-2 rounded-2xl font-black text-white text-xs uppercase tracking-widest"
             style={{ backgroundColor: COLOR_AZUL }}

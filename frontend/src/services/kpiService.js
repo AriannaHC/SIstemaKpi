@@ -19,6 +19,19 @@ const clearAllCaches = () => {
 
 // ── MÉTODOS INDEPENDIENTES ───────────────────────────────────────────────────
 
+export const sincronizarBD = async () => {
+  const response = await apiClient.get("/kpis/sincronizar");
+  clearAllCaches();
+  return response.data;
+};
+
+export const exportarHistorialExcel = async () => {
+  const response = await apiClient.get("/kpis/historial/exportar", {
+    responseType: "blob",
+  });
+  return response.data;
+};
+
 export const getKpisSemanales = async (areaId) => {
   const response = await apiClient.get(`/kpis/semanales/${areaId}`);
   return response.data;
@@ -193,4 +206,6 @@ export const kpiService = {
   getHistorial,
   getAreasStats,
   cerrarVencidosManual,
+  sincronizarBD,
+  exportarHistorialExcel,
 };
