@@ -247,39 +247,7 @@ export default function Comparativas() {
         </button>
       </div>
 
-      <div className="bg-white p-5 rounded-4xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest px-2">
-          <Calendar className="w-4 h-4" /> Filtrar por Mes:
-        </div>
-        <SelectCustom
-          value={filtroMes}
-          onChange={setFiltroMes}
-          options={[
-            { value: "", label: "Todos los meses" },
-            { value: "1", label: "Enero" },
-            { value: "2", label: "Febrero" },
-            { value: "3", label: "Marzo" },
-            { value: "4", label: "Abril" },
-            { value: "5", label: "Mayo" },
-            { value: "6", label: "Junio" },
-            { value: "7", label: "Julio" },
-            { value: "8", label: "Agosto" },
-            { value: "9", label: "Septiembre" },
-            { value: "10", label: "Octubre" },
-            { value: "11", label: "Noviembre" },
-            { value: "12", label: "Diciembre" },
-          ]}
-          className="w-36"
-        />
-        <SelectCustom
-          value={filtroAnio}
-          onChange={setFiltroAnio}
-          options={[{ value: "2026", label: "2026" }]}
-          className="w-24"
-        />
-      </div>
-
-      <div className="bg-white p-2 rounded-4xl border border-slate-100 shadow-sm inline-flex flex-wrap gap-2">
+      <div className="bg-white p-5 rounded-4xl border border-slate-100 shadow-sm inline-flex flex-wrap gap-5 items-center">
         <button
           onClick={() => setTipoComparacion("areas")}
           className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
@@ -330,11 +298,11 @@ export default function Comparativas() {
                   label: e.nombre,
                 })),
               ]}
-              className="flex-1"
+              className="flex-1 min-w-0"
             />
           </div>
         ) : (
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-3 w-full md:w-auto m-2">
             <SelectCustom
               value={entidadAId}
               onChange={setEntidadAId}
@@ -344,7 +312,7 @@ export default function Comparativas() {
                   (e.nombre || e.name) +
                   (!isAreas && e.area ? ` — ${e.area}` : ""),
               }))}
-              className="flex-1"
+              className="flex-1 min-w-0"
             />
             <span className="text-xs font-black text-slate-300 uppercase shrink-0">
               VS
@@ -358,11 +326,44 @@ export default function Comparativas() {
                   (e.nombre || e.name) +
                   (!isAreas && e.area ? ` — ${e.area}` : ""),
               }))}
-              className="flex-1"
+              className="flex-1 min-w-0"
               accentColor="#F46F0B"
             />
           </div>
         )}
+        <div className="hidden md:block w-px h-8 bg-slate-300 self-center"></div>
+        {/* Filtrado por meses */}
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest px-2">
+            <Calendar className="w-4 h-4" /> Filtrar por Mes:
+          </div>
+          <SelectCustom
+            value={filtroMes}
+            onChange={setFiltroMes}
+            options={[
+              { value: "", label: "Todos los meses" },
+              { value: "1", label: "Enero" },
+              { value: "2", label: "Febrero" },
+              { value: "3", label: "Marzo" },
+              { value: "4", label: "Abril" },
+              { value: "5", label: "Mayo" },
+              { value: "6", label: "Junio" },
+              { value: "7", label: "Julio" },
+              { value: "8", label: "Agosto" },
+              { value: "9", label: "Septiembre" },
+              { value: "10", label: "Octubre" },
+              { value: "11", label: "Noviembre" },
+              { value: "12", label: "Diciembre" },
+            ]}
+            className="w-36"
+          />
+          <SelectCustom
+            value={filtroAnio}
+            onChange={setFiltroAnio}
+            options={[{ value: "2026", label: "2026" }]}
+            className="w-24"
+          />
+        </div>
       </div>
 
       {loading ? (

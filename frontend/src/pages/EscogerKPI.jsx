@@ -114,7 +114,7 @@ export default function EscogerKPI() {
 
   const formatFecha = (isoString) => {
     if (!isoString) return "";
-    
+
     let cleanIso = isoString;
     if (typeof cleanIso === "string") {
       cleanIso = cleanIso.replace(" ", "T");
@@ -173,14 +173,19 @@ export default function EscogerKPI() {
                   <div
                     key={area.id}
                     onClick={() => handleAreaSelect(area)}
-                    className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group flex flex-col h-48 relative overflow-hidden"
+                    className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group flex flex-col min-h-48 relative overflow-hidden"
                   >
-                    <div className="flex items-start justify-between mb-4 relative z-10">
-                      <div className="w-14 h-14 rounded-2xl bg-azul/5 flex items-center justify-center text-azul group-hover:bg-azul group-hover:text-white transition-colors">
-                        <Folder className="w-7 h-7" />
-                      </div>
+                    {/* ARRIBA: título del área, solo */}
+                    <div className="relative z-10 mt-3 mb-6">
+                      <h3 className="text-base font-black text-azul-profundo leading-tight">
+                        {area.nombre}
+                      </h3>
+                    </div>
+
+                    {/* ABAJO: píldora de activos + texto de KPIs */}
+                    <div className="mt-auto relative z-10">
                       <div
-                        className={`px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest flex items-center ${
+                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest mb-2 ${
                           area.activos >= area.max
                             ? "bg-green-100 text-green-700"
                             : "bg-orange-100 text-naranja"
@@ -188,19 +193,14 @@ export default function EscogerKPI() {
                       >
                         {area.activos} / {area.max} ACTIVOS
                       </div>
-                    </div>
-
-                    <div className="mt-auto relative z-10">
-                      <h3 className="text-lg font-black text-azul-profundo line-clamp-1 mb-1">
-                        {area.nombre}
-                      </h3>
                       <p className="text-xs text-gray-500 font-semibold">
                         {area.total} KPIs en total registrados
                       </p>
                     </div>
 
-                    <div className="absolute -bottom-6 -right-6 text-slate-50 opacity-50 group-hover:scale-110 transition-transform">
-                      <Folder className="w-32 h-32" />
+                    {/* FONDO: carpeta decorativa (marca de agua) */}
+                    <div className="absolute -bottom-8 -right-8 rotate-330 text-[#eef0f4] opacity-60 group-hover:scale-110 group-hover:rotate-360 transition-transform">
+                      <Folder className="w-32 h-32" fill="#eef0f4"/>
                     </div>
                   </div>
                 ))}
