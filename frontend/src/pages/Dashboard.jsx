@@ -325,17 +325,18 @@ export default function Dashboard({ setActivePage }) {
                 ? currentItems.map((area) => (
                     <div
                       key={area.id}
-                      className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between min-h-48"
+                      className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group flex flex-col min-h-48 relative overflow-hidden"
                       onClick={() => {
                         setSelectedArea(area);
                         setSearchTerm("");
                         setPage(1);
                       }}
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="w-14 h-14 rounded-2xl bg-azul/5 flex items-center justify-center text-azul group-hover:bg-azul group-hover:text-white transition-colors">
-                          <Folder className="w-7 h-7" />
-                        </div>
+                      {/* ARRIBA: título + botón eliminar (solo admin) */}
+                      <div className="flex items-start justify-between gap-2 relative z-10 mt-3 mb-3">
+                        <h3 className="text-base font-black text-[#123498] leading-tight">
+                          {area.nombre}
+                        </h3>
                         {user?.kpi_rol_id === 1 && (
                           <button
                             onClick={(e) => {
@@ -349,14 +350,18 @@ export default function Dashboard({ setActivePage }) {
                           </button>
                         )}
                       </div>
-                      <div>
-                        <h3 className="text-lg font-black text-azul-profundo mb-2">
-                          {area.nombre} 
-                        </h3>
-                        <span className="inline-block bg-slate-100 text-slate-500 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest">
+
+                      {/* píldora de KPIs */}
+                      <div className="relative z-10">
+                        <span className="inline-block bg-amarillo-hansa/15 text-[#F46F0B] text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest">
                           {area.kpis.length} KPI
                           {area.kpis.length !== 1 ? "s" : ""}
                         </span>
+                      </div>
+
+                      {/* FONDO: carpeta decorativa, inclinada y rellena */}
+                      <div className="absolute -bottom-8 -right-8 rotate-330 group-hover:scale-110 group-hover:rotate-360 transition-transform">
+                        <Folder className="w-32 h-32 fill-slate-100 text-slate-100" />
                       </div>
                     </div>
                   ))
