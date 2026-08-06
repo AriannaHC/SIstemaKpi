@@ -176,7 +176,6 @@ export default function Usuarios() {
 
   // Filtros y Paginación
   const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("");
   const [filterRol, setFilterRol] = useState("");
@@ -268,10 +267,6 @@ export default function Usuarios() {
     }
   };
 
-  const handleSearch = () => {
-    setSearchTerm(searchInput);
-    setPage(1);
-  };
 
   const handleAreaFilterChange = (value) => {
     setFilterArea(value);
@@ -343,17 +338,13 @@ export default function Usuarios() {
                     type="text"
                     placeholder="Buscar por nombre..."
                     className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-xs font-semibold focus:outline-none focus:border-azul transition-all shadow-sm"
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setPage(1);
+                    }}
                   />
                 </div>
-                <button
-                  onClick={handleSearch}
-                  className="px-6 py-3 bg-azul text-white rounded-2xl text-xs font-black hover:bg-azul-profundo transition-all shrink-0"
-                >
-                  Buscar
-                </button>
               </div>
 
               {/* Filtro Área */}

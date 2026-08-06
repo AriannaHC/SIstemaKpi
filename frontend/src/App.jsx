@@ -21,6 +21,7 @@ const Backups = lazy(() => import("./pages/Backups"));
 const LlenadoRegistroDiario = lazy(
   () => import("./pages/LlenadoRegistroDiario"),
 );
+const MisRegistrosDiarios = lazy(() => import("./pages/MisRegistrosDiarios"));
 const PanelOperaciones = lazy(() => import("./pages/PanelOperaciones"));
 const PanelCalidad = lazy(() => import("./pages/PanelCalidad"));
 const LlenadoAuditoria = lazy(() => import("./pages/LlenadoAuditoria"));
@@ -68,6 +69,9 @@ export default function App() {
   // ── ESTADOS PARA LA AUDITORÍA ──
   const [auditoriaRegistroId, setAuditoriaRegistroId] = useState(null);
   const [auditoriaFeedback, setAuditoriaFeedback] = useState(null);
+
+  // ── FLAG CONFETI AL LLEGAR A MIS REGISTROS ──
+  const [confettiOnLoad, setConfettiOnLoad] = useState(false);
 
   const navigateToAuditoria = (registroId) => {
     setAuditoriaRegistroId(registroId);
@@ -144,7 +148,15 @@ export default function App() {
         content = <Backups />;
         break;
       case "registro-diario":
-        content = <LlenadoRegistroDiario />;
+        content = <LlenadoRegistroDiario setActivePage={setActivePage} setConfettiOnLoad={setConfettiOnLoad} />;
+        break;
+      case "mis-registros-diarios":
+        content = (
+          <MisRegistrosDiarios
+            showConfetti={confettiOnLoad}
+            onConfettiDone={() => setConfettiOnLoad(false)}
+          />
+        );
         break;
       case "panel-operaciones":
         content = (

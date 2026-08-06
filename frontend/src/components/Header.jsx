@@ -17,11 +17,29 @@ export default function Header({
     currentDate.charAt(0).toUpperCase() + currentDate.slice(1);
 
   const viewTitles = {
+    // Admin
     dashboard: "PANEL DE CONTROL",
-    daily: "INGRESO DIARIO DE KPIS",
-    reports: "AUDITORÍA Y REPORTES",
+    "escoger-kpi": "SELECCIÓN SEMANAL DE KPIS",
+    historial: "HISTORIAL GENERAL DE KPIS",
+    backups: "RESPALDOS DE BASE DE DATOS",
     settings: "CONFIGURACIÓN GENERAL",
     users: "GESTIÓN DE USUARIOS",
+    analitica: "ANALÍTICA CORPORATIVA",
+    comparativas: "COMPARATIVAS DE ÁREAS",
+    // Admin + Jefe
+    reports: "AUDITORÍA Y REPORTES DE LLENADO",
+    // Jefe
+    "kpis-area": "KPIS DE MI ÁREA",
+    "mi-equipo": "MI EQUIPO",
+    // Jefe + Trabajador
+    daily: "INGRESO DIARIO DE KPIS",
+    "mis-reportes": "MIS REPORTES DE KPIS",
+    "registro-diario": "FORMULARIO DE ACTIVIDADES DIARIAS",
+    "mis-registros-diarios": "MIS REGISTROS DIARIOS",
+    // Paneles especiales
+    "panel-operaciones": "PANEL DE OPERACIONES",
+    "panel-calidad": "PANEL DE CALIDAD",
+    "llenado-auditoria": "AUDITORÍA DE REGISTRO",
   };
 
   const initials = userName

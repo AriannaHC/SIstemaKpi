@@ -1,164 +1,25 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { kpiService } from "../services/kpiService";
 import confetti from "canvas-confetti";
-import {
-  FileText,
-  Clock,
-  User,
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  Target,
-  AlertCircle,
-} from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Toast from "../components/Toast";
+import {
+  KpiList,
+  KpiFormFields,
+  KpiResultsPanel,
+  ejecutarMotor,
+  formatearValor,
+  COLOR_AZUL,
+  COLOR_NARANJA,
+  COLOR_DESHABILITADO,
+} from "../components/LlenadoKPI";
 
-// ── Semáforo (Colores Corporativos) ────────────────────────────────────────
-function SemaforoDisplay({ cumplimiento }) {
-  if (
-    cumplimiento === null ||
-    cumplimiento === undefined ||
-    isNaN(cumplimiento)
-  ) {
-    return (
-      <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
-        <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
-        Sin calcular
-      </span>
-    );
-  }
-  if (cumplimiento >= 0.8)
-    return (
-      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-        <span className="h-2.5 w-2.5 rounded-full bg-emerald-700" />
-        Verde (Óptimo)
-      </span>
-    );
-  if (cumplimiento >= 0.6)
-    return (
-      <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-        <span className="h-2.5 w-2.5 rounded-full bg-amber-700" />
-        Amarillo (Problemas)
-      </span>
-    );
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
-      <span className="h-2.5 w-2.5 rounded-full bg-rose-700" />
-      Rojo (Peligro)
-    </span>
-  );
-}
-
-// ── Formateador ──────────────────────────────────────────────────────────────
-function formatearValor(label, valor) {
-  if (valor === null || valor === undefined || valor === "") return "-";
-  const lbl = label.toLowerCase().trim();
-
-  const esPorcentaje =
-    lbl === "cumplimiento" ||
-    lbl === "cumplimiento (%)" ||
-    lbl === "eficiencia" ||
-    lbl === "eficiencia (%)" ||
-    lbl === "eficacia" ||
-    lbl === "eficacia (%)" ||
-    lbl === "efectividad" ||
-    lbl === "efectividad (%)" ||
-    lbl === "rendimiento" ||
-    lbl === "rendimiento (%)";
-
-  if (esPorcentaje) {
-    return (parseFloat(valor) * 100).toFixed(2) + "%";
-  }
-
-  if (lbl.includes("productividad")) {
-    const num = parseFloat(valor);
-    return isNaN(num) ? String(valor) : num.toFixed(2);
-  }
-
-  const num = parseFloat(valor);
-  return isNaN(num) ? String(valor) : num.toFixed(2);
-}
-
-// ── Motor matemático Optimizado y Seguro ──────────────────────────────────────
-function ejecutarMotor(campos, valores) {
-  let contexto = {};
-  campos.forEach((c) => {
-    const raw = valores[c.campo_key];
-    const lbl = c.campo_label.toLowerCase().trim();
-
-    if (
-      lbl.startsWith("fecha") &&
-      raw &&
-      typeof raw === "string" &&
-      /^\d{4}-\d{2}-\d{2}/.test(raw)
-    ) {
-      contexto[c.campo_label] = new Date(raw).getTime() / 86400000;
-    } else if (c.tipo === "texto") {
-      contexto[c.campo_label] = raw ?? "";
-    } else {
-      contexto[c.campo_label] =
-        raw === "" || raw === undefined || raw === null
-          ? null
-          : parseFloat(raw);
-    }
-  });
-
-  let huboCambios = true;
-  for (let pase = 1; pase <= 4 && huboCambios; pase++) {
-    huboCambios = false;
-
-    campos.forEach((c) => {
-      if (c.origen !== "calculado" || !c.formula_personalizada) return;
-      let formula = c.formula_personalizada;
-      let canCalculate = true;
-
-      for (const [label, value] of Object.entries(contexto)) {
-        const safeLabel = label.replace(/[\[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
-        const regex = new RegExp(`\\[${safeLabel}\\]`, "g");
-        if (formula.match(regex) && (value === null || value === undefined)) {
-          canCalculate = false;
-        }
-        formula = formula.replace(
-          regex,
-          value !== null && value !== undefined ? value : 0,
-        );
-      }
-
-      if (canCalculate) {
-        if (!/[^0-9+\-*/().,\sMathmaxinul=<>?!|&:]/i.test(formula)) {
-          try {
-            const evaluador = new Function("return " + formula);
-            const resultado = evaluador();
-            const valorFinal =
-              !isNaN(resultado) && isFinite(resultado) ? resultado : null;
-
-            if (contexto[c.campo_label] !== valorFinal) {
-              contexto[c.campo_label] = valorFinal;
-              huboCambios = true;
-            }
-          } catch (_) {
-            if (contexto[c.campo_label] !== null) {
-              contexto[c.campo_label] = null;
-              huboCambios = true;
-            }
-          }
-        }
-      } else {
-        if (contexto[c.campo_label] !== null) {
-          contexto[c.campo_label] = null;
-          huboCambios = true;
-        }
-      }
-    });
-  }
-  return contexto;
-}
-
-// ── Componente principal ──────────────────────────────────────────────────────
 export default function LlenadoKPI() {
+  // ── Lista ──────────────────────────────────────────────────────────────────
   const [kpisActivos, setKpisActivos] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
 
+  // ── Formulario ─────────────────────────────────────────────────────────────
   const [kpiSeleccionado, setKpiSeleccionado] = useState(null);
   const [kpiMeta, setKpiMeta] = useState(null);
   const [campos, setCampos] = useState([]);
@@ -169,13 +30,10 @@ export default function LlenadoKPI() {
   const [verResultados, setVerResultados] = useState(false);
   const [textoExpandido, setTextoExpandido] = useState({});
   const [feedback, setFeedback] = useState(null);
+  // Toast que se muestra en el listado tras un guardado exitoso
+  const [listSuccessMsg, setListSuccessMsg] = useState(null);
 
-  // Colores Corporativos
-  const COLOR_AZUL = "#123498";
-  const COLOR_NARANJA = "#F46F0B";
-  const COLOR_DESHABILITADO = "#cbd5e1";
-
-  // ── 1. Cargar KPIs ───────────────────────────────────────────────────────
+  // ── 1. Cargar KPIs ─────────────────────────────────────────────────────────
   const cargarKpisDiarios = () => {
     setLoadingList(true);
     kpiService
@@ -191,7 +49,7 @@ export default function LlenadoKPI() {
     cargarKpisDiarios();
   }, []);
 
-  // ── 2. Abrir Formulario ──────────────────────────────────────────────────
+  // ── 2. Abrir Formulario ───────────────────────────────────────────────────
   const handleLlenarClick = async (kpi) => {
     setKpiSeleccionado(kpi);
     setCampos([]);
@@ -204,17 +62,13 @@ export default function LlenadoKPI() {
       const res = await kpiService.getCampos(kpi.id);
       const dataCampos = res.campos || [];
       const meta = res.kpi_meta;
-
       setKpiMeta(meta);
 
       const valoresIniciales = {};
-
-      if (kpi.completado) {
-        if (kpi.valores_guardados) {
-          Object.keys(kpi.valores_guardados).forEach((key) => {
-            valoresIniciales[key] = kpi.valores_guardados[key];
-          });
-        }
+      if (kpi.completado && kpi.valores_guardados) {
+        Object.keys(kpi.valores_guardados).forEach((key) => {
+          valoresIniciales[key] = kpi.valores_guardados[key];
+        });
       }
 
       dataCampos.forEach((c) => {
@@ -255,9 +109,10 @@ export default function LlenadoKPI() {
   const cerrarFormulario = () => {
     setKpiSeleccionado(null);
     setFeedback(null);
+    // listSuccessMsg se conserva para mostrarse en el listado
   };
 
-  // ── 3. Motor ───────────────────────────────────────────────────────────────
+  // ── 3. Motor de cálculo ───────────────────────────────────────────────────
   useEffect(() => {
     if (campos.length === 0) return;
     setContexto(ejecutarMotor(campos, valores));
@@ -271,6 +126,7 @@ export default function LlenadoKPI() {
     setTextoExpandido((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
+  // ── Valor de cumplimiento ─────────────────────────────────────────────────
   const cumplimientoValue = (() => {
     const key = Object.keys(contexto).find(
       (k) => k.trim() === "Cumplimiento (%)" || k.trim() === "Cumplimiento",
@@ -278,6 +134,7 @@ export default function LlenadoKPI() {
     return key ? contexto[key] : null;
   })();
 
+  // ── Buscar valor para el panel de resumen ─────────────────────────────────
   const buscarValorDisplay = (labelBuscada) => {
     const lb = labelBuscada.toLowerCase().trim();
     let campoEncontrado;
@@ -308,13 +165,10 @@ export default function LlenadoKPI() {
       }
     }
 
-    if (lb.includes("meta kpi")) {
-      if (kpiMeta?.meta_valor != null)
-        return formatearValor(labelBuscada, kpiMeta.meta_valor);
-    }
-    if (lb.includes("meta producc") && kpiMeta?.meta_produccion != null) {
+    if (lb.includes("meta kpi") && kpiMeta?.meta_valor != null)
+      return formatearValor(labelBuscada, kpiMeta.meta_valor);
+    if (lb.includes("meta producc") && kpiMeta?.meta_produccion != null)
       return formatearValor(labelBuscada, kpiMeta.meta_produccion);
-    }
 
     for (const [key, val] of Object.entries(contexto)) {
       if (
@@ -325,30 +179,23 @@ export default function LlenadoKPI() {
         return formatearValor(key, val);
       }
     }
-
     return "-";
   };
 
-  // ── VALIDACIÓN ESTRICTA FORZADA ──────────────────────────────────────────────
+  // ── Validación ────────────────────────────────────────────────────────────
   const isFormValid = useMemo(() => {
     if (!campos || campos.length === 0) return false;
-
     const camposUsuario = campos.filter((c) => c.origen === "usuario");
-
     if (camposUsuario.length === 0) return false;
-
     return camposUsuario.every((c) => {
       const val = valores[c.campo_key];
-      if (val === undefined || val === null) return false;
-      if (String(val).trim() === "") return false;
-      return true;
+      return val !== undefined && val !== null && String(val).trim() !== "";
     });
   }, [valores, campos]);
 
-  // ── 4. Enviar ──────────────────────────────────────────────────────────────
+  // ── 4. Enviar ─────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!isFormValid) {
       setFeedback({
         tipo: "error",
@@ -387,10 +234,11 @@ export default function LlenadoKPI() {
     });
 
     try {
-      const payload = { kpi_id: kpiSeleccionado.id, valores: valoresCompletos };
-      await kpiService.registrar(payload);
+      await kpiService.registrar({
+        kpi_id: kpiSeleccionado.id,
+        valores: valoresCompletos,
+      });
 
-      // ¡GAMIFICACIÓN! 🎊
       confetti({
         particleCount: 700,
         spread: 240,
@@ -398,25 +246,12 @@ export default function LlenadoKPI() {
         colors: ["#123498", "#F46F0B", "#ffffff"],
       });
 
-      setFeedback({
-        tipo: "ok",
-        mensaje: `✅ Registro exitoso.`,
-      });
-
-      if (!kpiSeleccionado.completado) {
-        const valoresReset = {};
-        campos.forEach((c) => {
-          const lbl = c.campo_label.toLowerCase();
-          valoresReset[c.campo_key] =
-            lbl.includes("meta") || lbl.includes("horas planificadas")
-              ? valores[c.campo_key]
-              : "";
-        });
-        setValores(valoresReset);
-      }
-
-      // Opcional: Recargar los KPIs diarios para que se vea como completado en la lista general
       cargarKpisDiarios();
+
+      // Navegar al listado con el toast de éxito
+      setListSuccessMsg("✅ ¡KPI guardado correctamente!");
+      setKpiSeleccionado(null);
+      setFeedback(null);
     } catch (err) {
       setFeedback({
         tipo: "error",
@@ -427,9 +262,7 @@ export default function LlenadoKPI() {
     }
   };
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // ── RENDERIZADO
-  // ────────────────────────────────────────────────────────────────────────────
+  // ── RENDERIZADO: Lista ────────────────────────────────────────────────────
   if (!kpiSeleccionado) {
     return (
       <div className="space-y-8 animate-in fade-in duration-500 max-w-7xl mx-auto relative">
@@ -438,7 +271,11 @@ export default function LlenadoKPI() {
           type={feedback?.tipo}
           onClose={() => setFeedback(null)}
         />
-
+        <Toast
+          message={listSuccessMsg}
+          type="ok"
+          onClose={() => setListSuccessMsg(null)}
+        />
         <div>
           <h1
             className="text-3xl font-extrabold font-heading"
@@ -451,187 +288,16 @@ export default function LlenadoKPI() {
             Estos son los KPIs programados que debes completar en esta fecha.
           </p>
         </div>
-
-        {loadingList ? (
-          <div className="flex justify-center py-20">
-            <div
-              className="w-10 h-10 border-4 border-t-transparent rounded-full animate-spin"
-              style={{ borderColor: COLOR_AZUL, borderTopColor: "transparent" }}
-            ></div>
-          </div>
-        ) : kpisActivos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-slate-100 shadow-sm">
-            <Target className="w-14 h-14 text-slate-200 mb-4" />
-            <p
-              className="font-black text-lg uppercase tracking-widest font-heading"
-              style={{ color: COLOR_AZUL }}
-            >
-              Todo al día
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {kpisActivos.map((kpi) => {
-              const isCompletado = kpi.completado;
-              const isVencido =
-                kpi.fecha_fin && new Date() > new Date(kpi.fecha_fin);
-
-              return (
-                <div
-                  key={kpi.id}
-                  className={`rounded-2xl transition-all duration-300 overflow-hidden flex flex-col ${
-                    isCompletado
-                      ? "bg-slate-50 border border-slate-200 opacity-80"
-                      : isVencido
-                        ? "bg-red-50 border border-red-200"
-                        : kpi.es_mi_kpi
-                          ? "bg-white border-2 border-orange-300 shadow-sm hover:shadow-lg"
-                          : "bg-white border border-slate-100 hover:shadow-lg"
-                  }`}
-                >
-                  <div
-                    className={`relative h-24 p-5 flex items-start justify-between ${
-                      isCompletado
-                        ? "bg-slate-200"
-                        : isVencido
-                          ? "bg-red-100"
-                          : kpi.es_mi_kpi
-                            ? "bg-linear-to-br from-[#F46F0B]/10 to-[#F46F0B]/5" // MEJORA UI: Fondo de la cabecera en tonos naranjas.
-                            : "bg-linear-to-br from-[#123498]/10 to-[#F46F0B]/10"
-                    }`}
-                  >
-                    <span
-                      className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border bg-white flex items-center gap-1.5 ${
-                        isCompletado
-                          ? "text-slate-500 border-slate-300"
-                          : isVencido
-                            ? "text-red-600 border-red-300"
-                            : kpi.es_mi_kpi
-                              ? "text-[#F46F0B] border-[#F46F0B]" // MEJORA UI: Borde e ícono más fuerte para el badge.
-                              : "text-[#123498] border-[#123498]/30"
-                      }`}
-                    >
-                      {isCompletado ? (
-                        "Completado"
-                      ) : isVencido ? (
-                        "Plazo Expirado"
-                      ) : kpi.es_mi_kpi ? (
-                        <>
-                          <AlertCircle className="w-3 h-3 text-[#F46F0B]" />
-                          Tu responsabilidad
-                        </>
-                      ) : (
-                        "KPI de equipo"
-                      )}
-                    </span>
-                    <FileText
-                      className={`w-8 h-8 ${isCompletado ? "text-slate-400" : kpi.es_mi_kpi ? "text-[#F46F0B]/40" : "text-[#123498]/20"}`}
-                    />
-                  </div>
-
-                  <div
-                    className={`p-5 flex-1 flex flex-col ${isCompletado ? "bg-slate-50" : "bg-white"}`}
-                  >
-                    <h3
-                      className={`text-base font-black font-heading leading-tight mb-4 flex-1 ${isCompletado ? "text-slate-500" : ""}`}
-                      style={{ color: isCompletado ? "" : COLOR_AZUL }}
-                    >
-                      {kpi.nombre}
-                    </h3>
-                    <div className="space-y-3 bg-white/50 rounded-xl p-3 border border-slate-100/50">
-                      <div className="flex items-start gap-2">
-                        <User
-                          className={`w-4 h-4 shrink-0 mt-0.5`}
-                          style={{
-                            color: isCompletado ? "#94a3b8" : COLOR_AZUL,
-                          }}
-                        />
-                        <div>
-                          <p
-                            className="text-[10px] font-black uppercase tracking-widest"
-                            style={{
-                              color: isCompletado ? "#94a3b8" : COLOR_AZUL,
-                            }}
-                          >
-                            Encargado
-                          </p>
-                          <p className="text-xs text-slate-600 font-medium">
-                            {kpi.responsable_nombre || "Equipo"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <Clock
-                          className={`w-4 h-4 shrink-0 mt-0.5`}
-                          style={{
-                            color: isCompletado
-                              ? "#94a3b8"
-                              : isVencido
-                                ? "#ef4444"
-                                : COLOR_NARANJA,
-                          }}
-                        />
-                        <div>
-                          <p
-                            className="text-[10px] font-black uppercase tracking-widest"
-                            style={{
-                              color: isCompletado
-                                ? "#94a3b8"
-                                : isVencido
-                                  ? "#ef4444"
-                                  : COLOR_NARANJA,
-                            }}
-                          >
-                            Vigencia
-                          </p>
-                          <p
-                            className={`text-xs font-bold ${isVencido && !isCompletado ? "text-red-600" : "text-slate-600"}`}
-                          >
-                            {kpi.fecha_fin
-                              ? `Vence: ${new Date(typeof kpi.fecha_fin === 'string' ? (kpi.fecha_fin.replace(' ', 'T') + (!kpi.fecha_fin.endsWith('Z') ? 'Z' : '')) : kpi.fecha_fin).toLocaleString("es-PE", { timeZone: "UTC", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}`
-                              : "Sin fecha"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    className={`p-4 border-t ${isCompletado ? "border-slate-200 bg-slate-100" : "border-slate-50 bg-slate-50/50"}`}
-                  >
-                    {isCompletado ? (
-                      <button
-                        disabled
-                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-200 text-slate-500 font-black text-xs uppercase tracking-widest cursor-not-allowed"
-                      >
-                        <CheckCircle2 className="w-4 h-4" /> Entregado
-                      </button>
-                    ) : isVencido ? (
-                      <button
-                        disabled
-                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-100 text-red-500 font-black text-xs uppercase tracking-widest cursor-not-allowed"
-                      >
-                        Cerrado por Sistema
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleLlenarClick(kpi)}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-white font-black text-xs uppercase tracking-widest transition-all shadow-md hover:shadow-lg"
-                        style={{ backgroundColor: COLOR_AZUL }}
-                      >
-                        📝 Llenar Reporte
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <KpiList
+          kpisActivos={kpisActivos}
+          loadingList={loadingList}
+          onLlenar={handleLlenarClick}
+        />
       </div>
     );
   }
 
+  // ── RENDERIZADO: Formulario ───────────────────────────────────────────────
   const camposUsuario = campos.filter((c) => c.origen === "usuario");
   const camposResultado = campos.filter(
     (c) =>
@@ -641,19 +307,8 @@ export default function LlenadoKPI() {
       c.campo_label.toLowerCase().includes("alerta"),
   );
 
-  const resumenLabels = [
-    "Valor semanal",
-    "Meta KPI",
-    "Cumplimiento",
-    "Productividad",
-    "Eficiencia",
-    "Eficacia",
-    "Efectividad",
-    "Rendimiento",
-  ];
-
   return (
-    <div className="min-h-screen bg-slate-50 overflow-hidden">
+    <div className="min-h-screen overflow-hidden">
       <div className="h-full max-w-5xl mx-auto flex flex-col px-3 py-2 lg:px-0 animate-in slide-in-from-right-8 duration-500 relative">
         <Toast
           message={feedback?.mensaje}
@@ -661,23 +316,28 @@ export default function LlenadoKPI() {
           onClose={() => setFeedback(null)}
         />
 
-        <button
-          onClick={cerrarFormulario}
-          className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-3 transition-colors hover:text-[#123498]"
-        >
-          <ChevronLeft className="w-4 h-4" /> Volver a mis KPIs
-        </button>
-
         <div className="bg-white rounded-4xl shadow-xl border border-slate-100 p-4 md:p-6">
           <div className="mb-4 md:mb-8">
-            <span
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.24em] text-white"
-              style={{ backgroundColor: COLOR_AZUL }}
-            >
-              Ingreso Semanal
-            </span>
+            {/* Fila superior: badge + botón volver */}
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <span
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.24em] text-white"
+                style={{ backgroundColor: COLOR_AZUL }}
+              >
+                Ingreso Semanal
+              </span>
+
+              <button
+                type="button"
+                onClick={cerrarFormulario}
+                className="flex items-center gap-2 px-4 py-2 rounded-2xl border-2 border-[#123498] text-[#123498] text-xs font-black uppercase tracking-widest hover:bg-[#123498] hover:text-white transition-all duration-200 shrink-0"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Volver a mis KPIs
+              </button>
+            </div>
+
             <h2
-              className="mt-4 text-2xl md:text-3xl font-extrabold tracking-tight font-heading"
+              className="text-2xl md:text-3xl font-extrabold tracking-tight font-heading"
               style={{ color: COLOR_AZUL }}
             >
               {kpiSeleccionado.nombre}
@@ -689,7 +349,7 @@ export default function LlenadoKPI() {
 
           {isLoadingCampos ? (
             <div className="text-center py-16 text-gray-500">
-              <span className="animate-spin inline-block mr-2 text-xl">⏳</span>{" "}
+              <span className="animate-spin inline-block mr-2 text-xl">⏳</span>
               Cargando estructura...
             </div>
           ) : (
@@ -698,105 +358,13 @@ export default function LlenadoKPI() {
               className="grid gap-4 md:gap-8 lg:grid-cols-[1.75fr_1.1fr]"
             >
               <div className="space-y-8">
-                <div className="rounded-4xl border border-slate-200 bg-slate-50 p-4 md:p-6 shadow-sm">
-                  <div className="mb-3 md:mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h3
-                        className="text-base md:text-lg font-bold"
-                        style={{ color: COLOR_AZUL }}
-                      >
-                        Datos a completar
-                      </h3>
-                      <p className="text-sm text-slate-500 mt-1">
-                        Ingresa la información necesaria.
-                      </p>
-                    </div>
-                    <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.3em] text-slate-500 border border-slate-200">
-                      {camposUsuario.length} campos
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 flex-1 min-h-0 overflow-y-auto pr-2 pb-1 md:pb-3">
-                    {camposUsuario.map((c) => {
-                      const esTextoLargo =
-                        c.campo_label.toLowerCase().includes("observaciones") ||
-                        c.campo_label.toLowerCase().includes("acciones");
-                      return (
-                        <div
-                          key={c.id}
-                          className={esTextoLargo ? "md:col-span-2" : ""}
-                        >
-                          {esTextoLargo ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => toggleTexto(c.campo_key)}
-                                className="lg:hidden w-full flex items-center justify-between rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all"
-                              >
-                                <span>{c.campo_label}</span>
-                                <ChevronDown
-                                  className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${
-                                    textoExpandido[c.campo_key]
-                                      ? "rotate-180"
-                                      : ""
-                                  }`}
-                                />
-                              </button>
-                              {textoExpandido[c.campo_key] && (
-                                <div className="lg:hidden mt-2">
-                                  <textarea
-                                    name={c.campo_key}
-                                    value={valores[c.campo_key] || ""}
-                                    onChange={handleChange}
-                                    rows={4}
-                                    className="w-full rounded-3xl border border-slate-200 bg-white px-3 py-2 md:py-3 text-sm text-slate-700 outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/10 transition-all resize-none"
-                                  />
-                                </div>
-                              )}
-                              <div className="hidden lg:block">
-                                <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-[0.18em]">
-                                  {c.campo_label}{" "}
-                                  <span className="text-red-600">*</span>
-                                </label>
-                                <textarea
-                                  name={c.campo_key}
-                                  value={valores[c.campo_key] || ""}
-                                  onChange={handleChange}
-                                  rows={4}
-                                  className="w-full rounded-3xl border border-slate-200 bg-white px-3 py-2 md:py-3 text-sm text-slate-700 outline-none focus:border-[#123498] focus:ring-2 focus:ring-[#123498]/10 transition-all resize-none"
-                                />
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-[0.18em]">
-                                {c.campo_label}{" "}
-                                <span className="text-red-600">*</span>
-                              </label>
-                              <input
-                                type={
-                                  c.campo_label
-                                    .toLowerCase()
-                                    .trim()
-                                    .startsWith("fecha")
-                                    ? "date"
-                                    : c.tipo === "numero"
-                                      ? "number"
-                                      : "text"
-                                }
-                                step="any"
-                                name={c.campo_key}
-                                value={valores[c.campo_key] || ""}
-                                onChange={handleChange}
-                                className="w-full rounded-xl border px-3 py-2.5 text-sm text-slate-700 outline-none transition-all focus:ring-2 focus:ring-[#123498]/20 bg-white border-slate-200 focus:border-[#123498]"
-                                placeholder={`Ingresa ${c.campo_label}...`}
-                              />
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <KpiFormFields
+                  camposUsuario={camposUsuario}
+                  valores={valores}
+                  onChange={handleChange}
+                  textoExpandido={textoExpandido}
+                  onToggleTexto={toggleTexto}
+                />
 
                 <button
                   type="submit"
@@ -822,96 +390,13 @@ export default function LlenadoKPI() {
                 </button>
               </div>
 
-              {camposResultado.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setVerResultados(!verResultados)}
-                  className="lg:hidden w-full flex items-center justify-between gap-2 px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 hover:bg-white transition-all"
-                >
-                  <span>Ver resultados en vivo</span>
-                  <ChevronDown
-                    className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${
-                      verResultados ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-              )}
-
-              {camposResultado.length > 0 && (
-                <div
-                  className={`${verResultados ? "block" : "hidden"} lg:block lg:sticky lg:top-6 lg:self-start`}
-                >
-                  <div className="rounded-4xl border border-slate-200 bg-linear-to-br from-[#123498]/5 via-slate-50 to-[#F46F0B]/5 p-4 md:p-6 shadow-sm">
-                    <div className="mb-3 md:mb-6">
-                      <p className="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mb-3">
-                        Resultados en tiempo real
-                      </p>
-                      <h3
-                        className="text-lg md:text-2xl font-extrabold"
-                        style={{ color: COLOR_AZUL }}
-                      >
-                        Estado de tu KPI
-                      </h3>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="rounded-3xl bg-white border border-slate-200 p-3 md:p-5">
-                        <p className="text-xs uppercase tracking-[0.3em] text-slate-400 font-black mb-1 md:mb-2">
-                          Semáforo de cumplimiento
-                        </p>
-                        <div className="flex items-center justify-between gap-4">
-                          <div>
-                            <p
-                              className="text-2xl md:text-4xl font-black"
-                              style={{ color: COLOR_AZUL }}
-                            >
-                              {cumplimientoValue !== null &&
-                              cumplimientoValue !== undefined
-                                ? `${(cumplimientoValue * 100).toFixed(0)}%`
-                                : "--"}
-                            </p>
-                            <p className="text-sm text-slate-500 mt-1">
-                              Evaluación actual
-                            </p>
-                          </div>
-                          <SemaforoDisplay cumplimiento={cumplimientoValue} />
-                        </div>
-                        <div className="mt-4 h-2 md:h-3 rounded-full bg-slate-200 overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-linear-to-r from-[#123498] to-[#3b82f6]"
-                            style={{
-                              width: cumplimientoValue
-                                ? `${Math.max(5, Math.min(cumplimientoValue * 100, 100))}%`
-                                : "5%",
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="rounded-3xl bg-white border border-slate-200 p-3 md:p-5 space-y-2 md:space-y-4">
-                        <div className="grid grid-cols-1 gap-2 md:gap-4">
-                          {resumenLabels.map((label) => (
-                            <div
-                              key={label}
-                              className="flex items-center justify-between gap-3"
-                            >
-                              <span className="text-sm text-slate-500 font-medium">
-                                {label}
-                              </span>
-                              <span
-                                className="text-sm font-bold"
-                                style={{ color: COLOR_AZUL }}
-                              >
-                                {buscarValorDisplay(label)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <KpiResultsPanel
+                camposResultado={camposResultado}
+                verResultados={verResultados}
+                onToggleResultados={() => setVerResultados(!verResultados)}
+                cumplimientoValue={cumplimientoValue}
+                buscarValorDisplay={buscarValorDisplay}
+              />
             </form>
           )}
         </div>

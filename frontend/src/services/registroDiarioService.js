@@ -5,13 +5,30 @@ const CACHE_DURATION = 1000 * 60 * 5;
 let panelCache = {
   operaciones: null,
   calidad: null,
+  misRegistros: null,
   timestampOperaciones: 0,
   timestampCalidad: 0,
+  timestampMisRegistros: 0,
 };
 
 export const registroDiarioService = {
   crearRegistro: async (payload) => {
     const response = await apiClient.post("/registros-diarios", payload);
+    panelCache.misRegistros = null;
+    return response.data;
+  },
+
+  getMisRegistros: async (forceRefresh = false) => {
+    if (
+      !forceRefresh &&
+      panelCache.misRegistros &&
+      Date.now() - panelCache.timestampMisRegistros < CACHE_DURATION
+    ) {
+      return panelCache.misRegistros;
+    }
+    const response = await apiClient.get("/registros-diarios/mis-registros");
+    panelCache.misRegistros = response.data;
+    panelCache.timestampMisRegistros = Date.now();
     return response.data;
   },
 

@@ -174,7 +174,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <InputField
-              label="USUARIO / CORREO"
+              label="CORREO"
               id="usuario"
               name="usuario"
               placeholder="ejemplo@empresa.com"

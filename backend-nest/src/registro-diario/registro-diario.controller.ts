@@ -43,6 +43,11 @@ export class RegistroDiarioController {
     return this.registroService.getPanelCalidad(req.user);
   }
 
+  @Get('mis-registros')
+  getMisRegistros(@Req() req) {
+    return this.registroService.getMisRegistros(req.user);
+  }
+
   @Get('exportar-excel')
   async exportarExcel(
     @Query('area_panel') areaPanel: string,

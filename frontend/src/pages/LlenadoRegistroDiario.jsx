@@ -71,7 +71,7 @@ const COLOR_AZUL = "#123498";
 const COLOR_NARANJA = "#F46F0B";
 const COLOR_DESHABILITADO = "#cbd5e1";
 
-export default function LlenadoRegistroDiario() {
+export default function LlenadoRegistroDiario({ setActivePage, setConfettiOnLoad }) {
   const [formData, setFormData] = useState({
     proceso: "",
     tipo_actividad: "",
@@ -131,13 +131,6 @@ export default function LlenadoRegistroDiario() {
 
     try {
       await registroDiarioService.crearRegistro(formData);
-      setFeedback({ tipo: "ok", mensaje: "¡Registro enviado con éxito!" });
-      confetti({
-        particleCount: 700,
-        spread: 240,
-        origin: { y: 0.6 },
-        colors: ["#123498", "#F46F0B", "#ffffff"],
-      });
       setFormData({
         proceso: "",
         tipo_actividad: "",
@@ -148,6 +141,10 @@ export default function LlenadoRegistroDiario() {
         fecha_entrega: "",
       });
       setCharCount(0);
+
+      // Navegar de inmediato — el confeti lo lanza la página destino
+      if (setConfettiOnLoad) setConfettiOnLoad(true);
+      if (setActivePage) setActivePage("mis-registros-diarios");
     } catch (err) {
       setFeedback({
         tipo: "error",

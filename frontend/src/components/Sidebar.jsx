@@ -18,6 +18,7 @@ import {
   Boxes,
   BadgeCheck,
   Target,
+  Book,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -90,7 +91,7 @@ export default function Sidebar({
               <NavItem
                 view="dashboard"
                 icon={<LayoutDashboard className="w-5 h-5" />}
-                label="Dashboard Global"
+                label="Panel Control"
               />
               <NavItem
                 view="escoger-kpi"
@@ -174,7 +175,7 @@ export default function Sidebar({
               <NavItem
                 view="daily"
                 icon={<Clock className="w-5 h-5" />}
-                label="Tus Indicadores"
+                label="Llenar KPIs"
               />
               <NavItem
                 view="mis-reportes"
@@ -184,7 +185,12 @@ export default function Sidebar({
               <NavItem
                 view="registro-diario"
                 icon={<NotebookPen className="w-5 h-5" />}
-                label="Registro Diario"
+                label="Crear Registro"
+              />
+              <NavItem
+                view="mis-registros-diarios"
+                icon={<Book className="w-5 h-5" />}
+                label="Mis registros Diarios"
               />
             </>
           )}

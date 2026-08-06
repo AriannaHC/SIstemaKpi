@@ -159,7 +159,10 @@ export class RegistroDiarioService {
     if (file) {
       const ext = extname(file.originalname);
       const nombreUnico = `${randomUUID().replace(/-/g, '')}${ext}`;
-      const urlPublica = await this.ftpService.uploadImageBytes(file.buffer, nombreUnico);
+      const urlPublica = await this.ftpService.uploadImageBytes(
+        file.buffer,
+        nombreUnico,
+      );
       registro.imagenEvidencia = urlPublica;
     }
 
@@ -477,6 +480,42 @@ export class RegistroDiarioService {
       validacion_lider: r.validacionLider,
       actitud_colaborador: r.actitudColaborador,
       dias_vencimiento: r.diasVencimiento,
+      auditado_operaciones: r.auditadoOperaciones,
+    };
+  }
+
+  // ── 8. HISTORIAL PERSONAL (MIS REGISTROS) ──
+  async getMisRegistros(currentUser: User) {
+    const cacheKey = `registros-diarios-mis-registros-${currentUser.id}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached) return cached;
+
+    const rows = await this.registroRepo.find({
+      where: { usuarioId: currentUser.id },
+      relations: { usuario: true, area: true },
+      order: { fechaRegistro: 'DESC' },
+    });
+
+    // 🚀 USAMOS EL MAPEO SEGURO AQUÍ
+    const registros = rows.map((r) => this.mapToSecureResponse(r));
+
+    this.cache.set(cacheKey, registros);
+    return registros;
+  }
+
+  // 👇 NUEVO: MAPEO SEGURO (Filtra campos sensibles de auditoría)
+  private mapToSecureResponse(r: RegistroDiario) {
+    return {
+      id: r.id,
+      fecha_registro: r.fechaRegistro,
+      proceso: r.proceso,
+      tipo_actividad: r.tipoActividad,
+      tipo_tarea: r.tipoTarea,
+      entregable: r.entregable,
+      fecha_inicio: r.fechaInicio,
+      fecha_entrega: r.fechaEntrega,
+      // Solo enviamos los booleanos, nada de texto ni métricas internas
+      auditado_calidad: r.auditadoCalidad,
       auditado_operaciones: r.auditadoOperaciones,
     };
   }
